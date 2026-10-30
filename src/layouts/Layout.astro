@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from 'astro:transitions';
 import '../styles/global.css';
 
 interface Props {
@@ -23,6 +24,8 @@ const { title, description } = Astro.props;
       rel="stylesheet"
     />
     <title>{title}</title>
+    <!-- Same-tab navigation between pages keeps JS state alive (Lab demos). -->
+    <ClientRouter />
     <script is:inline>
       // Runs before paint: theme and language come from the URL (?lang=),
       // then storage, then the browser. Shared by every page on this origin.
