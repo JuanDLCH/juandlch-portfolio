@@ -26,11 +26,11 @@ No test suite.
 
 - AWS icons are official SVGs in `src/assets/aws/` (sourced from the JuanDLCH profile repo; `sns.svg` from the design). `Stack.astro` resolves them via `import.meta.glob` to hashed URLs. Run `pnpm optimize:svg` (SVGO, `svgo.config.mjs`) after adding any SVG.
 - `vite.build.assetsInlineLimit` is 0 on purpose: otherwise small images are inlined as `data:` URIs and `loading="lazy"` does nothing. Below-the-fold images must use `loading="lazy" decoding="async"` with explicit width/height.
-- Raster images (certification badges, photo) go in `src/assets/` and render with Astro's `<Image>`/`<Picture>` (sharp, webp/avif); never in `public/`.
+- Raster images (certification badges, hero photo) go in `src/assets/` and render with Astro's `<Image>`/`<Picture>` (sharp, webp/avif); never in `public/`.
 
 ## Pending placeholders
 
-Certification badges are placeholders until the PNGs are added and wired in `Certifications.astro`. Photo, CV link, `[YEAR]` and the `#voice`/`#chat`/`#case-*` anchors are unfinished in the original design too.
+The CV link (`#cv`) and the `#voice`/`#chat`/`#case-*` anchors have no destination yet (unfinished in the original design too).
 
 ## Development rules
 
