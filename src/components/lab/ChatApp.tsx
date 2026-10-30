@@ -26,6 +26,8 @@ import {
   emptySession,
   getSession,
   setSession,
+  setTurn,
+  stopTurn,
   type ChatItem,
 } from '../../lab/store';
 import { setLang, setTheme } from '../../scripts/prefs';
@@ -141,7 +143,6 @@ export default function ChatApp() {
   const [modal, setModal] = useState(false);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   const [rec, setRec] = useState<'off' | 'on' | 'busy'>('off');
-  const abortRef = useRef<AbortController | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -222,14 +223,14 @@ export default function ChatApp() {
     setSession(c.id, withUser);
     $busy.set(true);
     const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    setTurn(ctrl);
     const err = await runTurn(keys.anthropic, c, withUser, content, {
       update: (s) => setSession(c.id, s),
       signal: ctrl.signal,
       es,
     });
     $busy.set(false);
-    abortRef.current = null;
+    setTurn(null);
     if (err) notice(x.errors[err]);
   };
 
@@ -299,6 +300,19 @@ export default function ChatApp() {
     mr.stop();
     setRec('off');
   };
+  // ClientRouter unmounts the island without reloading the page: stop a
+  // recording in progress so the microphone isn't left on.
+  useEffect(
+    () => () => {
+      const mr = recRef.current;
+      if (!mr || mr.state === 'inactive') return;
+      mr.ondataavailable = null;
+      mr.onstop = null;
+      mr.stop();
+      mr.stream.getTracks().forEach((t) => t.stop());
+    },
+    [],
+  );
 
   const model = MODELS[c.model];
   const ready = !!keys.anthropic;
@@ -638,7 +652,7 @@ export default function ChatApp() {
                         {busy ? (
                           <button
                             type="button"
-                            onClick={() => abortRef.current?.abort()}
+                            onClick={stopTurn}
                             aria-label={x.stop}
                             className="border-line2 text-ink grid size-11 cursor-pointer place-items-center border bg-transparent"
                           >
