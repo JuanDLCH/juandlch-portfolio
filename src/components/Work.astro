@@ -1,6 +1,7 @@
 ---
 import type { Content } from '../i18n';
 import CornerMarks from './CornerMarks.astro';
+import FlowDiagram from './FlowDiagram.astro';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
@@ -43,39 +44,7 @@ const { x, cases } = Astro.props;
               <span>{c.figTag}</span>
               <span>{x.recreated}</span>
             </div>
-            <ol
-              aria-label={c.figLabel}
-              class="m-0 mx-auto mt-stack flex max-w-[360px] list-none flex-col items-stretch p-0"
-            >
-              {c.flow.map((n, i) => (
-                <li class="flex flex-col items-center">
-                  {i > 0 && (
-                    <span
-                      aria-hidden="true"
-                      class="bg-line2 block h-[18px] w-px"
-                    />
-                  )}
-                  <span
-                    class:list={[
-                      'flex items-center justify-between gap-3 self-stretch border px-3.5 py-[11px] text-sm',
-                      n.hot
-                        ? 'border-accent bg-panel text-accent'
-                        : 'border-line2 text-ink bg-transparent',
-                    ]}
-                  >
-                    <span>{n.label}</span>
-                    <span
-                      class:list={[
-                        'mono text-[10px] tracking-[0.06em] uppercase',
-                        n.hot ? 'text-accent' : 'text-muted',
-                      ]}
-                    >
-                      {n.meta}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <FlowDiagram nodes={c.flow} label={c.figLabel} />
           </figure>
           <div class="flex min-w-0 flex-[1.15_1_440px] flex-col gap-stack p-card">
             <dl class="m-0 flex flex-col gap-4">

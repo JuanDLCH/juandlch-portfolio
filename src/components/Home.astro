@@ -9,6 +9,7 @@ import Hero from './Hero.astro';
 import Lab from './Lab.astro';
 import Leading from './Leading.astro';
 import Principles from './Principles.astro';
+import Rag from './Rag.astro';
 import Stack from './Stack.astro';
 import Work from './Work.astro';
 
@@ -16,8 +17,17 @@ interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
-const { x, cycle, cases, awsIcons, domains, stackGroups, principles } =
-  getContent(lang);
+const {
+  x,
+  cycle,
+  cases,
+  ragFlow,
+  ragIdeas,
+  awsIcons,
+  domains,
+  stackGroups,
+  principles,
+} = getContent(lang);
 ---
 
 <Layout lang={lang} title="JuanDLCH — Signal" description={x.heroSub}>
@@ -34,6 +44,7 @@ const { x, cycle, cases, awsIcons, domains, stackGroups, principles } =
       domains={domains}
       stackGroups={stackGroups}
     />
+    <Rag x={x} flow={ragFlow} ideas={ragIdeas} />
     <Principles x={x} principles={principles} />
     <Certifications x={x} />
     <Footer x={x} />
