@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 
 :root {
+  --header-h: 104px;
   --bg: #f1f4f8;
   --panel: #ffffff;
   --line: #d8e0ea;
@@ -49,6 +50,23 @@
   --color-mid: var(--mid);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
+  /* Fluid sizing scale: shrinks with viewport width and height. */
+  --spacing-section: clamp(32px, 7svh, 64px);
+  --spacing-block: clamp(20px, 4svh, 40px);
+  --spacing-stack: clamp(12px, 2.2svh, 24px);
+  --spacing-card: clamp(14px, 1.6vw, 22px);
+  --spacing-gutter: clamp(20px, 3vw, 48px);
+  --spacing-photo: clamp(110px, 12vw, 170px);
+  --spacing-wave: clamp(80px, 16svh, 130px);
+  --spacing-wave-sm: clamp(40px, 8svh, 60px);
+  --spacing-icon: clamp(30px, 2.8vw, 40px);
+  --spacing-badge: clamp(60px, 6vw, 80px);
+  --text-display: clamp(30px, 4.4vw, 68px);
+  --text-hero: clamp(22px, 2.6vw, 36px);
+  --text-h2: clamp(26px, 3vw, 44px);
+  --text-lead: clamp(17px, 1.8vw, 24px);
+  --text-h3: clamp(17px, 1.6vw, 22px);
+  --text-sub: clamp(15px, 1.3vw, 18px);
   --font-sans: 'Geist', 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, monospace;
 }
@@ -64,7 +82,7 @@
   }
   /* Keep anchored sections clear of the sticky header. */
   [id] {
-    scroll-margin-top: 88px;
+    scroll-margin-top: calc(var(--header-h) + 8px);
   }
   body {
     margin: 0;
@@ -188,5 +206,11 @@
   .jd-card:hover,
   .jd-fill:hover {
     transform: none;
+  }
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --header-h: 64px;
   }
 }

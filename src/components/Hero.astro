@@ -15,9 +15,9 @@ const stages = [
 ];
 ---
 
-<section id="top" class="pt-[72px] pb-[104px]">
-  <div class="flex flex-wrap items-end gap-x-14 gap-y-8">
-    <div class="jd-rise relative aspect-[4/5] w-[clamp(180px,19vw,260px)] flex-none">
+<section id="top" class="pt-block pb-section">
+  <div class="flex flex-wrap items-end gap-x-gutter gap-y-6">
+    <div class="jd-rise relative aspect-[4/5] w-photo flex-none">
       <div
         role="img"
         aria-label={x.photoAlt}
@@ -39,15 +39,15 @@ const stages = [
       </div>
       <CornerMarks offset="-8px" size="22px" />
     </div>
-    <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-7 [animation-delay:0.12s]">
+    <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-stack [animation-delay:0.12s]">
       <div class="mono text-accent flex items-center gap-3 text-[13px] tracking-[0.1em] uppercase">
         <span aria-hidden="true" class="bg-accent h-px w-8"></span>
         {x.role}
       </div>
-      <h1 class="m-0 text-[clamp(36px,6vw,104px)] leading-[0.95] font-medium tracking-[-0.055em]">
+      <h1 class="m-0 text-display leading-[0.95] font-medium tracking-[-0.055em]">
         Juan Diego Londoño
       </h1>
-      <div class="border-line2 flex flex-wrap items-center gap-x-7 gap-y-3.5 border-t pt-[22px]">
+      <div class="border-line2 flex flex-wrap items-center gap-x-7 gap-y-3.5 border-t pt-stack">
         <span class="flex items-center gap-3 text-lg">
           <span
             aria-hidden="true"
@@ -92,20 +92,20 @@ const stages = [
     </div>
   </div>
 
-  <div class="mt-[88px] flex flex-wrap items-center gap-14">
+  <div class="mt-block flex flex-wrap items-center gap-gutter">
     <div class="min-w-0 flex-[1_1_520px]">
-      <p class="m-0 text-[clamp(30px,3.4vw,48px)] leading-[1.08] font-medium tracking-[-0.04em] text-balance">
+      <p class="m-0 text-hero leading-[1.08] font-medium tracking-[-0.04em] text-balance">
         {x.heroA}
         <span class="text-accent">{x.heroB}</span>
         {x.heroC}
       </p>
-      <p class="text-body mt-6 mb-0 max-w-[560px] text-[19px] leading-[1.55] font-light text-pretty">
+      <p class="text-body mt-stack mb-0 max-w-[560px] text-sub leading-[1.55] font-light text-pretty">
         {x.heroSub}
       </p>
-      <div class="mt-10 flex flex-wrap gap-3">
+      <div class="mt-block flex flex-wrap gap-3">
         <a
           href="#lab"
-          class="jd-fill bg-accent !text-on-accent inline-flex min-h-[52px] items-center gap-3 px-6 text-[15px] font-semibold no-underline"
+          class="jd-fill bg-accent !text-on-accent inline-flex min-h-[44px] items-center gap-3 px-6 text-[15px] font-semibold no-underline"
         >
           <svg
             aria-hidden="true"
@@ -129,7 +129,7 @@ const stages = [
         </a>
         <a
           href="#work"
-          class="jd-card border-line2 inline-flex min-h-[52px] items-center gap-2.5 border px-6 text-[15px] font-medium no-underline"
+          class="jd-card border-line2 inline-flex min-h-[44px] items-center gap-2.5 border px-6 text-[15px] font-medium no-underline"
         >
           {x.ctaWork}{' '}
           <span class="jd-arrow" aria-hidden="true">
@@ -139,7 +139,7 @@ const stages = [
       </div>
     </div>
 
-    <figure class="jd-rise bg-panel dots border-line relative m-0 min-w-0 flex-[1_1_500px] border p-7 [animation-delay:0.3s]">
+    <figure class="jd-rise bg-panel dots border-line relative m-0 min-w-0 flex-[1_1_500px] border p-card [animation-delay:0.3s]">
       <CornerMarks />
       <div class="eyebrow text-muted flex flex-wrap justify-between gap-3 !text-[11px]">
         <span class="flex items-center gap-2">
@@ -151,13 +151,13 @@ const stages = [
       <Waveform variant="hero" />
       <div
         aria-hidden="true"
-        class="mono border-line2 text-muted mt-2.5 flex justify-between border-t pt-1.5 text-[10px]"
+        class="mono border-line2 text-muted mt-2.5 flex justify-between border-t pt-1.5 text-[10px] [@media(max-height:700px)]:hidden"
       >
         {['0.0s', '0.5', '1.0', '1.5', '2.0', '2.5', '3.0'].map((s) => (
           <span>{s}</span>
         ))}
       </div>
-      <div class="mono mt-[22px] grid grid-cols-5 gap-1.5 text-[11px] tracking-[0.04em]">
+      <div class="mono mt-stack grid grid-cols-5 gap-1.5 text-[11px] tracking-[0.04em]">
         {stages.map(([a, b]) => (
           <div class="border-line2 text-chip border px-2 py-2.5">
             {a}
@@ -171,7 +171,7 @@ const stages = [
           <span>streaming</span>
         </div>
       </div>
-      <figcaption class="border-line text-muted mt-5 border-t pt-4 text-sm leading-[1.55]">
+      <figcaption class="border-line text-muted mt-stack border-t pt-3 text-sm leading-[1.55]">
         {x.figCaption}
       </figcaption>
     </figure>

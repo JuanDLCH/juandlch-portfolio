@@ -36,28 +36,28 @@ const certs = [
 ];
 ---
 
-<section id="certifications" class="border-line border-t py-[72px]">
+<section id="certifications" class="border-line border-t py-section">
   <div class="flex flex-wrap items-baseline justify-between gap-3">
     <SectionHeading n="07">{x.certTitle}</SectionHeading>
     <span class="mono text-muted text-xs">{x.certNote}</span>
   </div>
-  <div class="mt-7 grid grid-cols-[repeat(auto-fill,minmax(min(290px,100%),1fr))] gap-4">
+  <div class="mt-block grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-4">
     {certs.map((c) => (
-      <div class="bg-panel border-line2 flex items-center gap-5 border p-5">
+      <div class="bg-panel border-line2 flex items-center gap-4 border p-card">
         <Image
           src={c.badge}
           alt={`${c.name} badge`}
-          width={88}
-          height={88}
-          widths={[88, 128]}
-          sizes="88px"
+          width={80}
+          height={80}
+          widths={[80, 128]}
+          sizes="80px"
           format="webp"
           quality={85}
           loading="lazy"
-          class="size-[88px] flex-none object-contain"
+          class="size-badge flex-none object-contain"
         />
         <div class="flex min-w-0 flex-col gap-1">
-          <div class="text-[17px] leading-tight font-medium tracking-[-0.015em]">
+          <div class="text-base leading-tight font-medium tracking-[-0.015em]">
             {c.name}
           </div>
           <div class="text-muted text-sm">{c.meta}</div>

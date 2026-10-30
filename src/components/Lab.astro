@@ -10,14 +10,14 @@ const { x } = Astro.props;
 const mic =
   '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>';
 const preview =
-  'bg-bg dots border-line2 box-border flex min-h-[300px] flex-col border-b p-5';
+  'bg-bg dots border-line2 box-border flex flex-1 flex-col border-b p-card';
 ---
 
-<section id="lab" class="border-line border-t py-[88px]">
+<section id="lab" class="border-line border-t py-section">
   <div class="flex flex-wrap items-end justify-between gap-6">
     <div>
       <SectionHeading n="04">{x.labTitle}</SectionHeading>
-      <p class="mt-[18px] mb-0 text-[clamp(34px,4.4vw,60px)] leading-none font-medium tracking-[-0.045em]">
+      <p class="mt-3 mb-0 text-h2 leading-none font-medium tracking-[-0.045em]">
         {x.labA}
         <span class="text-accent">{x.labB}</span>
       </p>
@@ -27,7 +27,7 @@ const preview =
     </p>
   </div>
 
-  <div class="mt-11 grid grid-cols-[repeat(auto-fit,minmax(min(460px,100%),1fr))] gap-4">
+  <div class="mt-block grid grid-cols-[repeat(auto-fit,minmax(min(420px,100%),1fr))] gap-4">
     <a
       href="#voice"
       class="jd-card bg-panel border-accent flex flex-col border no-underline"
@@ -89,9 +89,9 @@ const preview =
           </div>
         </div>
       </div>
-      <div class="flex flex-col gap-2.5 px-[26px] pt-6 pb-[26px]">
+      <div class="flex flex-col gap-2.5 p-card">
         <span class="eyebrow text-accent">{x.lab1Tag}</span>
-        <span class="text-[28px] font-medium tracking-[-0.03em]">
+        <span class="text-h3 font-medium tracking-[-0.03em]">
           Realtime Voice Lab
         </span>
         <span class="text-body text-base leading-normal">{x.lab1Body}</span>
@@ -185,9 +185,9 @@ const preview =
           </span>
         </div>
       </div>
-      <div class="flex flex-col gap-2.5 px-[26px] pt-6 pb-[26px]">
+      <div class="flex flex-col gap-2.5 p-card">
         <span class="eyebrow text-muted">{x.lab2Tag}</span>
-        <span class="text-[28px] font-medium tracking-[-0.03em]">
+        <span class="text-h3 font-medium tracking-[-0.03em]">
           Multimodal Chat
         </span>
         <span class="text-body text-base leading-normal">{x.lab2Body}</span>
