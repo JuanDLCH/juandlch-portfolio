@@ -1,5 +1,6 @@
 ---
 import type { Content } from '../i18n';
+import T from './T.astro';
 
 interface Props {
   x: Content['x'];
@@ -21,8 +22,10 @@ const icon = {
 
 <footer id="contact" class="border-line border-t pt-section pb-6">
   <p class="m-0 text-cta leading-[0.98] font-medium tracking-[-0.05em] whitespace-pre-line">
-    {x.footA}
-    <span class="text-accent">{x.footB}</span>
+    <T v={x.footA} />
+    <span class="text-accent">
+      <T v={x.footB} />
+    </span>
   </p>
   <div class="mt-block flex flex-wrap gap-3">
     <a

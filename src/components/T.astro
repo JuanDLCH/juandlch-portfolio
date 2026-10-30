@@ -1,0 +1,18 @@
+---
+// Renders a Txt; for two languages, CSS hides the one that isn't active.
+import type { Txt } from '../i18n';
+
+interface Props {
+  v: Txt;
+}
+const { v } = Astro.props;
+---
+
+{typeof v === 'string' ? (
+  v
+) : (
+  <>
+    <span lang="en">{v.en}</span>
+    <span lang="es">{v.es}</span>
+  </>
+)}

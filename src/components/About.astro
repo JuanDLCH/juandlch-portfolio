@@ -1,5 +1,6 @@
 ---
 import type { Content } from '../i18n';
+import T from './T.astro';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
@@ -27,11 +28,15 @@ const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
 
 <section id="about" class="border-line border-t py-section">
   <div>
-    <SectionHeading n="05">{x.aboutTitle}</SectionHeading>
+    <SectionHeading n="05">
+      <T v={x.aboutTitle} />
+    </SectionHeading>
     <p class="mt-4 mb-0 max-w-[880px] text-lead leading-[1.38] font-light tracking-[-0.015em] text-pretty">
-      {x.aboutA}
-      <span class="font-normal">{x.aboutB}</span>
-      {x.aboutC}
+      <T v={x.aboutA} />
+      <span class="font-normal">
+        <T v={x.aboutB} />
+      </span>
+      <T v={x.aboutC} />
     </p>
   </div>
   <ol class="m-0 mt-[calc(var(--spacing-head)*1.4)] grid list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] p-0">
@@ -47,12 +52,14 @@ const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
             s.tone === 'accent' ? 'text-accent' : 'text-muted',
           ]}
         >
-          {s.year}
+          <T v={s.year} />
         </div>
         <div class="mt-2.5 text-h3 font-medium tracking-[-0.02em]">
-          {s.title}
+          <T v={s.title} />
         </div>
-        <div class="text-muted mt-1.5 text-[15px] leading-normal">{s.text}</div>
+        <div class="text-muted mt-1.5 text-[15px] leading-normal">
+          <T v={s.text} />
+        </div>
       </li>
     ))}
   </ol>

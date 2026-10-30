@@ -1,20 +1,21 @@
 ---
-import type { Content, Lang } from '../i18n';
+import { attrs, pick, type Content } from '../i18n';
+import T from './T.astro';
 import ThemeToggle from './ThemeToggle';
 
 interface Props {
   x: Content['x'];
-  lang: Lang;
 }
-const { x, lang } = Astro.props;
+const { x } = Astro.props;
 const links = [
-  ['#work', x.navWork],
-  ['#lab', x.navLab],
-  ['#about', x.navAbout],
-  ['#contact', x.navContact],
+  { href: '#work', label: x.navWork },
+  { href: '#lab', label: x.navLab },
+  { href: '#about', label: x.navAbout },
+  { href: '#contact', label: x.navContact },
 ];
+// Active state comes from <html data-lang>, so it is right before any JS runs.
 const langBtn =
-  'grid h-9 w-10 place-items-center text-xs font-medium tracking-[0.06em] no-underline hover:!text-current';
+  'text-ink grid h-9 w-10 cursor-pointer place-items-center border-0 bg-transparent p-0 font-[inherit] text-xs font-medium tracking-[0.06em]';
 ---
 
 <header class="border-line bg-bg/85 sticky top-0 z-50 border-b backdrop-blur-md">
@@ -32,16 +33,16 @@ const langBtn =
       JUANDLCH
     </a>
     <nav
-      aria-label={x.navLabel}
+      {...attrs({ 'aria-label': x.navLabel })}
       class="mono order-3 -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 text-[13px] tracking-[0.06em] uppercase [scrollbar-width:none] sm:order-2 sm:mx-0 sm:ml-auto sm:w-auto sm:overflow-visible sm:px-0"
     >
-      {links.map(([href, label]) => (
+      {links.map(({ href, label }) => (
         <a
           href={href}
           data-nav-link
           class="px-3 py-2 whitespace-nowrap no-underline aria-[current=true]:text-accent"
         >
-          {label}
+          <T v={label} />
         </a>
       ))}
     </nav>
@@ -50,35 +51,41 @@ const langBtn =
         href="#cv"
         class="border-line2 border px-3.5 py-2 whitespace-nowrap no-underline"
       >
-        {x.navCv}
+        <T v={x.navCv} />
       </a>
       <div
         role="group"
-        aria-label={x.langGroup}
+        {...attrs({ 'aria-label': x.langGroup })}
         class="border-line2 flex border"
       >
-        <a
-          href="/en/"
-          hreflang="en"
-          aria-current={lang === 'en' ? 'true' : undefined}
-          class:list={[langBtn, lang === 'en' ? 'bg-ink !text-bg' : 'text-ink']}
-        >
-          EN
-        </a>
-        <a
-          href="/es/"
-          hreflang="es"
-          aria-current={lang === 'es' ? 'true' : undefined}
+        <button
+          type="button"
+          data-set-lang="en"
+          aria-pressed="true"
           class:list={[
             langBtn,
-            'border-line2 border-l',
-            lang === 'es' ? 'bg-ink !text-bg' : 'text-ink',
+            '[html[data-lang=en]_&]:bg-ink [html[data-lang=en]_&]:text-bg',
+          ]}
+        >
+          EN
+        </button>
+        <button
+          type="button"
+          data-set-lang="es"
+          aria-pressed="false"
+          class:list={[
+            langBtn,
+            'border-line2 border-l [html[data-lang=es]_&]:bg-ink [html[data-lang=es]_&]:text-bg',
           ]}
         >
           ES
-        </a>
+        </button>
       </div>
-      <ThemeToggle client:load toLight={x.toLight} toDark={x.toDark} />
+      <ThemeToggle
+        client:load
+        toLight={{ en: pick(x.toLight, 'en'), es: pick(x.toLight, 'es') }}
+        toDark={{ en: pick(x.toDark, 'en'), es: pick(x.toDark, 'es') }}
+      />
     </div>
   </div>
 </header>

@@ -1,5 +1,6 @@
 ---
 import type { Content } from '../i18n';
+import T from './T.astro';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
@@ -10,16 +11,22 @@ const { x, principles } = Astro.props;
 ---
 
 <section id="principles" class="border-line border-t py-section">
-  <SectionHeading n="06">{x.prTitle}</SectionHeading>
+  <SectionHeading n="06">
+    <T v={x.prTitle} />
+  </SectionHeading>
   <ol class="m-0 mt-head grid list-none grid-cols-[repeat(auto-fit,minmax(min(440px,100%),1fr))] gap-x-gutter p-0">
     {principles.map((p) => (
       <li class="border-line2 flex gap-5 border-t py-card">
-        <span class="mono text-accent flex-none pt-1.5 text-[13px]">{p.n}</span>
+        <span class="mono text-accent flex-none pt-1.5 text-[13px]">
+          <T v={p.n} />
+        </span>
         <div>
           <h3 class="m-0 text-h3 leading-[1.15] font-medium tracking-[-0.03em]">
-            {p.title}
+            <T v={p.title} />
           </h3>
-          <p class="text-body mt-2.5 mb-0 text-sm leading-[1.6]">{p.body}</p>
+          <p class="text-body mt-2.5 mb-0 text-sm leading-[1.6]">
+            <T v={p.body} />
+          </p>
           {p.chips.length > 0 && (
             <div class="mt-3 flex flex-wrap items-center gap-1.5">
               <span class="mono text-accent mr-1 flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.1em] uppercase">
@@ -28,7 +35,7 @@ const { x, principles } = Astro.props;
               </span>
               {p.chips.map((c) => (
                 <span class="mono border-line2 text-chip border px-2 py-1 text-xs leading-none">
-                  {c}
+                  <T v={c} />
                 </span>
               ))}
             </div>

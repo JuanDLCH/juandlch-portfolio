@@ -1,6 +1,7 @@
 ---
 import { Image } from 'astro:assets';
-import type { Content } from '../i18n';
+import T from './T.astro';
+import { attrs, type Content } from '../i18n';
 import photo from '../assets/photo.png';
 import CornerMarks from './CornerMarks.astro';
 import Waveform from './Waveform.astro';
@@ -22,7 +23,7 @@ const stages = [
     <div class="jd-rise relative aspect-[4/5] w-photo flex-none">
       <Image
         src={photo}
-        alt={x.photoAlt}
+        {...attrs({ alt: x.photoAlt })}
         width={340}
         height={425}
         widths={[170, 255, 340]}
@@ -41,7 +42,7 @@ const stages = [
       </h1>
       <div class="mono text-accent flex items-center gap-3 text-[13px] tracking-[0.1em] uppercase">
         <span aria-hidden="true" class="bg-accent h-px w-8"></span>
-        {x.role}
+        <T v={x.role} />
       </div>
       <div class="border-line2 flex flex-wrap items-center gap-x-7 gap-y-3.5 border-t pt-stack">
         <span class="flex items-center gap-3 text-lg">
@@ -61,10 +62,10 @@ const stages = [
         ></span>
         <span class="mono flex flex-wrap items-center gap-2 text-xs tracking-[0.04em]">
           <span class="border-line2 text-chip border px-[11px] py-[7px]">
-            {x.langEs}
+            <T v={x.langEs} />
           </span>
           <span class="border-line2 text-chip border px-[11px] py-[7px]">
-            {x.langEn}
+            <T v={x.langEn} />
           </span>
         </span>
       </div>
@@ -85,9 +86,11 @@ const stages = [
           <path d="M22 9v6"></path>
         </svg>
         <span class="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-          <span>{x.degree} · Universidad de Medellín</span>
+          <span>
+            <T v={x.degree} /> · Universidad de Medellín
+          </span>
           <span class="mono text-muted text-xs tracking-[0.06em]">
-            {x.degreeMeta}
+            <T v={x.degreeMeta} />
           </span>
         </span>
       </div>
@@ -97,19 +100,21 @@ const stages = [
   <div class="border-line2 mt-block flex flex-wrap items-center gap-gutter border-t pt-block">
     <div class="min-w-0 flex-[1_1_520px]">
       <p class="m-0 text-hero leading-[1.08] font-medium tracking-[-0.04em] text-balance">
-        {x.heroA}
-        <span class="text-accent">{x.heroB}</span>
-        {x.heroC}
+        <T v={x.heroA} />
+        <span class="text-accent">
+          <T v={x.heroB} />
+        </span>
+        <T v={x.heroC} />
       </p>
       <p class="text-body mt-stack mb-0 max-w-[560px] text-sub leading-[1.55] font-light text-pretty">
-        {x.heroSub}
+        <T v={x.heroSub} />
       </p>
       <div class="mt-block flex flex-wrap gap-3">
         <a
           href="#work"
           class="jd-fill bg-accent !text-on-accent inline-flex min-h-[44px] items-center gap-2.5 px-6 text-[15px] font-semibold no-underline"
         >
-          {x.ctaWork}{' '}
+          <T v={x.ctaWork} />{' '}
           <span class="jd-arrow" aria-hidden="true">
             ↓
           </span>
@@ -133,7 +138,7 @@ const stages = [
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
             <path d="M12 19v3"></path>
           </svg>
-          {x.ctaLab}
+          <T v={x.ctaLab} />
         </a>
       </div>
     </div>
@@ -143,9 +148,13 @@ const stages = [
       <div class="eyebrow text-muted flex flex-wrap justify-between gap-3 !text-[11px]">
         <span class="flex items-center gap-2">
           <span class="jd-blink bg-accent size-1.5" aria-hidden="true"></span>
-          <span class="text-accent">{x.agentSpeaking}</span>
+          <span class="text-accent">
+            <T v={x.agentSpeaking} />
+          </span>
         </span>
-        <span>{x.turnLabel}</span>
+        <span>
+          <T v={x.turnLabel} />
+        </span>
       </div>
       <Waveform variant="hero" />
       <div
@@ -156,12 +165,14 @@ const stages = [
           <span>{s}</span>
         ))}
       </div>
-      <div class="mono mt-stack grid grid-cols-3 gap-1.5 text-[11px] sm:grid-cols-5 tracking-[0.04em]">
+      <div class="mono mt-stack grid grid-cols-3 gap-1.5 text-[10px] tracking-[0.02em] sm:grid-cols-5">
         {stages.map(([a, b]) => (
           <div class="border-line2 text-chip min-w-0 border px-2 py-2.5 break-words">
-            {a}
+            <T v={a} />
             <br />
-            <span class="text-muted">{b}</span>
+            <span class="text-muted">
+              <T v={b} />
+            </span>
           </div>
         ))}
         <div class="border-accent text-accent min-w-0 border px-2 py-2.5 break-words">
@@ -171,7 +182,7 @@ const stages = [
         </div>
       </div>
       <figcaption class="border-line text-muted mt-stack border-t pt-3 text-sm leading-[1.55]">
-        {x.figCaption}
+        <T v={x.figCaption} />
       </figcaption>
     </figure>
   </div>

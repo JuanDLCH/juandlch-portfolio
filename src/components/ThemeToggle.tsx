@@ -1,22 +1,26 @@
 import { useSyncExternalStore } from 'react';
 
+type Label = { en: string; es: string };
+
 interface Props {
-  toLight: string;
-  toDark: string;
+  toLight: Label;
+  toDark: Label;
 }
 
 const subscribe = (cb: () => void) => {
   const mo = new MutationObserver(cb);
   mo.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['data-theme'],
+    attributeFilter: ['data-theme', 'data-lang'],
   });
   return () => mo.disconnect();
 };
 const isDark = () => document.documentElement.dataset.theme !== 'light';
+const isEs = () => document.documentElement.dataset.lang === 'es';
 
 export default function ThemeToggle({ toLight, toDark }: Props) {
   const dark = useSyncExternalStore(subscribe, isDark, () => true);
+  const es = useSyncExternalStore(subscribe, isEs, () => false);
 
   const toggle = () => {
     const next = dark ? 'light' : 'dark';
@@ -28,7 +32,7 @@ export default function ThemeToggle({ toLight, toDark }: Props) {
     }
   };
 
-  const label = dark ? toLight : toDark;
+  const label = (dark ? toLight : toDark)[es ? 'es' : 'en'];
   return (
     <button
       type="button"

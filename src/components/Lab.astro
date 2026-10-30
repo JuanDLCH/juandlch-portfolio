@@ -1,5 +1,6 @@
 ---
 import type { Content } from '../i18n';
+import T from './T.astro';
 import SectionHeading from './SectionHeading.astro';
 import Waveform from './Waveform.astro';
 
@@ -15,13 +16,17 @@ const preview =
 
 <section id="lab" class="border-line border-t py-section">
   <div>
-    <SectionHeading n="02">{x.labTitle}</SectionHeading>
+    <SectionHeading n="02">
+      <T v={x.labTitle} />
+    </SectionHeading>
     <p class="mt-4 mb-0 text-h2 leading-none font-medium tracking-[-0.045em]">
-      {x.labA}
-      <span>{x.labB}</span>
+      <T v={x.labA} />
+      <span>
+        <T v={x.labB} />
+      </span>
     </p>
     <p class="text-body mt-3 mb-0 max-w-[560px] text-sm leading-[1.55]">
-      {x.labSub}
+      <T v={x.labSub} />
     </p>
   </div>
 
@@ -31,23 +36,25 @@ const preview =
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
           <span class="text-accent flex items-center gap-2">
             <span class="bg-accent size-1.5"></span>
-            {x.agentSpeaking}
+            <T v={x.agentSpeaking} />
           </span>
-          <span class="text-muted">{x.pvSim} · 00:42</span>
+          <span class="text-muted">
+            <T v={x.pvSim} /> · 00:42
+          </span>
         </div>
         <Waveform variant="mini" />
         <div class="flex flex-col gap-1 text-[13px] leading-[1.4]">
           <div class="text-muted">
             <span class="mono mr-2 text-[10px] tracking-[0.08em] uppercase">
-              {x.pvYou}
+              <T v={x.pvYou} />
             </span>
-            {x.voiceUser}
+            <T v={x.voiceUser} />
           </div>
           <div class="text-ink">
             <span class="mono text-accent mr-2 text-[10px] tracking-[0.08em] uppercase">
-              {x.pvAgent}
+              <T v={x.pvAgent} />
             </span>
-            {x.voiceAgent}
+            <T v={x.voiceAgent} />
             <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"></span>
           </div>
         </div>
@@ -86,13 +93,19 @@ const preview =
       </div>
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="tag text-accent">{x.lab1Tag}</span>
+          <span class="tag text-accent">
+            <T v={x.lab1Tag} />
+          </span>
           <span class="text-h3 font-medium tracking-[-0.03em]">
             Realtime Voice Lab
           </span>
-          <span class="text-body text-[13px] leading-snug">{x.lab1Body}</span>
+          <span class="text-body text-[13px] leading-snug">
+            <T v={x.lab1Body} />
+          </span>
         </div>
-        <span class="mono text-muted text-[12px]">{x.labCta}</span>
+        <span class="mono text-muted text-[12px]">
+          <T v={x.labCta} />
+        </span>
       </div>
     </article>
 
@@ -105,7 +118,9 @@ const preview =
             </span>
             <span class="border-line2 text-muted border px-2 py-1">BYOK</span>
           </span>
-          <span class="text-muted tracking-[0.08em] uppercase">{x.pvSim}</span>
+          <span class="text-muted tracking-[0.08em] uppercase">
+            <T v={x.pvSim} />
+          </span>
         </div>
         <div class="flex max-w-[92%] items-center gap-2 self-end">
           <span class="mono border-line2 text-chip inline-flex items-center gap-1.5 border px-2 py-[5px] text-[10px]">
@@ -121,19 +136,21 @@ const preview =
               <path d="M6 2h9l5 5v15H6z"></path>
               <path d="M14 2v6h6"></path>
             </svg>
-            {x.chatFile}
+            <T v={x.chatFile} />
           </span>
           <span class="bg-panel border-line2 text-ink border px-3 py-1.5 text-[13px] leading-[1.4]">
-            {x.chatUser}
+            <T v={x.chatUser} />
           </span>
         </div>
         <div class="border-line2 text-muted mono flex flex-wrap items-center gap-2 border border-dashed px-2.5 py-1 text-[11px]">
           <span class="text-accent">tool</span>
           <span>search_menu({'{ vegetarian: true }'})</span>
-          <span class="text-chip ml-auto">✓ {x.toolResult}</span>
+          <span class="text-chip ml-auto">
+            ✓ <T v={x.toolResult} />
+          </span>
         </div>
         <div class="border-accent text-ink border-l-2 px-3 py-1 text-[13px] leading-[1.4]">
-          {x.chatAgent}
+          <T v={x.chatAgent} />
           <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"></span>
         </div>
         <div class="border-line2 bg-panel text-muted mt-auto flex items-center gap-2.5 border py-1.5 pr-1.5 pl-3">
@@ -149,7 +166,9 @@ const preview =
           >
             <path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l8-8"></path>
           </svg>
-          <span class="flex-auto text-[13px]">{x.chatPlaceholder}</span>
+          <span class="flex-auto text-[13px]">
+            <T v={x.chatPlaceholder} />
+          </span>
           <svg
             width="16"
             height="16"
@@ -179,13 +198,19 @@ const preview =
       </div>
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="tag text-muted">{x.lab2Tag}</span>
+          <span class="tag text-muted">
+            <T v={x.lab2Tag} />
+          </span>
           <span class="text-h3 font-medium tracking-[-0.03em]">
             Multimodal Chat
           </span>
-          <span class="text-body text-[13px] leading-snug">{x.lab2Body}</span>
+          <span class="text-body text-[13px] leading-snug">
+            <T v={x.lab2Body} />
+          </span>
         </div>
-        <span class="mono text-muted text-[12px]">{x.labCta}</span>
+        <span class="mono text-muted text-[12px]">
+          <T v={x.labCta} />
+        </span>
       </div>
     </article>
   </div>

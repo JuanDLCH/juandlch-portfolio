@@ -1,5 +1,6 @@
 ---
 import type { Content } from '../i18n';
+import T from './T.astro';
 import CornerMarks from './CornerMarks.astro';
 import FlowDiagram from './FlowDiagram.astro';
 import SectionHeading from './SectionHeading.astro';
@@ -14,13 +15,17 @@ const { x, flow, ideas } = Astro.props;
 
 <section id="rag" class="border-line border-t py-section">
   <div>
-    <SectionHeading n="03">{x.ragTitle}</SectionHeading>
+    <SectionHeading n="03">
+      <T v={x.ragTitle} />
+    </SectionHeading>
     <p class="mt-4 mb-0 text-h2 leading-[1.05] font-medium tracking-[-0.045em]">
-      {x.ragA}
-      <span>{x.ragB}</span>
+      <T v={x.ragA} />
+      <span>
+        <T v={x.ragB} />
+      </span>
     </p>
     <p class="text-body mt-3 mb-0 max-w-[640px] text-sm leading-[1.55]">
-      {x.ragSub}
+      <T v={x.ragSub} />
     </p>
   </div>
 
@@ -29,7 +34,7 @@ const { x, flow, ideas } = Astro.props;
       <CornerMarks only={['tl']} offset="10px" size="14px" />
       <CornerMarks only={['br']} offset="10px" size="14px" />
       <div class="mono text-muted text-[10px] tracking-[0.08em] uppercase">
-        {x.ragFigTag}
+        <T v={x.ragFigTag} />
       </div>
       <FlowDiagram nodes={flow} label={x.ragFigLabel} dense />
     </figure>
@@ -37,13 +42,15 @@ const { x, flow, ideas } = Astro.props;
       {ideas.map((r) => (
         <li class="border-line2 flex gap-4 border-t py-3 first:pt-0 first:border-t-0">
           <span class="mono text-accent flex-none pt-0.5 text-[13px] font-semibold">
-            {r.n}
+            <T v={r.n} />
           </span>
           <div>
             <h3 class="m-0 text-h3 font-medium tracking-[-0.02em]">
-              {r.title}
+              <T v={r.title} />
             </h3>
-            <p class="text-body mt-1 mb-0 text-sm leading-[1.5]">{r.body}</p>
+            <p class="text-body mt-1 mb-0 text-sm leading-[1.5]">
+              <T v={r.body} />
+            </p>
           </div>
         </li>
       ))}

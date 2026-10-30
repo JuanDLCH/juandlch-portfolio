@@ -74,6 +74,11 @@
 }
 
 @layer base {
+  /* Both languages are in the HTML; only the active one is shown. */
+  html[data-lang='en'] [lang='es'],
+  html[data-lang='es'] [lang='en'] {
+    display: none !important;
+  }
   html {
     scroll-behavior: smooth;
   }
