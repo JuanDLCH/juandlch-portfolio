@@ -80,14 +80,24 @@ const iconUrl = (name: string) => iconUrls[`../assets/aws/${name}.svg`];
     ))}
   </div>
 
-  <details class="jd-details border-line2 mt-4 border-y">
-    <summary class="mono flex min-h-14 items-center justify-between gap-3 text-xs tracking-[0.08em] uppercase">
-      <span>{x.toolboxLabel}</span>
-      <span class="jd-plus text-accent text-xl" aria-hidden="true">
-        +
+  <details class="jd-details group border-line2 bg-panel hover:border-accent open:border-accent mt-4 border transition-colors">
+    <summary class="flex min-h-12 items-center justify-between gap-3 px-card py-2">
+      <span class="flex items-center gap-3">
+        <span class="mono text-ink text-[13px] font-semibold tracking-[0.08em] uppercase">
+          {x.toolboxLabel}
+        </span>
+        <span class="mono border-line2 text-muted border px-1.5 py-0.5 text-[10px]">
+          {stackGroups.length}
+        </span>
+      </span>
+      <span
+        class="border-accent text-accent group-hover:bg-accent group-hover:text-on-accent grid size-8 place-items-center border transition-colors"
+        aria-hidden="true"
+      >
+        <span class="jd-plus text-xl leading-none">+</span>
       </span>
     </summary>
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-x-10 gap-y-7 pt-2 pb-8">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-x-10 gap-y-6 px-card pt-2 pb-card">
       {stackGroups.map((g) => (
         <div>
           <h4 class="border-line m-0 mb-3 border-b pb-2 text-[15px] font-medium">
