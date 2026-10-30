@@ -290,28 +290,26 @@ export default function ChatApp() {
     if (err) notice(err);
   };
 
-  // Re-sends the last user message after a transient error. The failed turn
-  // left it at the end of the API history, so it is taken back out and sent
-  // again; the error message goes away.
-  const retry = (id: number) => {
+  // Runs the failed turn again from where it started: whatever it left in the
+  // log (partial answer, tool calls, paused searches, the error) is dropped
+  // first, so it works however far the turn got.
+  const retry = () => {
     const s = getSession(c.id);
-    const last = s.api.at(-1);
-    if ($busy.get() || last?.role !== 'user' || !Array.isArray(last.content))
-      return;
+    if ($busy.get() || !s.turn) return;
     void run(
       {
         ...s,
-        items: s.items.filter((i) => !(i.kind === 'notice' && i.id === id)),
-        api: s.api.slice(0, -1),
+        items: s.items.slice(0, s.turn.items),
+        api: s.api.slice(0, s.turn.api),
       },
-      last.content,
+      s.turn.content,
     );
   };
 
-  const fix = (f: Fix, id: number) => {
+  const fix = (f: Fix) => {
     if (f === 'anthropic' || f === 'anthropicReview') openKeys('anthropic');
     else if (f === 'openai' || f === 'openaiReview') openKeys('openai');
-    else if (f === 'retry') retry(id);
+    else if (f === 'retry') retry();
     else if (f === 'clear') setSession(c.id, emptySession());
     else fileRef.current?.click();
   };
@@ -358,7 +356,14 @@ export default function ChatApp() {
     ];
     setDraft('');
     $attachments.setKey(c.id, []);
-    await run({ ...start, items: [...start.items, user] }, content);
+    await run(
+      {
+        ...start,
+        items: [...start.items, user],
+        turn: { items: start.items.length + 1, api: start.api.length, content },
+      },
+      content,
+    );
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1519,7 +1524,7 @@ function Notice({
   text: string;
   fix?: Fix;
   fixLabel: ChatCopy['fixes'];
-  onFix: (f: Fix, id: number) => void;
+  onFix: (f: Fix) => void;
 }) {
   const [n, setN] = useState(() =>
     typed.has(id) || matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -1551,7 +1556,7 @@ function Notice({
       {done && fix && (
         <button
           type="button"
-          onClick={() => onFix(fix, id)}
+          onClick={() => onFix(fix)}
           className={`jd-rise ${mono} border-accent text-accent hover:bg-accent hover:text-on-accent mob:h-11 ml-3.5 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.06em] uppercase transition-colors`}
         >
           {fixLabel[fix]}

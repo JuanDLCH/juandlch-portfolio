@@ -31,6 +31,12 @@ export interface ChatSession {
   /** Conversation exactly as sent to the API (append-only). */
   api: Anthropic.Beta.BetaMessageParam[];
   usage: { input: number; output: number; cost: number };
+  /** The latest turn: where it started, so it can be retried as a whole. */
+  turn?: {
+    items: number;
+    api: number;
+    content: Anthropic.Beta.BetaContentBlockParam[];
+  };
 }
 
 export const emptySession = (): ChatSession => ({
