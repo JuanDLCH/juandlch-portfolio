@@ -1,4 +1,5 @@
 // Copy for the Multimodal Chat lab (src/components/lab/ChatApp.tsx).
+// `{p}` is replaced with the active provider's name, `{m}` with the model's.
 const EN = {
   back: 'Lab',
   backLabel: 'Back to the Lab',
@@ -19,7 +20,7 @@ const EN = {
     'A short walkthrough of the architecture behind these cases (services, data flow and the trade-offs between them) comes next.',
   caseLabel: 'Case',
   tryCase: 'Try this case',
-  noKeyBanner: 'Add your Anthropic API key to run the chat. Nothing is stored.',
+  noKeyBanner: 'Add your {p} API key to run the chat. Nothing is stored.',
   addKeys: 'Add keys',
   conversation: 'Conversation',
   emptyTitle: 'Pick a case, then start talking.',
@@ -54,7 +55,8 @@ const EN = {
   providersTitle: 'Use your own API keys',
   providersIntro:
     'This lab runs on your keys, so you control the cost. They are used only to call the providers from this page.',
-  anthropicHint: 'chat · required',
+  chatKeyHint: 'chat · required',
+  chatVoiceKeyHint: 'chat · voice input · required',
   openaiHint: 'voice input · optional',
   guarantees: [
     'Never stored — kept in memory for this tab only, gone when you close or reload it.',
@@ -75,13 +77,19 @@ const EN = {
   thinking: 'Thinking…',
   errors: {
     noKey:
-      'I need your Anthropic API key to answer. It stays in this tab’s memory and goes only to Anthropic.',
-    auth: 'Anthropic rejected that API key. Check that it’s complete and still active.',
+      'I need your {p} API key to answer. It stays in this tab’s memory and goes only to {p}.',
+    auth: '{p} rejected that API key. Check that it’s complete and still active.',
+    quota:
+      'Your {p} account is out of API credit, so the request was refused. Add credit and try again.',
+    model:
+      'This key can’t use {m}. Check the model access of the key’s project in your {p} dashboard.',
     rate: 'The provider is rate limiting requests right now. Give it a few seconds and try again.',
     overloaded:
       'The provider is overloaded at the moment. Try again in a few seconds.',
     network:
       'I couldn’t reach the provider. Check your connection and try again.',
+    unreadable:
+      '{p} refused the request without saying why (it hides the reason from browsers). Most often the key is wrong or revoked, or the account has no API credit. Check the key first.',
     api: 'Something went wrong with that request. Clearing the conversation usually fixes it.',
     refusal: 'I can’t help with that request. Try asking something else.',
     truncated:
@@ -94,10 +102,11 @@ const EN = {
     file: 'I can read images (PNG, JPEG, GIF, WebP) and PDFs up to 20 MB. That file isn’t one of them.',
   },
   fixes: {
-    anthropic: 'Add Anthropic key',
-    anthropicReview: 'Review Anthropic key',
-    openai: 'Add OpenAI key',
-    openaiReview: 'Review OpenAI key',
+    key: 'Add {p} key',
+    keyReview: 'Review {p} key',
+    voiceKey: 'Add OpenAI key',
+    voiceKeyReview: 'Review OpenAI key',
+    billing: 'Open {p} billing',
     retry: 'Try again',
     clear: 'Clear conversation',
     file: 'Choose another file',
@@ -131,8 +140,7 @@ const ES: typeof EN = {
     'Pronto, un recorrido breve por la arquitectura detrás de estos casos: servicios, flujo de datos y las decisiones que hay detrás.',
   caseLabel: 'Caso',
   tryCase: 'Probar este caso',
-  noKeyBanner:
-    'Agrega tu API key de Anthropic para usar el chat. No se guarda nada.',
+  noKeyBanner: 'Agrega tu API key de {p} para usar el chat. No se guarda nada.',
   addKeys: 'Agregar llaves',
   conversation: 'Conversación',
   emptyTitle: 'Elige un caso y empieza a conversar.',
@@ -168,7 +176,8 @@ const ES: typeof EN = {
   providersTitle: 'Usa tus propias API keys',
   providersIntro:
     'Este lab corre con tus llaves, así que tú controlas el costo. Solo se usan para llamar a los proveedores desde esta página.',
-  anthropicHint: 'chat · requerida',
+  chatKeyHint: 'chat · requerida',
+  chatVoiceKeyHint: 'chat · entrada de voz · requerida',
   openaiHint: 'entrada de voz · opcional',
   guarantees: [
     'Nunca se guardan — viven en memoria solo en esta pestaña y desaparecen al cerrarla o recargarla.',
@@ -189,13 +198,19 @@ const ES: typeof EN = {
   thinking: 'Pensando…',
   errors: {
     noKey:
-      'Necesito tu API key de Anthropic para responder. Vive en la memoria de esta pestaña y solo va a Anthropic.',
-    auth: 'Anthropic rechazó esa API key. Revisa que esté completa y siga activa.',
+      'Necesito tu API key de {p} para responder. Vive en la memoria de esta pestaña y solo va a {p}.',
+    auth: '{p} rechazó esa API key. Revisa que esté completa y siga activa.',
+    quota:
+      'Tu cuenta de {p} no tiene crédito para la API, así que rechazó la solicitud. Agrega crédito e intenta de nuevo.',
+    model:
+      'Esta llave no puede usar {m}. Revisa el acceso a modelos del proyecto de la llave en tu panel de {p}.',
     rate: 'El proveedor está limitando las solicitudes ahora mismo. Espera unos segundos e intenta de nuevo.',
     overloaded:
       'El proveedor está saturado en este momento. Intenta de nuevo en unos segundos.',
     network:
       'No pude conectar con el proveedor. Revisa tu conexión e intenta de nuevo.',
+    unreadable:
+      '{p} rechazó la solicitud sin decir por qué (le oculta el motivo al navegador). Casi siempre es la llave, mal copiada o revocada, o la cuenta sin crédito para la API. Revisa la llave primero.',
     api: 'Algo falló con esa solicitud. Borrar la conversación suele resolverlo.',
     refusal:
       'No puedo ayudarte con esa solicitud. Prueba preguntando otra cosa.',
@@ -209,10 +224,11 @@ const ES: typeof EN = {
     file: 'Puedo leer imágenes (PNG, JPEG, GIF, WebP) y PDFs de hasta 20 MB. Ese archivo no es uno de ellos.',
   },
   fixes: {
-    anthropic: 'Agregar llave de Anthropic',
-    anthropicReview: 'Revisar llave de Anthropic',
-    openai: 'Agregar llave de OpenAI',
-    openaiReview: 'Revisar llave de OpenAI',
+    key: 'Agregar llave de {p}',
+    keyReview: 'Revisar llave de {p}',
+    voiceKey: 'Agregar llave de OpenAI',
+    voiceKeyReview: 'Revisar llave de OpenAI',
+    billing: 'Abrir facturación de {p}',
     retry: 'Intentar de nuevo',
     clear: 'Borrar conversación',
     file: 'Elegir otro archivo',
