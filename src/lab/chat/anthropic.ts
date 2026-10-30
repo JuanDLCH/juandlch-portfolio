@@ -220,8 +220,28 @@ export async function runTurn(
       );
       if (calls.length === 0)
         return message.stop_reason === 'max_tokens' ? 'truncated' : null;
-      // A tool input cut off at max_tokens can look valid; never run it.
-      if (message.stop_reason === 'max_tokens') return 'truncated';
+      // A tool input cut off at max_tokens can look valid; never run it. Each
+      // call still needs a result, or the next message would be rejected.
+      if (message.stop_reason === 'max_tokens') {
+        s.api.push({
+          role: 'user',
+          content: calls.map((call) => ({
+            type: 'tool_result' as const,
+            tool_use_id: call.id,
+            content: JSON.stringify({
+              error: 'Response hit max_tokens before this call was complete.',
+            }),
+            is_error: true,
+          })),
+        });
+        s.items = s.items.map((i) =>
+          i.kind === 'tool' && i.status === 'running'
+            ? { ...i, status: 'error', result: 'max_tokens' }
+            : i,
+        );
+        cb.update(clone(s));
+        return 'truncated';
+      }
 
       const results: Anthropic.Beta.BetaToolResultBlockParam[] =
         await Promise.all(

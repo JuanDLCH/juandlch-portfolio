@@ -43,6 +43,13 @@ export const $caseId = atom<string>(CASES[0].id);
 export const $sessions = map<Record<string, ChatSession>>({});
 export const $drafts = map<Record<string, string>>({});
 export const $busy = atom(false);
+/** Cancels the turn in flight. Lives here, not in the island, so Stop still
+ * works after leaving the chat and coming back mid-response. */
+let activeTurn: AbortController | null = null;
+export const setTurn = (c: AbortController | null) => {
+  activeTurn = c;
+};
+export const stopTurn = () => activeTurn?.abort();
 
 export const getSession = (id: string) => $sessions.get()[id] ?? emptySession();
 export const setSession = (id: string, s: ChatSession) =>
