@@ -180,7 +180,9 @@ export default function ChatApp() {
 
   const send = async (override?: string) => {
     const text = (override ?? draft).trim();
-    if ((!text && files.length === 0) || busy) return;
+    // Read the store, not the render's `busy`: a transcription finishing
+    // after a turn ended calls this from an older closure.
+    if ((!text && files.length === 0) || $busy.get()) return;
     const start = getSession(c.id);
     const user: ChatItem = {
       kind: 'user',
@@ -260,6 +262,7 @@ export default function ChatApp() {
   };
 
   const onMic = async () => {
+    if ($busy.get()) return;
     if (!keys.openai) return openKeys();
     if (rec === 'on') return recRef.current?.stop();
     try {
@@ -636,9 +639,10 @@ export default function ChatApp() {
                         <button
                           type="button"
                           onClick={() => void onMic()}
+                          disabled={busy}
                           aria-label={x.mic}
                           title={keys.openai ? x.mic : x.micNeedsKey}
-                          className={`${iconBtn} mob:hidden border-transparent ${keys.openai ? 'text-ink' : 'text-muted'}`}
+                          className={`${iconBtn} mob:hidden border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
                         >
                           <Icon d={I.mic} />
                         </button>
@@ -673,9 +677,10 @@ export default function ChatApp() {
                               <button
                                 type="button"
                                 onClick={() => void onMic()}
+                                disabled={busy}
                                 aria-label={x.mic}
                                 title={keys.openai ? x.mic : x.micNeedsKey}
-                                className="bg-accent text-on-accent mob:grid hidden size-11 shrink-0 cursor-pointer place-items-center border-0"
+                                className="bg-accent text-on-accent mob:grid hidden size-11 shrink-0 cursor-pointer place-items-center border-0 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <Icon d={I.mic} size={18} />
                               </button>

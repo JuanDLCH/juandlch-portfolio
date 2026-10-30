@@ -8,7 +8,8 @@ interface ClientTool {
   def: Anthropic.Beta.BetaTool;
   /** Returns an error message when the (model-supplied) input is invalid. */
   validate: (input: Input) => string | null;
-  run: (input: Input) => Promise<unknown>;
+  /** `signal` aborts when the visitor stops the turn. */
+  run: (input: Input, signal: AbortSignal) => Promise<unknown>;
   /** Short result label for the UI, e.g. "3 results". */
   summary: (result: unknown, es: boolean) => string;
 }
@@ -153,14 +154,16 @@ const getWeather: ClientTool = {
     eager_input_streaming: true,
   },
   validate: (i) => (str(i.city) ? null : 'city must be a non-empty string'),
-  run: async (i) => {
+  run: async (i, signal) => {
     const geo = await fetch(
       `https://geocoding-api.open-meteo.com/v1/search?count=1&name=${encodeURIComponent(String(i.city))}`,
+      { signal },
     ).then((r) => r.json());
     const place = geo?.results?.[0];
     if (!place) return { error: `city not found: ${String(i.city)}` };
     const wx = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`,
+      { signal },
     ).then((r) => r.json());
     return {
       city: `${place.name}, ${place.country}`,

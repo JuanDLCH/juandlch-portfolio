@@ -261,7 +261,7 @@ export async function runTurn(
               summary = invalid;
             } else {
               try {
-                const out = await tool.run(input);
+                const out = await tool.run(input, cb.signal);
                 content = JSON.stringify(out);
                 summary = tool.summary(out, cb.es);
               } catch (e) {
@@ -287,6 +287,18 @@ export async function runTurn(
             };
           }),
         );
+      // Stopped while tools ran: end the turn here (the catch below only
+      // sees API errors, so check explicitly).
+      if (cb.signal.aborted) {
+        s.items = s.items.map((i) =>
+          i.kind === 'tool' && i.status === 'running'
+            ? { ...i, status: 'error', result: cb.es ? 'detenida' : 'stopped' }
+            : i,
+        );
+        s.api.push({ role: 'user', content: results });
+        cb.update(clone(s));
+        return null;
+      }
       // All results go back in a single user message.
       s.api.push({ role: 'user', content: results });
       cb.update(clone(s));
