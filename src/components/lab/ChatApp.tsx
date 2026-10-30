@@ -110,6 +110,9 @@ const I = {
   file: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  play: '<path d="M7 4.5v15l12-7.5z"/>',
+  diagram:
+    '<rect x="3" y="3" width="7" height="6"/><rect x="14" y="3" width="7" height="6"/><rect x="14" y="15" width="7" height="6"/><path d="M10 6h4M17.5 9v6"/>',
 };
 
 const pick = (v: { en: string; es: string }, es: boolean) => (es ? v.es : v.en);
@@ -141,6 +144,9 @@ export default function ChatApp() {
 
   const [side, setSide] = useState(false);
   const [modal, setModal] = useState(false);
+  // "Watch demo" and "How I'd build it" dialogs, each with its own case pick.
+  const [info, setInfo] = useState<'video' | 'build' | null>(null);
+  const [infoCase, setInfoCase] = useState(CASES[0].id);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   const [rec, setRec] = useState<'off' | 'on' | 'busy'>('off');
   const recRef = useRef<MediaRecorder | null>(null);
@@ -148,19 +154,26 @@ export default function ChatApp() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!modal) return;
+    if (!modal && !info) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setModal(false);
+      if (e.key !== 'Escape') return;
+      setModal(false);
+      setInfo(null);
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [modal]);
+  }, [modal, info]);
 
   useEffect(() => {
     const el = logRef.current;
     if (el && session.items.length) el.scrollTop = el.scrollHeight;
   }, [session.items]);
 
+  const openInfo = (kind: 'video' | 'build') => {
+    setInfoCase(c.id);
+    setInfo(kind);
+    setSide(false);
+  };
   const openKeys = () => {
     setKeyDrafts(keys);
     setModal(true);
@@ -405,6 +418,28 @@ export default function ChatApp() {
           </button>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openInfo('video')}
+            aria-label={x.watchDemo}
+            className="border-accent text-accent hover:bg-accent hover:text-on-accent mob:hidden narrow:px-0 narrow:w-9 narrow:justify-center inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 border bg-transparent px-3.5 text-[13px] font-medium transition-colors"
+          >
+            <Icon d={I.play} size={14} />
+            <span className="narrow:hidden">{x.watchDemo}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openInfo('build')}
+            aria-label={x.buildBtn}
+            title={x.buildBtn}
+            className={`${iconBtn} mob:hidden size-9`}
+          >
+            <Icon d={I.diagram} />
+          </button>
+          <span
+            aria-hidden="true"
+            className="bg-line2 mob:hidden mx-1 h-6 w-px"
+          />
           <button
             type="button"
             onClick={openKeys}
@@ -736,6 +771,25 @@ export default function ChatApp() {
                 {themeLabel}
               </button>
             </div>
+            {/* Phone: the header has no room for these, so they live here. */}
+            <div className="mob:grid hidden grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => openInfo('video')}
+                className="border-accent text-accent inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm font-medium"
+              >
+                <Icon d={I.play} size={14} />
+                {x.watchDemo}
+              </button>
+              <button
+                type="button"
+                onClick={() => openInfo('build')}
+                className="border-line2 text-ink inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm"
+              >
+                <Icon d={I.diagram} size={16} />
+                <span className="truncate">{x.buildBtn}</span>
+              </button>
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="jd-case" className={label}>
@@ -1006,6 +1060,137 @@ export default function ChatApp() {
           </div>
         </div>
       )}
+
+      {info &&
+        (() => {
+          const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
+          const video = info === 'video';
+          return (
+            <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={x.close}
+                onClick={() => setInfo(null)}
+                className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="jd-info-title"
+                className="bg-panel border-line2 mob:h-full mob:max-h-full mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[760px] flex-col border"
+              >
+                <span
+                  aria-hidden="true"
+                  className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+                />
+                <span
+                  aria-hidden="true"
+                  className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+                />
+                <div className="mob:px-4 mob:py-5 min-h-0 flex-1 overflow-y-auto px-7 pt-7 pb-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div
+                        className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                      >
+                        {video ? x.videoTag : x.buildTag}
+                      </div>
+                      <h2
+                        id="jd-info-title"
+                        className="mt-2 mb-0 text-2xl font-medium tracking-[-0.03em]"
+                      >
+                        {video ? x.videoTitle : x.buildTitle}
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInfo(null)}
+                      aria-label={x.close}
+                      className={`${iconBtn} size-9 text-lg`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div
+                    role="group"
+                    aria-label={x.caseLabel}
+                    className="mt-5 flex flex-wrap gap-1.5"
+                  >
+                    {CASES.map((k) => {
+                      const on = k.id === ic.id;
+                      return (
+                        <button
+                          key={k.id}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => setInfoCase(k.id)}
+                          className={`mob:min-h-11 min-h-9 cursor-pointer border px-3 text-[13px] transition-colors ${on ? 'border-accent bg-accent text-on-accent' : 'border-line2 text-ink hover:border-accent bg-transparent'}`}
+                        >
+                          {pick(k.label, es)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {video && ic.video ? (
+                    <video
+                      key={ic.id}
+                      src={ic.video.src}
+                      controls
+                      preload="metadata"
+                      className="border-line2 bg-bg mt-4 block aspect-video w-full border"
+                    >
+                      <track
+                        kind="captions"
+                        src={ic.video.captions}
+                        srcLang={es ? 'es' : 'en'}
+                        label={es ? 'Español' : 'English'}
+                        default
+                      />
+                    </video>
+                  ) : (
+                    <div className="border-line2 bg-bg dots text-muted mt-4 flex aspect-video w-full flex-col items-center justify-center gap-3 border border-dashed p-4 text-center text-sm">
+                      <span className="border-line2 grid size-12 place-items-center border">
+                        <Icon d={video ? I.play : I.diagram} size={20} />
+                      </span>
+                      {video ? x.videoSoon : x.diagramSoon}
+                    </div>
+                  )}
+                  {!video && (
+                    <p className="text-body mt-4 mb-0 text-sm leading-[1.55]">
+                      {x.buildSoon}
+                    </p>
+                  )}
+                </div>
+                <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-between gap-2.5 border-t px-7 py-3.5">
+                  <span className={`${mono} text-muted truncate text-[11px]`}>
+                    {MODELS[ic.model].short} · {ic.tools.length} {x.toolsWord}
+                  </span>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInfo(null)}
+                      className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+                    >
+                      {x.close}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        pickCase(ic);
+                        setInfo(null);
+                      }}
+                      className="bg-accent text-on-accent mob:h-11 h-10 cursor-pointer border-0 px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {x.tryCase}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }
