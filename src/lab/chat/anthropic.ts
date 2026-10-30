@@ -1,0 +1,323 @@
+// Browser-side chat loop on the visitor's own key (BYOK). The SDK is loaded
+// on the first message so the page itself stays light.
+import type Anthropic from '@anthropic-ai/sdk';
+import type { ChatItem, ChatSession } from '../store';
+import { MODELS, type ChatCase } from './cases';
+import { CLIENT_TOOLS } from './tools';
+
+export interface TurnCallbacks {
+  /** Called with a fresh copy of the session whenever something changes. */
+  update: (s: ChatSession) => void;
+  signal: AbortSignal;
+  es: boolean;
+}
+
+export type TurnError =
+  'auth' | 'rate' | 'overloaded' | 'network' | 'api' | 'refusal' | 'truncated';
+
+let clientFor: { key: string; client: Anthropic } | null = null;
+async function getClient(key: string) {
+  if (clientFor?.key === key) return clientFor.client;
+  const { default: AnthropicSdk } = await import('@anthropic-ai/sdk');
+  // The key is the visitor's own and stays in this tab; the SDK flag only
+  // acknowledges that the request is made from a browser.
+  const client = new AnthropicSdk({
+    apiKey: key,
+    dangerouslyAllowBrowser: true,
+    maxRetries: 1,
+  });
+  clientFor = { key, client };
+  return client;
+}
+
+const clone = (s: ChatSession): ChatSession => ({
+  items: [...s.items],
+  api: [...s.api],
+  usage: { ...s.usage },
+});
+
+/**
+ * Runs one user turn to completion: streams text, runs client tools, follows
+ * server tools (web search / fetch) and accumulates usage. Returns an error
+ * kind when the turn could not finish.
+ */
+export async function runTurn(
+  key: string,
+  c: ChatCase,
+  start: ChatSession,
+  userContent: Anthropic.Beta.BetaContentBlockParam[],
+  cb: TurnCallbacks,
+): Promise<TurnError | null> {
+  const AnthropicSdk = (await import('@anthropic-ai/sdk')).default;
+  const client = await getClient(key);
+  const model = MODELS[c.model];
+  const s = clone(start);
+  s.api.push({ role: 'user', content: userContent });
+  const tools: Anthropic.Beta.BetaToolUnion[] = [
+    ...(c.clientTools ?? []).map((n) => CLIENT_TOOLS[n].def),
+    ...(c.serverTools ?? []),
+  ];
+  const meta = `${model.name} · effort ${c.effort}`;
+  let jsonRetries = 0;
+
+  const push = (item: ChatItem) => {
+    s.items.push(item);
+    cb.update(clone(s));
+  };
+  const patch = (
+    pred: (i: ChatItem) => boolean,
+    fn: (i: ChatItem) => ChatItem,
+  ) => {
+    s.items = s.items.map((i) => (pred(i) ? fn(i) : i));
+    cb.update(clone(s));
+  };
+
+  try {
+    for (let guard = 0; guard < 12; guard++) {
+      const started: Record<string, number> = {};
+      let assistantIndex = -1;
+      const stream = client.beta.messages.stream(
+        {
+          model: c.model,
+          max_tokens: c.maxTokens,
+          system: c.system,
+          messages: s.api,
+          ...(tools.length ? { tools } : {}),
+          output_config: { effort: c.effort },
+          // Sonnet 5.5 on the Claude API: let the server re-run a declined
+          // request on a suitable model instead of stopping.
+          ...(c.model === 'claude-sonnet-5-5'
+            ? {
+                betas: ['server-side-fallback-2026-07-01'],
+                fallbacks: 'default' as const,
+              }
+            : {}),
+        },
+        { signal: cb.signal },
+      );
+
+      for await (const ev of stream) {
+        if (ev.type === 'content_block_start') {
+          const b = ev.content_block;
+          if (b.type === 'text') {
+            if (assistantIndex === -1) {
+              push({ kind: 'assistant', text: '', meta, streaming: true });
+              assistantIndex = s.items.length - 1;
+            }
+          } else if (b.type === 'tool_use' || b.type === 'server_tool_use') {
+            started[b.id] = performance.now();
+            assistantIndex = -1; // text after a tool call starts a new bubble
+            push({
+              kind: 'tool',
+              id: b.id,
+              name: b.name,
+              input: '',
+              result: '',
+              ms: null,
+              status: 'running',
+            });
+          } else if (
+            b.type === 'web_search_tool_result' ||
+            b.type === 'web_fetch_tool_result'
+          ) {
+            const content = b.content as unknown;
+            const failed =
+              !!content &&
+              !Array.isArray(content) &&
+              (content as { type?: string }).type?.endsWith('error');
+            const count = Array.isArray(content) ? content.length : 1;
+            const result = failed
+              ? String(
+                  (content as { error_code?: string }).error_code ?? 'error',
+                )
+              : b.type === 'web_search_tool_result'
+                ? cb.es
+                  ? `${count} resultados`
+                  : `${count} results`
+                : cb.es
+                  ? 'página leída'
+                  : 'page read';
+            const t0 = started[b.tool_use_id];
+            patch(
+              (i) => i.kind === 'tool' && i.id === b.tool_use_id,
+              (i) => ({
+                ...(i as Extract<ChatItem, { kind: 'tool' }>),
+                result,
+                status: failed ? 'error' : 'done',
+                ms: t0 ? Math.round(performance.now() - t0) : null,
+              }),
+            );
+          }
+        } else if (
+          ev.type === 'content_block_delta' &&
+          ev.delta.type === 'text_delta'
+        ) {
+          if (assistantIndex === -1) {
+            push({ kind: 'assistant', text: '', meta, streaming: true });
+            assistantIndex = s.items.length - 1;
+          }
+          const idx = assistantIndex;
+          const delta = ev.delta.text;
+          s.items = s.items.map((it, k) =>
+            k === idx && it.kind === 'assistant'
+              ? { ...it, text: it.text + delta }
+              : it,
+          );
+          cb.update(clone(s));
+        }
+      }
+
+      let message: Anthropic.Beta.BetaMessage;
+      try {
+        message = await stream.finalMessage();
+        jsonRetries = 0;
+      } catch (err) {
+        // Only an unparseable tool input is retried; API errors are rethrown.
+        if (
+          err instanceof AnthropicSdk.APIError ||
+          cb.signal.aborted ||
+          jsonRetries++ >= 2
+        )
+          throw err;
+        continue;
+      }
+
+      s.usage = {
+        input:
+          s.usage.input +
+          message.usage.input_tokens +
+          (message.usage.cache_read_input_tokens ?? 0) +
+          (message.usage.cache_creation_input_tokens ?? 0),
+        output: s.usage.output + message.usage.output_tokens,
+        cost:
+          s.usage.cost +
+          ((message.usage.input_tokens +
+            (message.usage.cache_read_input_tokens ?? 0) +
+            (message.usage.cache_creation_input_tokens ?? 0)) *
+            model.inPerM +
+            message.usage.output_tokens * model.outPerM) /
+            1e6,
+      };
+      // Fill in the inputs of the tool calls now that they are complete.
+      for (const b of message.content) {
+        if (b.type === 'tool_use' || b.type === 'server_tool_use') {
+          const input = JSON.stringify(b.input);
+          s.items = s.items.map((i) =>
+            i.kind === 'tool' && i.id === b.id ? { ...i, input } : i,
+          );
+        }
+      }
+      s.items = s.items.map((i) =>
+        i.kind === 'assistant' && i.streaming ? { ...i, streaming: false } : i,
+      );
+      s.api.push({ role: 'assistant', content: message.content });
+      cb.update(clone(s));
+
+      if (message.stop_reason === 'refusal') return 'refusal';
+      if (message.stop_reason === 'pause_turn') continue;
+      const calls = message.content.filter(
+        (b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use',
+      );
+      if (calls.length === 0)
+        return message.stop_reason === 'max_tokens' ? 'truncated' : null;
+      // A tool input cut off at max_tokens can look valid; never run it. Each
+      // call still needs a result, or the next message would be rejected.
+      if (message.stop_reason === 'max_tokens') {
+        s.api.push({
+          role: 'user',
+          content: calls.map((call) => ({
+            type: 'tool_result' as const,
+            tool_use_id: call.id,
+            content: JSON.stringify({
+              error: 'Response hit max_tokens before this call was complete.',
+            }),
+            is_error: true,
+          })),
+        });
+        s.items = s.items.map((i) =>
+          i.kind === 'tool' && i.status === 'running'
+            ? { ...i, status: 'error', result: 'max_tokens' }
+            : i,
+        );
+        cb.update(clone(s));
+        return 'truncated';
+      }
+
+      const results: Anthropic.Beta.BetaToolResultBlockParam[] =
+        await Promise.all(
+          calls.map(async (call) => {
+            const tool = CLIENT_TOOLS[call.name];
+            const t0 = started[call.id] ?? performance.now();
+            const input = (call.input ?? {}) as Record<string, unknown>;
+            const invalid = tool
+              ? tool.validate(input)
+              : `unknown tool: ${call.name}`;
+            let content: string;
+            let summary: string;
+            let failed = false;
+            if (invalid) {
+              failed = true;
+              content = JSON.stringify({ error: invalid });
+              summary = invalid;
+            } else {
+              try {
+                const out = await tool.run(input, cb.signal);
+                content = JSON.stringify(out);
+                summary = tool.summary(out, cb.es);
+              } catch (e) {
+                failed = true;
+                summary = e instanceof Error ? e.message : 'tool failed';
+                content = JSON.stringify({ error: summary });
+              }
+            }
+            patch(
+              (i) => i.kind === 'tool' && i.id === call.id,
+              (i) => ({
+                ...(i as Extract<ChatItem, { kind: 'tool' }>),
+                result: summary,
+                status: failed ? 'error' : 'done',
+                ms: Math.round(performance.now() - t0),
+              }),
+            );
+            return {
+              type: 'tool_result' as const,
+              tool_use_id: call.id,
+              content,
+              ...(failed ? { is_error: true } : {}),
+            };
+          }),
+        );
+      // Stopped while tools ran: end the turn here (the catch below only
+      // sees API errors, so check explicitly).
+      if (cb.signal.aborted) {
+        s.items = s.items.map((i) =>
+          i.kind === 'tool' && i.status === 'running'
+            ? { ...i, status: 'error', result: cb.es ? 'detenida' : 'stopped' }
+            : i,
+        );
+        s.api.push({ role: 'user', content: results });
+        cb.update(clone(s));
+        return null;
+      }
+      // All results go back in a single user message.
+      s.api.push({ role: 'user', content: results });
+      cb.update(clone(s));
+    }
+    return null;
+  } catch (err) {
+    s.items = s.items.map((i) =>
+      i.kind === 'assistant' && i.streaming ? { ...i, streaming: false } : i,
+    );
+    cb.update(clone(s));
+    if (cb.signal.aborted) return null;
+    if (
+      err instanceof AnthropicSdk.AuthenticationError ||
+      err instanceof AnthropicSdk.PermissionDeniedError
+    )
+      return 'auth';
+    if (err instanceof AnthropicSdk.RateLimitError) return 'rate';
+    if (err instanceof AnthropicSdk.InternalServerError) return 'overloaded';
+    if (err instanceof AnthropicSdk.APIConnectionError) return 'network';
+    return 'api';
+  }
+}

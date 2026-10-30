@@ -24,6 +24,9 @@
   --grid: #0b142409;
   --dots: #0b142414;
   --user-bar: #a7b4c7;
+  --warn: #a86a12;
+  --ok: #2e7d57;
+  --scrim: rgba(11, 20, 36, 0.45);
 }
 
 :root[data-theme='dark'] {
@@ -42,6 +45,9 @@
   --grid: #e6eef808;
   --dots: #e6eef814;
   --user-bar: #5b6b86;
+  --warn: #d9a35b;
+  --ok: #7fc4a0;
+  --scrim: rgba(4, 8, 15, 0.72);
 }
 
 @theme inline {
@@ -57,6 +63,9 @@
   --color-mid: var(--mid);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --color-scrim: var(--scrim);
   /* Fluid sizing scale: shrinks with viewport width and height. */
   --spacing-section: clamp(20px, 4.5svh, 48px);
   --spacing-block: clamp(14px, 3svh, 30px);
@@ -178,6 +187,16 @@
   }
   .jd-aws:hover img {
     transform: translateY(-3px);
+  }
+  .jd-tool summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .jd-tool summary::-webkit-details-marker {
+    display: none;
+  }
+  .jd-tool[open] .jd-chev {
+    transform: rotate(180deg);
   }
   .jd-details summary {
     list-style: none;

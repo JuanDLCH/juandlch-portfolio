@@ -123,8 +123,8 @@ const langBtn =
   {...attrs({ 'aria-label': x.menu })}
   class="jd-menu m-0 h-dvh max-h-none w-full max-w-none p-0"
 >
-  <div class="flex h-full flex-col px-[clamp(16px,4vw,48px)] pt-2 pb-6">
-    <div class="border-line flex min-h-[52px] items-center justify-between border-b">
+  <div class="flex h-full flex-col px-[clamp(16px,4vw,48px)] pt-2 pb-[calc(24px+env(safe-area-inset-bottom))]">
+    <div class="border-line flex min-h-[52px] shrink-0 items-center justify-between border-b">
       <span class="mono flex items-center gap-2.5 text-[15px] font-medium tracking-[0.04em]">
         <span
           aria-hidden="true"
@@ -143,12 +143,15 @@ const langBtn =
         ×
       </button>
     </div>
-    <nav {...attrs({ 'aria-label': x.navLabel })} class="mt-4 flex flex-col">
+    <nav
+      {...attrs({ 'aria-label': x.navLabel })}
+      class="mt-4 mb-4 flex min-h-0 flex-1 flex-col overflow-y-auto"
+    >
       {links.map(({ href, label }, i) => (
         <a
           href={href}
           data-menu-link
-          class="border-line flex min-h-14 items-baseline gap-4 border-b py-3.5 text-[clamp(22px,7vw,28px)] font-medium tracking-[-0.03em] no-underline"
+          class="border-line flex min-h-14 shrink-0 items-baseline gap-4 border-b py-3.5 text-[clamp(22px,7vw,28px)] font-medium tracking-[-0.03em] no-underline"
         >
           <span class="mono text-accent text-xs tracking-[0.06em]">
             0{i + 1}
@@ -160,7 +163,7 @@ const langBtn =
     <a
       href="#cv"
       data-menu-link
-      class="mono border-line2 mt-auto flex min-h-[52px] items-center justify-center border text-[13px] tracking-[0.06em] uppercase no-underline"
+      class="mono border-line2 flex min-h-[52px] shrink-0 items-center justify-center border text-[13px] tracking-[0.06em] uppercase no-underline"
     >
       <T v={x.navCv} />
     </a>

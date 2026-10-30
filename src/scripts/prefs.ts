@@ -2,7 +2,9 @@
 type Lang = 'en' | 'es';
 type Theme = 'dark' | 'light';
 
-const root = document.documentElement;
+// Imported by islands too, so nothing here may touch the DOM during SSR.
+const browser = typeof document !== 'undefined';
+const root = (browser ? document.documentElement : null) as HTMLElement;
 
 const save = (key: string, value: string) => {
   try {
@@ -49,29 +51,34 @@ export const setTheme = (theme: Theme, persist = true) => {
 
 const current = (): Lang => (root.dataset.lang === 'es' ? 'es' : 'en');
 
-setLang(current(), false);
+if (browser) {
+  setLang(current(), false);
 
-// ClientRouter swaps in a page rendered with default attributes: carry the
-// live theme and language over before it paints, then refresh its attributes.
-document.addEventListener('astro:before-swap', (e) => {
-  const next = e.newDocument.documentElement;
-  next.dataset.theme = root.dataset.theme ?? 'dark';
-  next.dataset.lang = current();
-  next.lang = current();
-});
-document.addEventListener('astro:page-load', () => setLang(current(), false));
+  // ClientRouter swaps in a page rendered with default attributes: carry the
+  // live theme and language over before it paints, then refresh its attributes.
+  document.addEventListener('astro:before-swap', (e) => {
+    const next = e.newDocument.documentElement;
+    next.dataset.theme = root.dataset.theme ?? 'dark';
+    next.dataset.lang = current();
+    next.lang = current();
+  });
+  document.addEventListener('astro:page-load', () => setLang(current(), false));
 
-document.addEventListener('click', (e) => {
-  const btn = (e.target as Element).closest<HTMLElement>('[data-set-lang]');
-  if (btn) setLang(btn.dataset.setLang === 'es' ? 'es' : 'en');
-});
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as Element).closest<HTMLElement>('[data-set-lang]');
+    if (btn) setLang(btn.dataset.setLang === 'es' ? 'es' : 'en');
+  });
 
-// Keep other open tabs of the site in sync.
-window.addEventListener('storage', (e) => {
-  if (e.key === 'lang' && (e.newValue === 'en' || e.newValue === 'es')) {
-    setLang(e.newValue, false);
-  }
-  if (e.key === 'theme' && (e.newValue === 'dark' || e.newValue === 'light')) {
-    setTheme(e.newValue, false);
-  }
-});
+  // Keep other open tabs of the site in sync.
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'lang' && (e.newValue === 'en' || e.newValue === 'es')) {
+      setLang(e.newValue, false);
+    }
+    if (
+      e.key === 'theme' &&
+      (e.newValue === 'dark' || e.newValue === 'light')
+    ) {
+      setTheme(e.newValue, false);
+    }
+  });
+}
