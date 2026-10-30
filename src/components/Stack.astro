@@ -50,7 +50,7 @@ const iconUrl = (name: string) => iconUrls[`../assets/aws/${name}.svg`];
     </div>
     <ul
       {...attrs({ 'aria-label': x.awsIconsLabel })}
-      class="m-0 min-w-0 flex-[1_1_400px] list-none self-center p-0 grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-x-1.5 gap-y-2.5"
+      class="m-0 min-w-0 flex-[1_1_400px] list-none self-center p-0 grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-x-1.5 gap-y-2.5 mob:hidden"
     >
       {awsIcons.map((ic) => (
         <li class="jd-aws flex flex-col items-center gap-1.5 text-center">

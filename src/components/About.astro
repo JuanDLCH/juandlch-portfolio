@@ -39,12 +39,20 @@ const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
       <T v={x.aboutC} />
     </p>
   </div>
-  <ol class="m-0 mt-[calc(var(--spacing-head)*1.4)] grid list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] p-0">
+  <ol class="m-0 mt-[calc(var(--spacing-head)*1.4)] grid list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] p-0 mob:grid-cols-1">
     {steps.map((s) => (
-      <li class:list={['relative border-t pt-5 pr-6', border[s.tone]]}>
+      <li
+        class:list={[
+          'relative border-t pt-5 pr-6 mob:border-t-0 mob:border-l mob:pt-0 mob:pr-0 mob:pb-[22px] mob:pl-[22px]',
+          border[s.tone],
+        ]}
+      >
         <span
           aria-hidden="true"
-          class:list={['absolute -top-1 left-0 size-[7px]', fill[s.tone]]}
+          class:list={[
+            'absolute -top-1 left-0 size-[7px] mob:top-[3px] mob:-left-1',
+            fill[s.tone],
+          ]}
         ></span>
         <div
           class:list={[

@@ -19,8 +19,8 @@ const stages = [
 ---
 
 <section id="top" class="pt-block pb-section">
-  <div class="flex flex-wrap items-end gap-x-gutter gap-y-6">
-    <div class="jd-rise relative aspect-[4/5] w-photo flex-none">
+  <div class="flex flex-wrap items-end gap-x-gutter gap-y-6 mob:grid mob:grid-cols-[auto_minmax(0,1fr)] mob:items-end mob:gap-x-4 mob:gap-y-3.5">
+    <div class="jd-rise relative aspect-[4/5] w-photo flex-none mob:col-start-1 mob:row-span-2 mob:row-start-1 mob:w-[clamp(72px,24vw,112px)]">
       <Image
         src={photo}
         {...attrs({ alt: x.photoAlt })}
@@ -36,16 +36,16 @@ const stages = [
       />
       <CornerMarks offset="-8px" size="22px" />
     </div>
-    <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-stack [animation-delay:0.12s]">
-      <h1 class="m-0 text-display leading-[0.95] font-medium tracking-[-0.055em]">
+    <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-stack [animation-delay:0.12s] mob:contents">
+      <h1 class="m-0 text-display leading-[0.95] font-medium tracking-[-0.055em] mob:col-start-2 mob:row-start-1 mob:text-[clamp(26px,8.5vw,38px)] mob:leading-none">
         Juan Diego Londoño
       </h1>
-      <div class="mono text-accent flex items-center gap-3 text-[13px] tracking-[0.1em] uppercase">
-        <span aria-hidden="true" class="bg-accent h-px w-8"></span>
+      <div class="mono text-accent flex items-center gap-3 text-[13px] tracking-[0.1em] uppercase mob:col-start-2 mob:row-start-2 mob:self-start mob:text-[11px] mob:tracking-[0.08em]">
+        <span aria-hidden="true" class="bg-accent h-px w-8 mob:hidden"></span>
         <T v={x.role} />
       </div>
-      <div class="border-line2 flex flex-wrap items-center gap-x-7 gap-y-3.5 border-t pt-stack">
-        <span class="flex items-center gap-3 text-lg">
+      <div class="border-line2 flex flex-wrap items-center gap-x-7 gap-y-3.5 border-t pt-stack mob:col-span-full">
+        <span class="flex items-center gap-3 text-lg mob:text-[15px]">
           <span
             aria-hidden="true"
             class="border-line2 flex h-[22px] w-[33px] flex-col border"
@@ -69,7 +69,7 @@ const stages = [
           </span>
         </span>
       </div>
-      <div class="-mt-2.5 flex items-start gap-3.5 text-lg">
+      <div class="-mt-2.5 flex items-start gap-3.5 text-lg mob:col-span-full mob:mt-0 mob:text-[15px]">
         <svg
           aria-hidden="true"
           width="24"
@@ -99,7 +99,7 @@ const stages = [
 
   <div class="border-line2 mt-block flex flex-wrap items-center gap-gutter border-t pt-block">
     <div class="min-w-0 flex-[1_1_520px]">
-      <p class="m-0 text-hero leading-[1.08] font-medium tracking-[-0.04em] text-balance">
+      <p class="m-0 text-hero leading-[1.08] font-medium tracking-[-0.04em] text-balance mob:text-[clamp(19px,5.6vw,22px)] mob:leading-[1.15]">
         <T v={x.heroA} />
         <span class="text-accent">
           <T v={x.heroB} />
@@ -112,7 +112,7 @@ const stages = [
       <div class="mt-block flex flex-wrap gap-3">
         <a
           href="#work"
-          class="jd-fill bg-accent !text-on-accent inline-flex min-h-[44px] items-center gap-2.5 px-6 text-[15px] font-semibold no-underline"
+          class="jd-fill bg-accent !text-on-accent inline-flex min-h-[44px] items-center gap-2.5 px-6 text-[15px] font-semibold no-underline mob:flex-[1_1_100%] mob:justify-center"
         >
           <T v={x.ctaWork} />{' '}
           <span class="jd-arrow" aria-hidden="true">
@@ -121,7 +121,7 @@ const stages = [
         </a>
         <a
           href="#lab"
-          class="jd-card border-line2 inline-flex min-h-[44px] items-center gap-3 border px-6 text-[15px] font-medium no-underline"
+          class="jd-card border-line2 inline-flex min-h-[44px] items-center gap-3 border px-6 text-[15px] font-medium no-underline mob:flex-[1_1_100%] mob:justify-center"
         >
           <svg
             aria-hidden="true"
@@ -165,7 +165,7 @@ const stages = [
           <span>{s}</span>
         ))}
       </div>
-      <div class="mono mt-stack grid grid-cols-3 gap-1.5 text-[10px] tracking-[0.02em] sm:grid-cols-5">
+      <div class="mono mt-stack grid grid-cols-3 gap-1.5 text-[10px] tracking-[0.02em] desk:grid-cols-5">
         {stages.map(([a, b]) => (
           <div class="border-line2 text-chip min-w-0 border px-2 py-2.5 break-words">
             <T v={a} />
