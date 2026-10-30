@@ -18,7 +18,7 @@ const bars = Array.from({ length: count }, (_, i) => {
     const h = gap ? 2 : Math.max(4, Math.round(128 * env * wobble));
     const speaking = !user && !gap;
     return {
-      h,
+      pct: (h / 128) * 100,
       color: user ? 'var(--user-bar)' : gap ? 'var(--line2)' : 'var(--accent)',
       anim: speaking
         ? `jd-wave ${(0.9 + (i % 5) * 0.12).toFixed(2)}s ease-in-out ${(-(i % 7) * 0.13).toFixed(2)}s infinite alternate`
@@ -28,7 +28,7 @@ const bars = Array.from({ length: count }, (_, i) => {
   const env = Math.sin((i / 39) * Math.PI);
   const wob = 0.5 + 0.5 * Math.abs(Math.sin(i * 2.1) * Math.cos(i * 0.7));
   return {
-    h: Math.max(4, Math.round(64 * env * wob)),
+    pct: (Math.max(4, Math.round(64 * env * wob)) / 64) * 100,
     color: 'var(--accent)',
     anim: `jd-wave ${(0.8 + (i % 4) * 0.15).toFixed(2)}s ease-in-out ${(-(i % 6) * 0.11).toFixed(2)}s infinite alternate`,
   };
@@ -39,13 +39,13 @@ const bars = Array.from({ length: count }, (_, i) => {
   aria-hidden="true"
   class:list={[
     'flex items-center gap-[3px]',
-    hero ? 'mt-[22px] h-[150px]' : 'h-[72px]',
+    hero ? 'mt-stack h-wave' : 'max-h-[88px] min-h-8 flex-1',
   ]}
 >
   {bars.map((b) => (
     <span
       class="jd-anim flex-[1_1_0]"
-      style={`height:${b.h}px;background:${b.color};animation:${b.anim}`}
+      style={`height:${b.pct}%;background:${b.color};animation:${b.anim}`}
     />
   ))}
 </div>

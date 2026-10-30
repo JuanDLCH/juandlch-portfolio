@@ -10,29 +10,27 @@ const { x } = Astro.props;
 const mic =
   '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>';
 const preview =
-  'bg-bg dots border-line2 box-border flex min-h-[300px] flex-col border-b p-5';
+  'bg-bg dots border-line2 box-border flex flex-1 flex-col border-b p-3';
 ---
 
-<section id="lab" class="border-line border-t py-[88px]">
-  <div class="flex flex-wrap items-end justify-between gap-6">
-    <div>
-      <SectionHeading n="04">{x.labTitle}</SectionHeading>
-      <p class="mt-[18px] mb-0 text-[clamp(34px,4.4vw,60px)] leading-none font-medium tracking-[-0.045em]">
-        {x.labA}
-        <span class="text-accent">{x.labB}</span>
-      </p>
-    </div>
-    <p class="text-body m-0 max-w-[440px] text-base leading-[1.55]">
+<section id="lab" class="border-line border-t py-section">
+  <div>
+    <SectionHeading n="04">{x.labTitle}</SectionHeading>
+    <p class="mt-4 mb-0 text-h2 leading-none font-medium tracking-[-0.045em]">
+      {x.labA}
+      <span class="text-accent">{x.labB}</span>
+    </p>
+    <p class="text-body mt-3 mb-0 max-w-[560px] text-sm leading-[1.55]">
       {x.labSub}
     </p>
   </div>
 
-  <div class="mt-11 grid grid-cols-[repeat(auto-fit,minmax(min(460px,100%),1fr))] gap-4">
+  <div class="mt-head grid grid-cols-[repeat(auto-fit,minmax(min(420px,100%),1fr))] gap-4">
     <a
       href="#voice"
       class="jd-card bg-panel border-accent flex flex-col border no-underline"
     >
-      <div aria-hidden="true" class:list={[preview, 'gap-4']}>
+      <div aria-hidden="true" class:list={[preview, 'gap-2.5']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
           <span class="text-accent flex items-center gap-2">
             <span class="jd-blink bg-accent size-1.5"></span>
@@ -41,7 +39,7 @@ const preview =
           <span class="text-muted">{x.pvSim} · 00:42</span>
         </div>
         <Waveform variant="mini" />
-        <div class="flex flex-col gap-2 text-sm leading-[1.45]">
+        <div class="flex flex-col gap-1 text-[13px] leading-[1.4]">
           <div class="text-muted">
             <span class="mono mr-2 text-[10px] tracking-[0.08em] uppercase">
               {x.pvYou}
@@ -56,14 +54,14 @@ const preview =
             <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px] [animation:jd-blink_1s_steps(1)_infinite]"></span>
           </div>
         </div>
-        <div class="mt-auto flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="mono text-chip flex flex-wrap gap-1.5 text-[10px]">
             {['STT', 'LLM', 'TTS'].map((k) => (
-              <span class="border-line2 border px-2 py-[5px]">{k} — ms</span>
+              <span class="border-line2 border px-2 py-1">{k} — ms</span>
             ))}
           </div>
           <div class="flex gap-1.5">
-            <span class="border-line2 text-ink grid size-[34px] place-items-center border">
+            <span class="border-line2 text-ink grid size-7 place-items-center border">
               <svg
                 width="16"
                 height="16"
@@ -76,7 +74,7 @@ const preview =
                 set:html={mic + '<path d="M12 19v3"/>'}
               />
             </span>
-            <span class="bg-accent text-on-accent grid size-[34px] place-items-center">
+            <span class="bg-accent text-on-accent grid size-7 place-items-center">
               <svg
                 width="14"
                 height="14"
@@ -89,13 +87,15 @@ const preview =
           </div>
         </div>
       </div>
-      <div class="flex flex-col gap-2.5 px-[26px] pt-6 pb-[26px]">
-        <span class="eyebrow text-accent">{x.lab1Tag}</span>
-        <span class="text-[28px] font-medium tracking-[-0.03em]">
-          Realtime Voice Lab
-        </span>
-        <span class="text-body text-base leading-normal">{x.lab1Body}</span>
-        <span class="mono text-accent mt-2 text-[13px] font-medium">
+      <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
+        <div class="flex min-w-0 flex-col gap-0.5">
+          <span class="eyebrow text-accent">{x.lab1Tag}</span>
+          <span class="text-h3 font-medium tracking-[-0.03em]">
+            Realtime Voice Lab
+          </span>
+          <span class="text-body text-[13px] leading-snug">{x.lab1Body}</span>
+        </div>
+        <span class="mono text-accent text-[12px] font-medium">
           {x.labCta} <span class="jd-arrow">→</span>
         </span>
       </div>
@@ -105,7 +105,7 @@ const preview =
       href="#chat"
       class="jd-card bg-panel border-line2 flex flex-col border no-underline"
     >
-      <div aria-hidden="true" class:list={[preview, 'gap-3']}>
+      <div aria-hidden="true" class:list={[preview, 'gap-2']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.06em]">
           <span class="flex gap-1.5">
             <span class="border-line2 text-chip border px-2 py-1">
@@ -115,7 +115,7 @@ const preview =
           </span>
           <span class="text-muted tracking-[0.08em] uppercase">{x.pvSim}</span>
         </div>
-        <div class="flex max-w-[78%] flex-col items-end gap-1.5 self-end">
+        <div class="flex max-w-[92%] items-center gap-2 self-end">
           <span class="mono border-line2 text-chip inline-flex items-center gap-1.5 border px-2 py-[5px] text-[10px]">
             <svg
               width="12"
@@ -131,20 +131,20 @@ const preview =
             </svg>
             {x.chatFile}
           </span>
-          <span class="bg-panel border-line2 text-ink border px-3 py-[9px] text-sm leading-[1.45]">
+          <span class="bg-panel border-line2 text-ink border px-3 py-1.5 text-[13px] leading-[1.4]">
             {x.chatUser}
           </span>
         </div>
-        <div class="border-line2 text-muted mono flex flex-wrap items-center gap-2 border border-dashed px-2.5 py-[7px] text-[11px]">
+        <div class="border-line2 text-muted mono flex flex-wrap items-center gap-2 border border-dashed px-2.5 py-1 text-[11px]">
           <span class="text-accent">tool</span>
           <span>search_menu({'{ vegetarian: true }'})</span>
           <span class="text-chip ml-auto">✓ {x.toolResult}</span>
         </div>
-        <div class="border-accent text-ink max-w-[86%] border-l-2 px-3 py-[9px] text-sm leading-normal">
+        <div class="border-accent text-ink border-l-2 px-3 py-1 text-[13px] leading-[1.4]">
           {x.chatAgent}
           <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px] [animation:jd-blink_1s_steps(1)_infinite]"></span>
         </div>
-        <div class="border-line2 bg-panel text-muted mt-auto flex items-center gap-2.5 border py-2 pr-2 pl-3">
+        <div class="border-line2 bg-panel text-muted mt-auto flex items-center gap-2.5 border py-1.5 pr-1.5 pl-3">
           <svg
             width="16"
             height="16"
@@ -169,7 +169,7 @@ const preview =
             stroke-linejoin="round"
             set:html={mic}
           />
-          <span class="bg-accent text-on-accent grid size-[30px] place-items-center">
+          <span class="bg-accent text-on-accent grid size-7 place-items-center">
             <svg
               width="14"
               height="14"
@@ -185,13 +185,15 @@ const preview =
           </span>
         </div>
       </div>
-      <div class="flex flex-col gap-2.5 px-[26px] pt-6 pb-[26px]">
-        <span class="eyebrow text-muted">{x.lab2Tag}</span>
-        <span class="text-[28px] font-medium tracking-[-0.03em]">
-          Multimodal Chat
-        </span>
-        <span class="text-body text-base leading-normal">{x.lab2Body}</span>
-        <span class="mono mt-2 text-[13px] font-medium">
+      <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
+        <div class="flex min-w-0 flex-col gap-0.5">
+          <span class="eyebrow text-muted">{x.lab2Tag}</span>
+          <span class="text-h3 font-medium tracking-[-0.03em]">
+            Multimodal Chat
+          </span>
+          <span class="text-body text-[13px] leading-snug">{x.lab2Body}</span>
+        </div>
+        <span class="mono text-[12px] font-medium">
           {x.labCta} <span class="jd-arrow">→</span>
         </span>
       </div>

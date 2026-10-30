@@ -25,18 +25,16 @@ const border = {
 const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
 ---
 
-<section id="about" class="border-line border-t py-[88px]">
-  <div class="flex flex-wrap gap-x-16 gap-y-8">
-    <SectionHeading n="01" class="flex-[1_1_280px]">
-      {x.aboutTitle}
-    </SectionHeading>
-    <p class="m-0 flex-[3_1_560px] text-[28px] leading-[1.38] font-light tracking-[-0.015em] text-pretty">
+<section id="about" class="border-line border-t py-section">
+  <div>
+    <SectionHeading n="01">{x.aboutTitle}</SectionHeading>
+    <p class="mt-4 mb-0 max-w-[880px] text-lead leading-[1.38] font-light tracking-[-0.015em] text-pretty">
       {x.aboutA}
       <span class="text-accent font-normal">{x.aboutB}</span>
       {x.aboutC}
     </p>
   </div>
-  <ol class="m-0 mt-[72px] grid list-none grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] p-0">
+  <ol class="m-0 mt-[calc(var(--spacing-head)*1.4)] grid list-none grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] p-0">
     {steps.map((s) => (
       <li class:list={['relative border-t pt-5 pr-6', border[s.tone]]}>
         <span
@@ -51,7 +49,7 @@ const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
         >
           {s.year}
         </div>
-        <div class="mt-2.5 text-[22px] font-medium tracking-[-0.02em]">
+        <div class="mt-2.5 text-h3 font-medium tracking-[-0.02em]">
           {s.title}
         </div>
         <div class="text-muted mt-1.5 text-[15px] leading-normal">{s.text}</div>
