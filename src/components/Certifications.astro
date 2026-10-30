@@ -10,22 +10,26 @@ interface Props {
   x: Content['x'];
 }
 const { x } = Astro.props;
+const fmt = new Intl.DateTimeFormat(x.locale, { dateStyle: 'medium' });
 const certs = [
   {
     name: 'AWS Certified AI Practitioner',
-    meta: 'Amazon Web Services · [YEAR]',
+    meta: 'Amazon Web Services · 2024',
+    expires: new Date(2027, 8, 23),
     href: 'https://www.credly.com/badges/8fae51ff-40de-4bbc-aae7-3025afe5bd88/public_url',
     badge: awsAi,
   },
   {
     name: 'AWS Certified AI Practitioner — Early Adopter',
-    meta: `Amazon Web Services · ${x.earlyNote}`,
+    meta: 'Amazon Web Services · 2024',
+
     href: 'https://www.credly.com/badges/01204e88-1b1e-48ca-a90d-3e52f5592e64/public_url',
     badge: awsEarly,
   },
   {
     name: 'Claude Certified Architect – Foundations',
-    meta: 'Anthropic · CCA-F · [YEAR]',
+    meta: 'Anthropic · CCA-F · 2026',
+    expires: new Date(2027, 6, 28),
     href: 'https://www.credly.com/badges/1c2e844c-9c17-4030-9cb5-b052673ca22a/public_url',
     badge: claudeCca,
   },
@@ -57,6 +61,11 @@ const certs = [
             {c.name}
           </div>
           <div class="text-muted text-sm">{c.meta}</div>
+          {c.expires && (
+            <div class="mono text-muted text-xs">
+              {x.expires} {fmt.format(c.expires)}
+            </div>
+          )}
           <a
             href={c.href}
             class="mono text-accent mt-1.5 py-1 text-xs no-underline"
