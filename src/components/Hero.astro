@@ -1,5 +1,7 @@
 ---
+import { Image } from 'astro:assets';
 import type { Content } from '../i18n';
+import photo from '../assets/photo.png';
 import CornerMarks from './CornerMarks.astro';
 import Waveform from './Waveform.astro';
 
@@ -18,25 +20,19 @@ const stages = [
 <section id="top" class="pt-block pb-section">
   <div class="flex flex-wrap items-end gap-x-gutter gap-y-6">
     <div class="jd-rise relative aspect-[4/5] w-photo flex-none">
-      <div
-        role="img"
-        aria-label={x.photoAlt}
-        class="bg-panel border-line2 text-muted flex size-full flex-col items-center justify-center gap-2.5 border"
-      >
-        <svg
-          aria-hidden="true"
-          width="64"
-          height="64"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1"
-        >
-          <circle cx="12" cy="8.5" r="4"></circle>
-          <path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"></path>
-        </svg>
-        <span class="mono text-[11px] tracking-[0.08em]">[YOUR PHOTO]</span>
-      </div>
+      <Image
+        src={photo}
+        alt={x.photoAlt}
+        width={340}
+        height={425}
+        widths={[170, 255, 340]}
+        sizes="170px"
+        format="webp"
+        quality={82}
+        loading="eager"
+        fetchpriority="high"
+        class="border-line2 size-full border object-cover"
+      />
       <CornerMarks offset="-8px" size="22px" />
     </div>
     <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-stack [animation-delay:0.12s]">
