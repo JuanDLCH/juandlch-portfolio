@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react';
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -22,6 +23,9 @@ import {
   type Provider,
 } from '../../lab/chat/cases';
 import { runTurn } from '../../lab/chat/turn';
+import { cvLinkId, cvPdf } from '../../lab/chat/cv';
+import { CONTACT, contactInput } from '../../lab/chat/contact';
+import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
   $busy,
@@ -121,6 +125,11 @@ const I = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14"/><path d="M3 6l9 7 9-7"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
+  calendar:
+    '<rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   // A small tree: one node feeding two.
   diagram:
     '<rect x="9" y="3" width="6" height="5"/><rect x="3" y="16" width="6" height="5"/><rect x="15" y="16" width="6" height="5"/><path d="M12 8v4M6 16v-4h12v4"/>',
@@ -163,7 +172,13 @@ const initials = (s: string) =>
     .map((w) => w[0].toUpperCase())
     .join('');
 
-export default function ChatApp() {
+export default function ChatApp({ devKey }: { devKey?: string }) {
+  // Dev only (see lab/chat.astro): start with the .env key unless one is set.
+  useEffect(() => {
+    if (devKey && !$keys.get().openai)
+      $keys.set({ ...$keys.get(), openai: devKey });
+  }, [devKey]);
+
   const { es, dark } = useHtml();
   const phone = usePhone();
   const x = es ? CHAT.es : CHAT.en;
@@ -180,6 +195,23 @@ export default function ChatApp() {
   const draft = drafts[c.id] ?? '';
   const files = attachments[c.id] ?? [];
   const hasInput = draft.trim().length > 0 || files.length > 0;
+  // Contact buttons go at the end of the turn they were shown in, below the
+  // answer, wherever in the turn the tool was called.
+  const contactAt = new Map<number, string[]>();
+  for (let i = 0, turn: string[] = []; i < session.items.length; i++) {
+    const m = session.items[i];
+    if (
+      m.kind === 'tool' &&
+      m.name === 'show_contact_options' &&
+      m.status === 'done'
+    )
+      turn.push(m.input);
+    const next = session.items[i + 1];
+    if (turn.length && (!next || next.kind === 'user')) {
+      contactAt.set(i, turn);
+      turn = [];
+    }
+  }
   const chatKey = keys[PROVIDER];
 
   const [side, setSide] = useState(false);
@@ -187,6 +219,9 @@ export default function ChatApp() {
   // "Watch demo" and "How I'd build it" dialogs, each with its own case pick.
   const [info, setInfo] = useState<'video' | 'build' | null>(null);
   const [infoCase, setInfoCase] = useState(CASES[0].id);
+  // CV viewer opened from a citation: the answer's cited items and the one
+  // clicked.
+  const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   // Key input the keys dialog focuses when it opens.
   const [keyFocus, setKeyFocus] = useState<'anthropic' | 'openai'>('anthropic');
@@ -197,11 +232,20 @@ export default function ChatApp() {
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const dialog = modal ? 'keys' : info ? info : switchTo ? 'switch' : null;
+  const dialog = modal
+    ? 'keys'
+    : info
+      ? info
+      : cv
+        ? 'cv'
+        : switchTo
+          ? 'switch'
+          : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
     setInfo(null);
+    setCv(null);
     setSwitchTo(null);
   };
 
@@ -228,6 +272,7 @@ export default function ChatApp() {
       if (e.key === 'Escape') {
         setModal(false);
         setInfo(null);
+        setCv(null);
         setSwitchTo(null);
         return;
       }
@@ -289,8 +334,6 @@ export default function ChatApp() {
       setSession(k.id, emptySession());
       $caseId.set(k.id);
     }
-    if (!($drafts.get()[k.id] ?? '').trim())
-      $drafts.setKey(k.id, pick(k.starter, es));
   };
 
   // Streams one turn from `start` (which already shows the user message).
@@ -637,9 +680,9 @@ export default function ChatApp() {
             role="log"
             aria-live="polite"
             aria-label={x.conversation}
-            className="mob:px-3 min-h-0 flex-1 overflow-y-auto px-4 py-[clamp(12px,3svh,24px)]"
+            className="mob:px-3 min-h-0 flex-1 overflow-y-auto px-4 py-[clamp(10px,2svh,18px)]"
           >
-            <div className="mx-auto flex max-w-[780px] flex-col gap-4">
+            <div className="mx-auto flex max-w-[780px] flex-col gap-3">
               {session.items.length === 0 && (
                 <div className="pt-[clamp(4px,3svh,32px)] pb-2">
                   <div
@@ -678,27 +721,41 @@ export default function ChatApp() {
                   </div>
                 </div>
               )}
-              {session.items.map((m, i) =>
-                m.kind === 'notice' ? (
-                  <Notice
-                    key={`notice-${m.id}`}
-                    id={m.id}
-                    text={fill(x.errors[m.code])}
-                    // Only the latest message offers its fix; older ones are
-                    // past the point where it would help.
-                    fix={
-                      i === session.items.length - 1 && !busy
-                        ? FIXES[m.code]
-                        : undefined
-                    }
-                    fixLabel={fill}
-                    labels={x.fixes}
-                    onFix={fix}
-                  />
-                ) : (
-                  <Message key={i} m={m} />
-                ),
-              )}
+              {session.items.map((m, i) => (
+                <Fragment key={m.kind === 'notice' ? `notice-${m.id}` : i}>
+                  {m.kind === 'notice' ? (
+                    <Notice
+                      id={m.id}
+                      text={fill(x.errors[m.code])}
+                      // Only the latest message offers its fix; older ones are
+                      // past the point where it would help.
+                      fix={
+                        i === session.items.length - 1 && !busy
+                          ? FIXES[m.code]
+                          : undefined
+                      }
+                      fixLabel={fill}
+                      labels={x.fixes}
+                      onFix={fix}
+                    />
+                  ) : m.kind === 'tool' ? (
+                    // A run of tool calls folds into one row; the first
+                    // item of the run draws it.
+                    session.items[i - 1]?.kind !== 'tool' && (
+                      <ToolGroup items={toolRun(session.items, i)} x={x} />
+                    )
+                  ) : (
+                    <Message
+                      m={m}
+                      onCv={(focus, ids) => setCv({ focus, ids })}
+                      cvLabel={x.cvOpen}
+                    />
+                  )}
+                  {contactAt.get(i)?.map((input, k) => (
+                    <ContactActions key={k} input={input} x={x} />
+                  ))}
+                </Fragment>
+              ))}
               {busy &&
                 !session.items.some(
                   (m) => m.kind === 'assistant' && m.streaming && m.text,
@@ -726,6 +783,33 @@ export default function ChatApp() {
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}
               />
+              {session.items.length === 0 && (
+                <div
+                  role="group"
+                  aria-label={x.suggestions}
+                  className="mob:flex-nowrap mob:overflow-x-auto mob:-mx-2.5 mob:px-2.5 mb-2 flex flex-wrap gap-1.5"
+                >
+                  {c.suggestions.map((sg) => {
+                    const text = pick(sg.text, es);
+                    return (
+                      <button
+                        key={text}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          if (!sg.attach) return void send(text);
+                          setDraft(text);
+                          fileRef.current?.click();
+                        }}
+                        className="border-line2 bg-panel text-body hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {sg.attach && <Icon d={I.clip} size={13} />}
+                        {sg.attach ? x.attachSuggestion : text}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <div className="border-line2 bg-panel border">
                 {files.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 px-3 pt-3">
@@ -790,21 +874,21 @@ export default function ChatApp() {
                     </label>
                     <textarea
                       id="jd-prompt"
-                      rows={phone ? 1 : 2}
+                      rows={1}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={onKeyDown}
                       placeholder={phone ? x.placeholderShort : x.placeholder}
-                      className="text-ink placeholder:text-muted mob:min-h-11 mob:min-w-0 mob:flex-1 mob:self-center mob:px-0 mob:py-2.5 mob:text-base mob:max-h-[8.5em] block [field-sizing:content] max-h-[8em] min-h-[2.6em] w-full resize-none border-0 bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal focus:outline-none"
+                      className="text-ink placeholder:text-muted mob:min-h-11 mob:min-w-0 mob:flex-1 mob:self-center mob:px-0 mob:py-2.5 mob:text-base mob:max-h-[8.5em] block [field-sizing:content] max-h-[8em] min-h-[1.5em] w-full resize-none border-0 bg-transparent px-3 pt-2 pb-0.5 text-[13px] leading-normal focus:outline-none"
                     />
-                    <div className="mob:contents flex items-center justify-between gap-2 px-1.5 pb-1.5">
+                    <div className="mob:contents flex items-center justify-between gap-2 px-1 pb-1">
                       <div className="mob:contents flex gap-1">
                         <button
                           type="button"
                           onClick={() => fileRef.current?.click()}
                           aria-label={x.attach}
                           title={x.attachHint}
-                          className={`${iconBtn} text-muted size-11 border-transparent`}
+                          className={`${iconBtn} text-muted desk:size-8 size-11 border-transparent`}
                         >
                           <Icon d={I.clip} />
                         </button>
@@ -814,7 +898,7 @@ export default function ChatApp() {
                           disabled={busy}
                           aria-label={x.mic}
                           title={keys.openai ? x.mic : x.micNeedsKey}
-                          className={`${iconBtn} mob:hidden size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
+                          className={`${iconBtn} mob:hidden desk:size-8 size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
                         >
                           <Icon d={I.mic} />
                         </button>
@@ -830,7 +914,7 @@ export default function ChatApp() {
                             type="button"
                             onClick={stopTurn}
                             aria-label={x.stop}
-                            className="border-line2 text-ink grid size-11 cursor-pointer place-items-center border bg-transparent"
+                            className="border-line2 text-ink desk:size-8 grid size-11 cursor-pointer place-items-center border bg-transparent"
                           >
                             <Icon d={I.stop} size={14} />
                           </button>
@@ -840,7 +924,7 @@ export default function ChatApp() {
                               type="button"
                               onClick={() => void send()}
                               aria-label={x.send}
-                              className={`bg-accent text-on-accent grid size-11 shrink-0 cursor-pointer place-items-center border-0 ${hasInput ? '' : 'mob:hidden'}`}
+                              className={`bg-accent text-on-accent desk:size-8 grid size-11 shrink-0 cursor-pointer place-items-center border-0 ${hasInput ? '' : 'mob:hidden'}`}
                             >
                               <Icon d={I.send} size={15} />
                             </button>
@@ -865,7 +949,7 @@ export default function ChatApp() {
                 )}
               </div>
               <div
-                className={`${mono} text-muted mob:hidden mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1.5 text-[10px] tracking-[0.04em]`}
+                className={`${mono} text-muted mob:hidden mt-1.5 flex flex-wrap justify-between gap-x-4 gap-y-1.5 text-[10px] tracking-[0.04em]`}
               >
                 <span>{x.enterHint}</span>
                 <span>{x.privacyLine}</span>
@@ -1007,35 +1091,34 @@ export default function ChatApp() {
                 </ul>
               )}
             </div>
+          </div>
 
-            <div className="border-line flex flex-col gap-1.5 border-t pt-3">
-              <div
-                className={`${label} flex justify-between tracking-[0.06em]`}
-              >
-                <span>{x.usage}</span>
-                <span>{x.estimated}</span>
-              </div>
-              <div className="border-line bg-line grid grid-cols-3 gap-px border">
-                {[
-                  ['IN', `${session.usage.input.toLocaleString()} tok`],
-                  ['OUT', `${session.usage.output.toLocaleString()} tok`],
-                  [x.cost, `$${session.usage.cost.toFixed(4)}`],
-                ].map(([k, v]) => (
-                  <div key={k} className="bg-bg px-2 py-1.5">
-                    <div className={`${mono} text-muted text-[9px]`}>{k}</div>
-                    <div className="mt-0.5 text-[11px]">{v}</div>
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setSession(c.id, emptySession())}
-                className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
-              >
-                {x.clear}
-              </button>
+          {/* Usage and clear stay pinned below the scrolling settings. */}
+          <div className="border-line bg-panel mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 flex-col gap-1.5 border-t px-3.5 py-3">
+            <div className={`${label} flex justify-between tracking-[0.06em]`}>
+              <span>{x.usage}</span>
+              <span>{x.estimated}</span>
             </div>
+            <div className="border-line bg-line grid grid-cols-3 gap-px border">
+              {[
+                ['IN', `${session.usage.input.toLocaleString()} tok`],
+                ['OUT', `${session.usage.output.toLocaleString()} tok`],
+                [x.cost, `$${session.usage.cost.toFixed(4)}`],
+              ].map(([k, v]) => (
+                <div key={k} className="bg-bg px-2 py-1.5">
+                  <div className={`${mono} text-muted text-[9px]`}>{k}</div>
+                  <div className="mt-0.5 text-[11px]">{v}</div>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setSession(c.id, emptySession())}
+              className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
+            >
+              {x.clear}
+            </button>
           </div>
         </aside>
       </div>
@@ -1286,6 +1369,79 @@ export default function ChatApp() {
         </div>
       )}
 
+      {cv && (
+        <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={x.close}
+            onClick={() => setCv(null)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jd-cv-title"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[760px] flex-col border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 mob:pt-5 flex min-h-0 flex-1 flex-col px-7 pt-6 pb-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
+                <div>
+                  <div
+                    className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                  >
+                    {x.cvTag}
+                  </div>
+                  <h2
+                    id="jd-cv-title"
+                    className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+                  >
+                    {x.cvTitle}
+                  </h2>
+                  <p className="text-muted m-0 mt-1 text-[13px]">{x.cvNote}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCv(null)}
+                  aria-label={x.close}
+                  className={`${iconBtn} size-9 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                <CvViewer ids={cv.ids} focus={cv.focus} />
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end gap-2 border-t px-7 py-3">
+              <button
+                type="button"
+                onClick={() => setCv(null)}
+                className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {x.close}
+              </button>
+              <a
+                href={cvPdf}
+                download
+                className="bg-accent text-on-accent mob:h-11 inline-flex h-10 items-center px-4 text-sm font-semibold no-underline"
+              >
+                {x.cvDownload}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {info &&
         (() => {
           const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
@@ -1447,22 +1603,47 @@ export default function ChatApp() {
 }
 
 // Markdown links and bare URLs in an answer become real links, so cited
-// sources can be opened.
+// sources can be opened. CV citations open the CV viewer on the cited items.
 const LINK =
   /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
-function Linked({ text }: { text: string }) {
+type OnCv = (focus: string, ids: string[]) => void;
+/** CV items cited anywhere in the text, so the viewer highlights them all. */
+const citedCv = (text: string) =>
+  [...text.matchAll(LINK)].flatMap((m) => {
+    const id = cvLinkId(m[2] ?? m[3]);
+    return id ? [id] : [];
+  });
+interface LinkCtx {
+  onCv: OnCv;
+  cvLabel: string;
+  cvIds: string[];
+}
+function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
+  const matches = [...text.matchAll(LINK)];
   const out: (string | React.JSX.Element)[] = [];
   let last = 0;
-  for (const match of text.matchAll(LINK)) {
+  for (const match of matches) {
     const i = match.index;
     if (i > last) out.push(text.slice(last, i));
     const href = match[2] ?? match[3];
+    const cvId = cvLinkId(href);
     out.push(
       <a
         key={i}
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        title={cvId ? cvLabel : undefined}
+        onClick={
+          cvId
+            ? (e) => {
+                // Modified clicks still open the PDF itself.
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+                e.preventDefault();
+                onCv(cvId, cvIds);
+              }
+            : undefined
+        }
         className="text-accent underline underline-offset-2"
       >
         {match[1] ?? href}
@@ -1474,64 +1655,312 @@ function Linked({ text }: { text: string }) {
   return out;
 }
 
-function Message({ m }: { m: ChatItem }) {
+// Contact buttons from show_contact_options. The booking page can't be
+// prefilled, so the meeting button comes with a hint to describe the meeting
+// in its form.
+function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
+  const { options, topic } = contactInput(input);
+  if (!options.length) return null;
+  const btn =
+    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 items-center gap-2 border bg-transparent px-3 text-[13px] no-underline transition-colors';
+  const subject = encodeURIComponent(topic || x.contactSubject);
+  const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
+  return (
+    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1.5 pl-3">
+      <div
+        role="group"
+        aria-label={x.contactLabel}
+        className="flex flex-wrap gap-2"
+      >
+        {options.map((o) =>
+          o === 'email' ? (
+            <a
+              key={o}
+              href={`mailto:${CONTACT.email}?subject=${subject}`}
+              className={btn}
+            >
+              <Icon d={I.mail} size={15} />
+              {x.contactEmail}
+            </a>
+          ) : o === 'linkedin' || o === 'github' ? (
+            <a key={o} href={CONTACT[o]} {...external} className={btn}>
+              <Icon d={o === 'linkedin' ? I.link : I.code} size={15} />
+              {o === 'linkedin' ? x.contactLinkedin : x.contactGithub}
+            </a>
+          ) : CONTACT.booking ? (
+            <a
+              key={o}
+              href={CONTACT.booking}
+              {...external}
+              className="bg-accent text-on-accent mob:h-11 inline-flex h-8 items-center gap-2 px-3 text-[13px] font-semibold no-underline"
+            >
+              <Icon d={I.calendar} size={15} />
+              {x.contactMeeting}
+            </a>
+          ) : (
+            <button
+              key={o}
+              type="button"
+              disabled
+              className={`${btn} cursor-not-allowed opacity-60`}
+            >
+              <Icon d={I.calendar} size={15} />
+              {x.contactMeeting}
+              <span className={`${mono} text-muted text-[10px] uppercase`}>
+                · {x.contactSoon}
+              </span>
+            </button>
+          ),
+        )}
+      </div>
+      {CONTACT.booking && options.includes('meeting') && (
+        <p className="text-muted m-0 text-[11px] leading-normal">
+          {x.meetingHint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Inline Markdown: **bold**, *italic*, `code`, then links in plain runs.
+// Built as React nodes, never as HTML, so model output can't inject markup.
+const INLINE =
+  /\*\*(.+?)\*\*|`([^`\n]+)`|(?<![\w*])\*(?![\s*])([^*\n]+?)\*(?![\w*])/g;
+function Inline({ text, ctx }: { text: string; ctx: LinkCtx }) {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(INLINE)) {
+    const i = m.index;
+    if (i > last)
+      out.push(<Linked key={`t${i}`} text={text.slice(last, i)} {...ctx} />);
+    out.push(
+      m[1] !== undefined ? (
+        <strong key={i} className="text-ink font-semibold">
+          <Inline text={m[1]} ctx={ctx} />
+        </strong>
+      ) : m[2] !== undefined ? (
+        <code
+          key={i}
+          className="bg-panel border-line2 border px-1 font-mono text-[12px]"
+        >
+          {m[2]}
+        </code>
+      ) : (
+        <em key={i}>
+          <Inline text={m[3]} ctx={ctx} />
+        </em>
+      ),
+    );
+    last = i + m[0].length;
+  }
+  out.push(<Linked key="end" text={text.slice(last)} {...ctx} />);
+  return out;
+}
+
+// Block Markdown: paragraphs, bullet and numbered lists, headings. `tail`
+// (the streaming cursor) is drawn at the end of the last block.
+type Block =
+  { kind: 'p' | 'h'; lines: string[] } | { kind: 'ul' | 'ol'; lines: string[] };
+function Markdown({
+  text,
+  ctx,
+  tail,
+}: {
+  text: string;
+  ctx: LinkCtx;
+  tail?: React.ReactNode;
+}) {
+  const blocks: Block[] = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.trimEnd();
+    const bullet = /^\s*[-*•]\s+(.*)$/.exec(line);
+    const num = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+    const head = /^#{1,4}\s+(.*)$/.exec(line);
+    const kind = bullet ? 'ul' : num ? 'ol' : head ? 'h' : line ? 'p' : null;
+    const content = (bullet ?? num ?? head)?.[1] ?? line;
+    const prev = blocks.at(-1);
+    if (!kind) blocks.push({ kind: 'p', lines: [] });
+    else if (prev && prev.kind === kind && kind !== 'h')
+      prev.lines.push(content);
+    else blocks.push({ kind, lines: [content] });
+  }
+  const shown = blocks.filter((b) => b.lines.length);
+  return shown.map((b, k) => {
+    const end = k === shown.length - 1 ? tail : null;
+    if (b.kind === 'ul' || b.kind === 'ol') {
+      const List = b.kind;
+      return (
+        <List
+          key={k}
+          className={`m-0 flex flex-col gap-0.5 pl-5 ${b.kind === 'ul' ? 'list-disc' : 'list-decimal'}`}
+        >
+          {b.lines.map((l, j) => (
+            <li key={j}>
+              <Inline text={l} ctx={ctx} />
+              {j === b.lines.length - 1 && end}
+            </li>
+          ))}
+        </List>
+      );
+    }
+    return (
+      <p
+        key={k}
+        className={`m-0 ${b.kind === 'h' ? 'text-ink font-semibold' : ''}`}
+      >
+        {b.lines.map((l, j) => (
+          <Fragment key={j}>
+            {j > 0 && <br />}
+            <Inline text={l} ctx={ctx} />
+          </Fragment>
+        ))}
+        {end}
+      </p>
+    );
+  });
+}
+
+// The answer's closing sources line ("Sources:", "Fuentes:"… one word and a
+// colon, then links or names joined by " · ") is set apart in smaller type.
+function splitSources(text: string) {
+  const cut = text.trimEnd().lastIndexOf('\n');
+  const last = text
+    .slice(cut + 1)
+    .trim()
+    .replace(/^\*\*([^*]+)\*\*/, '$1');
+  return cut > 0 &&
+    /^[\p{L}]{2,20}:\s/u.test(last) &&
+    (last.includes('](') || last.includes(' · '))
+    ? { body: text.slice(0, cut).trimEnd(), sources: last }
+    : { body: text, sources: '' };
+}
+
+type ToolCall = Extract<ChatItem, { kind: 'tool' }>;
+
+/** The consecutive tool calls starting at `i`. */
+const toolRun = (items: ChatItem[], i: number) => {
+  const run: ToolCall[] = [];
+  for (let k = i; items[k]?.kind === 'tool'; k++)
+    run.push(items[k] as ToolCall);
+  return run;
+};
+
+// Tool calls of a turn, folded into one line ("3 tools used"); opening it
+// lists each call, and each call opens to show its input.
+function ToolGroup({ items, x }: { items: ToolCall[]; x: ChatCopy }) {
+  const running = items.find((t) => t.status === 'running');
+  const failed = items.some((t) => t.status === 'error');
+  const ms = items.reduce((sum, t) => sum + (t.ms ?? 0), 0);
+  return (
+    <details className="jd-tool text-muted font-mono text-[10px]">
+      <summary className="desk:min-h-0 flex min-h-9 items-center gap-2 py-0.5 pl-3.5">
+        <span className="text-accent">tool_use</span>
+        <span className="text-chip truncate">
+          {running
+            ? `${running.name}…`
+            : `${items.length} ${items.length === 1 ? x.toolUsed : x.toolsUsed}`}
+        </span>
+        {!running && (
+          <span className={`shrink-0 ${failed ? 'text-warn' : ''}`}>
+            · {ms} ms
+          </span>
+        )}
+        <span
+          aria-hidden="true"
+          className="jd-chev inline-block shrink-0 transition-transform"
+        >
+          ▾
+        </span>
+      </summary>
+      <div className="border-line2 mt-1 ml-3.5 flex flex-col border-l border-dashed">
+        {items.map((t) => (
+          <ToolRow key={t.id} m={t} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function ToolRow({ m }: { m: ToolCall }) {
+  const status = m.status === 'running' ? '…' : m.result;
+  const ms = m.ms !== null ? ` · ${m.ms} ms` : '';
+  return (
+    <details className="jd-tool">
+      <summary className="desk:min-h-0 flex min-h-9 items-center gap-2 px-2.5 py-0.5">
+        <span className="text-chip shrink-0">{m.name}</span>
+        <span
+          className={`ml-auto min-w-0 truncate ${m.status === 'error' ? 'text-warn' : ''}`}
+        >
+          {status}
+          {ms}
+        </span>
+        <span
+          aria-hidden="true"
+          className="jd-chev inline-block shrink-0 transition-transform"
+        >
+          ▾
+        </span>
+      </summary>
+      <div className="text-chip px-2.5 pb-1.5 leading-normal break-words">
+        {m.name}({m.input || '…'})
+      </div>
+    </details>
+  );
+}
+
+function Message({
+  m,
+  onCv,
+  cvLabel,
+}: {
+  m: ChatItem;
+  onCv: OnCv;
+  cvLabel: string;
+}) {
   if (m.kind === 'user') {
     return (
       <div className="mob:max-w-[85%] flex max-w-[80%] flex-col items-end gap-1.5 self-end">
         {m.files.map((f) => (
           <span
             key={f}
-            className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2.5 py-1.5 text-[11px]`}
+            className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2 py-1 text-[10px]`}
           >
             <Icon d={I.file} size={13} />
             {f}
           </span>
         ))}
         {m.text && (
-          <div className="bg-panel border-line2 border px-3 py-2 text-sm leading-[1.55] whitespace-pre-wrap">
+          <div className="bg-panel border-line2 border px-2.5 py-1.5 text-[13px] leading-normal whitespace-pre-wrap">
             {m.text}
           </div>
         )}
       </div>
     );
   }
-  if (m.kind === 'tool') {
-    const status = m.status === 'running' ? '…' : m.result;
-    const ms = m.ms !== null ? ` · ${m.ms} ms` : '';
-    return (
-      <details className="jd-tool border-line2 text-muted border border-dashed font-mono text-[11px]">
-        <summary className="desk:min-h-0 flex min-h-11 items-center gap-2 px-3 py-2">
-          <span className="text-accent">tool_use</span>
-          <span className="text-chip">{m.name}</span>
-          <span
-            className={`ml-auto truncate ${m.status === 'error' ? 'text-warn' : ''}`}
-          >
-            {status}
-            {ms}
-          </span>
-          <span
-            aria-hidden="true"
-            className="jd-chev inline-block transition-transform"
-          >
-            ▾
-          </span>
-        </summary>
-        <div className="text-chip px-3 pb-3 leading-normal break-words">
-          {m.name}({m.input || '…'})
-        </div>
-      </details>
-    );
-  }
+  if (m.kind === 'tool') return <ToolRow m={m} />;
+
   if (m.kind === 'notice') return null;
+  const { body, sources } = splitSources(m.text);
+  const ctx = { onCv, cvLabel, cvIds: citedCv(m.text) };
   return (
-    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2">
-      <div className="border-accent border-l-2 py-0.5 pl-3 text-sm leading-[1.6] break-words whitespace-pre-wrap">
-        <Linked text={m.text} />
-        {m.streaming && (
-          <span
-            aria-hidden="true"
-            className="jd-blink bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"
-          />
+    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1">
+      <div className="border-accent flex flex-col gap-1.5 border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] break-words">
+        <Markdown
+          text={body}
+          ctx={ctx}
+          tail={
+            m.streaming && (
+              <span
+                aria-hidden="true"
+                className="jd-blink bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"
+              />
+            )
+          }
+        />
+        {sources && (
+          <span className="text-muted text-[11px] leading-normal">
+            <Inline text={sources} ctx={ctx} />
+          </span>
         )}
       </div>
       <div className={`${mono} text-muted pl-4 text-[10px] tracking-[0.04em]`}>
@@ -1579,7 +2008,7 @@ function Notice({
   }, [done, id]);
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col items-start gap-2.5">
-      <div className="border-warn border-l-2 py-0.5 pl-3 text-sm leading-[1.6] whitespace-pre-wrap">
+      <div className="border-warn border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] whitespace-pre-wrap">
         {/* Screen readers get the whole message once, not every letter. */}
         <span className="sr-only">{text}</span>
         <span aria-hidden="true">{text.slice(0, n)}</span>

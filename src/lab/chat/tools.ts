@@ -1,6 +1,8 @@
 // Client-side tools for the chat lab. They run in the visitor's browser; the
-// menu and orders are fake demo data, weather comes from Open-Meteo (no key).
+// profile is Juan Diego's CV and portfolio, the menu and orders are fake demo
+// data, weather comes from Open-Meteo (no key).
 import type Anthropic from '@anthropic-ai/sdk';
+import { CONTACT, CONTACT_OPTIONS, type ContactOption } from './contact';
 
 type Input = Record<string, unknown>;
 
@@ -218,7 +220,177 @@ const getTime: ClientTool = {
   summary: (r) => (r as { local_time: string }).local_time,
 };
 
+// Profile tools of the "Meet my AI" case. The data (profile.ts) loads on the
+// first call; each entry carries the source the model must cite.
+export const PROFILE_SECTIONS = [
+  'summary',
+  'skills',
+  'experience',
+  'client_work',
+  'education_languages',
+  'certifications',
+  'portfolio_work',
+  'portfolio_stack',
+  'portfolio_principles',
+  'portfolio_approach',
+  'notes',
+] as const;
+export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
+
+// `group` labels the tool card ("CV · Experience"); `source` is what the
+// model cites.
+const loadProfile = async () =>
+  (await import('./profile')).PROFILE.map((e) => ({
+    ...e,
+    group: e.group ?? e.source.label,
+  }));
+
+// Lowercase, accents removed, split into words.
+const words = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}+#.]+/u)
+    .map((w) => w.replace(/^\.+|\.+$/g, ''))
+    .filter((w) => w.length > 1);
+
+const getProfileSection: ClientTool = {
+  def: {
+    name: 'get_profile_section',
+    description:
+      "Return one section of Juan Diego's profile. CV sections: summary, skills, experience (roles and dates), client_work, education_languages, certifications. Portfolio sections: portfolio_work (case studies), portfolio_stack (full toolbox, clouds), portfolio_principles, portfolio_approach (RAG approach, career path, leadership). notes: roles he is looking for, availability, other clouds, how he learns, contact. Each entry has the source to cite.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        section: { type: 'string', enum: [...PROFILE_SECTIONS] },
+      },
+      required: ['section'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    PROFILE_SECTIONS.includes(i.section as ProfileSection)
+      ? null
+      : `section must be one of: ${PROFILE_SECTIONS.join(', ')}`,
+  run: async (i) => ({
+    entries: (await loadProfile()).filter((e) => e.section === i.section),
+  }),
+  summary: (r) => {
+    const groups = new Set(
+      (r as { entries: { group: string }[] }).entries.map((e) => e.group),
+    );
+    return [...groups].join(', ');
+  },
+};
+
+const searchProfile: ClientTool = {
+  def: {
+    name: 'search_profile',
+    description:
+      'Keyword search over Juan Diego\'s CV, portfolio and notes. Use English keywords (technologies, clouds, companies, skills), e.g. "AWS Bedrock" or "voice agents". Returns the best-matching entries, each with the source to cite.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'English keywords' },
+      },
+      required: ['query'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    !str(i.query)
+      ? 'query must be a non-empty string'
+      : String(i.query).length > 200
+        ? 'query must be at most 200 characters'
+        : null,
+  run: async (i) => {
+    const q = words(String(i.query));
+    const scored = (await loadProfile()).map((e) => {
+      const title = words(`${e.group} ${e.title}`);
+      const body = words(e.text);
+      // Title hits weigh more; prefixes match ("agent" finds "agents").
+      const score = q.reduce(
+        (s, w) =>
+          s +
+          (title.some((t) => t.startsWith(w)) ? 2 : 0) +
+          (body.some((t) => t.startsWith(w)) ? 1 : 0),
+        0,
+      );
+      return { e, score };
+    });
+    const entries = scored
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((x) => x.e);
+    return entries.length
+      ? { entries }
+      : {
+          entries,
+          note: 'No matches. Try other keywords or get_profile_section; if it is still missing, it is not in his profile.',
+        };
+  },
+  summary: (r, es) => {
+    const n = (r as { entries: unknown[] }).entries.length;
+    return es ? `${n} resultados` : `${n} results`;
+  },
+};
+
+// Draws contact buttons under the answer (ChatApp reads the input back).
+const showContactOptions: ClientTool = {
+  def: {
+    name: 'show_contact_options',
+    description:
+      'Show buttons under your answer so the user can reach Juan Diego: book a Google Meet with him, email him, or open his LinkedIn or GitHub. The buttons are the only way to reach him from here; you cannot send emails or book meetings yourself.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        options: {
+          type: 'array',
+          items: { type: 'string', enum: [...CONTACT_OPTIONS] },
+          description: 'Buttons to show, in order',
+        },
+        topic: {
+          type: 'string',
+          description:
+            'Short email subject in the language of the user, e.g. "Senior AI Engineer role at Acme"',
+        },
+      },
+      required: ['options'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) => {
+    if (
+      !Array.isArray(i.options) ||
+      i.options.length === 0 ||
+      !i.options.every((o) => CONTACT_OPTIONS.includes(o as ContactOption))
+    )
+      return `options must be a non-empty array of: ${CONTACT_OPTIONS.join(', ')}`;
+    if (
+      i.topic !== undefined &&
+      (typeof i.topic !== 'string' || i.topic.length > 80)
+    )
+      return 'topic must be a string of at most 80 characters';
+    return null;
+  },
+  run: async (i) => ({
+    shown: i.options,
+    ...((i.options as string[]).includes('meeting') && {
+      meeting: CONTACT.booking
+        ? 'The meeting button opens his booking page. Its form has a field to say what the meeting is about (a freelance project, a job offer, technical consulting…): optional, but it makes it more likely he accepts.'
+        : 'Booking is not available yet: the button shows "coming soon". Do not offer to book; suggest email or LinkedIn to arrange a call.',
+    }),
+    note: 'The buttons appear under your answer. Do not repeat the email address or links in your text.',
+  }),
+  summary: (r) => (r as { shown: string[] }).shown.join(' · '),
+};
+
 export const CLIENT_TOOLS: Record<string, ClientTool> = {
+  show_contact_options: showContactOptions,
+  get_profile_section: getProfileSection,
+  search_profile: searchProfile,
   search_menu: searchMenu,
   place_order: placeOrder,
   get_weather: getWeather,
