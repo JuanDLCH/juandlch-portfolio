@@ -7,11 +7,17 @@ interface Props {
   x: Content['x'];
 }
 const { x } = Astro.props;
+// Each link stays active across the sections it groups.
 const links = [
-  { href: '#work', label: x.navWork },
-  { href: '#lab', label: x.navLab },
-  { href: '#about', label: x.navAbout },
-  { href: '#contact', label: x.navContact },
+  { href: '#work', label: x.navWork, sections: 'work' },
+  { href: '#lab', label: x.navLab, sections: 'lab' },
+  { href: '#rag', label: x.navExpertise, sections: 'rag stack' },
+  {
+    href: '#about',
+    label: x.navAbout,
+    sections: 'about principles certifications',
+  },
+  { href: '#contact', label: x.navContact, sections: 'contact' },
 ];
 // Active state comes from <html data-lang>, so it is right before any JS runs.
 const langBtn =
@@ -36,10 +42,11 @@ const langBtn =
       {...attrs({ 'aria-label': x.navLabel })}
       class="mono order-3 -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 text-[13px] tracking-[0.06em] uppercase [scrollbar-width:none] sm:order-2 sm:mx-0 sm:ml-auto sm:w-auto sm:overflow-visible sm:px-0"
     >
-      {links.map(({ href, label }) => (
+      {links.map(({ href, label, sections }) => (
         <a
           href={href}
           data-nav-link
+          data-sections={sections}
           class="px-3 py-2 whitespace-nowrap no-underline aria-[current=true]:text-accent"
         >
           <T v={label} />
@@ -91,18 +98,33 @@ const langBtn =
 </header>
 
 <script>
-  // Highlight the nav link of the section currently in view.
-  const links = document.querySelectorAll<HTMLAnchorElement>('[data-nav-link]');
-  const byId = new Map<string, HTMLAnchorElement>();
-  links.forEach((a) => byId.set(a.hash.slice(1), a));
+  // Highlight the nav link whose group contains the section in view.
+  const linkFor = new Map<string, HTMLAnchorElement>();
+  document
+    .querySelectorAll<HTMLAnchorElement>('[data-nav-link]')
+    .forEach((a) =>
+      (a.dataset.sections ?? '').split(' ').forEach((id) => linkFor.set(id, a)),
+    );
+
+  const sections = [...linkFor.keys()]
+    .map((id) => document.getElementById(id))
+    .filter((el): el is HTMLElement => el !== null)
+    .sort((a, b) =>
+      a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+    );
   const visible = new Set<string>();
 
   const paint = () => {
-    // Last visible section in document order wins.
-    const ids = [...byId.keys()].filter((id) => visible.has(id));
-    const current = ids[ids.length - 1];
-    byId.forEach((a, id) =>
-      a.setAttribute('aria-current', String(id === current)),
+    // Last visible section in document order wins; at the very bottom the
+    // short footer can't reach the middle band, so it wins there.
+    const atEnd =
+      innerHeight + scrollY >= document.documentElement.scrollHeight - 4;
+    const current = atEnd
+      ? sections[sections.length - 1]
+      : sections.filter((el) => visible.has(el.id)).pop();
+    const active = current ? linkFor.get(current.id) : undefined;
+    linkFor.forEach((a) =>
+      a.setAttribute('aria-current', String(a === active)),
     );
   };
 
@@ -117,11 +139,6 @@ const langBtn =
     },
     { rootMargin: '-35% 0px -55% 0px' },
   );
-  const sections = [...byId.keys()]
-    .map((id) => document.getElementById(id))
-    .filter((el): el is HTMLElement => el !== null);
-  sections.sort((a, b) =>
-    a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
-  );
   sections.forEach((el) => io.observe(el));
+  addEventListener('scroll', paint, { passive: true });
 </script>
