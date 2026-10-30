@@ -74,18 +74,39 @@ const EN = {
   caseNeedsKey: 'needs a key',
   thinking: 'Thinking…',
   errors: {
-    noKey: 'Add your Anthropic API key to run this message.',
-    auth: 'The API key was rejected. Check it in “API keys”.',
-    rate: 'Rate limited by the provider. Wait a moment and try again.',
-    overloaded: 'The provider is overloaded. Try again in a moment.',
-    network: 'Couldn’t reach the provider. Check your connection.',
-    api: 'The request failed. Try again, or clear the conversation.',
-    refusal: 'The model declined this request.',
-    truncated: 'The answer hit the output limit and was cut off.',
-    mic: 'Couldn’t use the microphone.',
-    transcribe: 'Couldn’t transcribe the recording.',
-    file: 'Only images (PNG, JPEG, GIF, WebP) and PDFs up to 20 MB.',
+    noKey:
+      'I need your Anthropic API key to answer. It stays in this tab’s memory and goes only to Anthropic.',
+    auth: 'Anthropic rejected that API key. Check that it’s complete and still active.',
+    rate: 'The provider is rate limiting requests right now. Give it a few seconds and try again.',
+    overloaded:
+      'The provider is overloaded at the moment. Try again in a few seconds.',
+    network:
+      'I couldn’t reach the provider. Check your connection and try again.',
+    api: 'Something went wrong with that request. Clearing the conversation usually fixes it.',
+    refusal: 'I can’t help with that request. Try asking something else.',
+    truncated:
+      'My answer hit the output limit and was cut off. Ask me to continue or to be more brief.',
+    micNoKey:
+      'Voice input uses OpenAI’s transcription, so it needs an OpenAI API key.',
+    mic: 'I couldn’t use your microphone. Check the browser’s permission for this site.',
+    transcribe:
+      'I couldn’t transcribe that recording. Check your OpenAI key, or type the message instead.',
+    file: 'I can read images (PNG, JPEG, GIF, WebP) and PDFs up to 20 MB. That file isn’t one of them.',
   },
+  fixes: {
+    anthropic: 'Add Anthropic key',
+    anthropicReview: 'Review Anthropic key',
+    openai: 'Add OpenAI key',
+    openaiReview: 'Review OpenAI key',
+    retry: 'Try again',
+    clear: 'Clear conversation',
+    file: 'Choose another file',
+  },
+  switchTag: 'Example case',
+  switchTitle: 'Switch case?',
+  switchBody:
+    'This conversation will be cleared and the new case starts from scratch.',
+  switchOk: 'Clear and switch',
   toLight: 'Switch to light mode',
   toDark: 'Switch to dark mode',
 };
@@ -167,18 +188,40 @@ const ES: typeof EN = {
   caseNeedsKey: 'falta una llave',
   thinking: 'Pensando…',
   errors: {
-    noKey: 'Agrega tu API key de Anthropic para ejecutar este mensaje.',
-    auth: 'La API key fue rechazada. Revísala en “API keys”.',
-    rate: 'El proveedor limitó las solicitudes. Espera un momento e intenta de nuevo.',
-    overloaded: 'El proveedor está saturado. Intenta de nuevo en un momento.',
-    network: 'No se pudo conectar con el proveedor. Revisa tu conexión.',
-    api: 'La solicitud falló. Intenta de nuevo o borra la conversación.',
-    refusal: 'El modelo rechazó esta solicitud.',
-    truncated: 'La respuesta llegó al límite de salida y se cortó.',
-    mic: 'No se pudo usar el micrófono.',
-    transcribe: 'No se pudo transcribir la grabación.',
-    file: 'Solo imágenes (PNG, JPEG, GIF, WebP) y PDFs de hasta 20 MB.',
+    noKey:
+      'Necesito tu API key de Anthropic para responder. Vive en la memoria de esta pestaña y solo va a Anthropic.',
+    auth: 'Anthropic rechazó esa API key. Revisa que esté completa y siga activa.',
+    rate: 'El proveedor está limitando las solicitudes ahora mismo. Espera unos segundos e intenta de nuevo.',
+    overloaded:
+      'El proveedor está saturado en este momento. Intenta de nuevo en unos segundos.',
+    network:
+      'No pude conectar con el proveedor. Revisa tu conexión e intenta de nuevo.',
+    api: 'Algo falló con esa solicitud. Borrar la conversación suele resolverlo.',
+    refusal:
+      'No puedo ayudarte con esa solicitud. Prueba preguntando otra cosa.',
+    truncated:
+      'Mi respuesta llegó al límite de salida y se cortó. Pídeme que continúe o que sea más breve.',
+    micNoKey:
+      'La entrada de voz usa la transcripción de OpenAI, así que necesita una API key de OpenAI.',
+    mic: 'No pude usar tu micrófono. Revisa el permiso del navegador para este sitio.',
+    transcribe:
+      'No pude transcribir esa grabación. Revisa tu llave de OpenAI o escribe el mensaje.',
+    file: 'Puedo leer imágenes (PNG, JPEG, GIF, WebP) y PDFs de hasta 20 MB. Ese archivo no es uno de ellos.',
   },
+  fixes: {
+    anthropic: 'Agregar llave de Anthropic',
+    anthropicReview: 'Revisar llave de Anthropic',
+    openai: 'Agregar llave de OpenAI',
+    openaiReview: 'Revisar llave de OpenAI',
+    retry: 'Intentar de nuevo',
+    clear: 'Borrar conversación',
+    file: 'Elegir otro archivo',
+  },
+  switchTag: 'Caso de ejemplo',
+  switchTitle: '¿Cambiar de caso?',
+  switchBody:
+    'Esta conversación se borrará y el nuevo caso empezará desde cero.',
+  switchOk: 'Borrar y cambiar',
   toLight: 'Cambiar a modo claro',
   toDark: 'Cambiar a modo oscuro',
 };

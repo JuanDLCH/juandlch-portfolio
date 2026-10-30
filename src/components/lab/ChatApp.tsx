@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
   type KeyboardEvent,
 } from 'react';
-import { CHAT } from '../../i18n/chat';
+import { CHAT, type ChatCopy } from '../../i18n/chat';
 import {
   $attachments,
   IMAGE_TYPES,
@@ -25,10 +25,13 @@ import {
   $sessions,
   emptySession,
   getSession,
+  nextNoticeId,
   setSession,
   setTurn,
   stopTurn,
   type ChatItem,
+  type ChatSession,
+  type NoticeCode,
 } from '../../lab/store';
 import { setLang, setTheme } from '../../scripts/prefs';
 
@@ -117,6 +120,20 @@ const I = {
 };
 
 const pick = (v: { en: string; es: string }, es: boolean) => (es ? v.es : v.en);
+
+// What an error message offers to fix it, shown under it as a button.
+type Fix = keyof ChatCopy['fixes'];
+const FIXES: Partial<Record<NoticeCode, Fix>> = {
+  noKey: 'anthropic',
+  auth: 'anthropicReview',
+  micNoKey: 'openai',
+  transcribe: 'openaiReview',
+  rate: 'retry',
+  overloaded: 'retry',
+  network: 'retry',
+  api: 'clear',
+  file: 'file',
+};
 const initials = (s: string) =>
   s
     .split(/\s+/)
@@ -149,33 +166,47 @@ export default function ChatApp() {
   const [info, setInfo] = useState<'video' | 'build' | null>(null);
   const [infoCase, setInfoCase] = useState(CASES[0].id);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
+  // Key input the keys dialog focuses when it opens.
+  const [keyFocus, setKeyFocus] = useState<'anthropic' | 'openai'>('anthropic');
+  // Case waiting for confirmation: switching clears the conversation.
+  const [switchTo, setSwitchTo] = useState<ChatCase | null>(null);
   const [rec, setRec] = useState<'off' | 'on' | 'busy'>('off');
   const recRef = useRef<MediaRecorder | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const dialogOpen = modal || info !== null;
+  const dialog = modal ? 'keys' : info ? info : switchTo ? 'switch' : null;
+  const dialogOpen = dialog !== null;
+  const closeDialogs = () => {
+    setModal(false);
+    setInfo(null);
+    setSwitchTo(null);
+  };
 
   // Dialogs: the rest of the page goes inert while one is open (so Tab and
   // clicks stay inside), focus moves in on open and back to the trigger on
   // close.
   useEffect(() => {
-    if (!dialogOpen) return;
+    if (!dialog) return;
     const trigger = document.activeElement as HTMLElement | null;
     const d = dialogRef.current;
     (
-      d?.querySelector<HTMLElement>('input') ??
+      d?.querySelector<HTMLElement>(`#jd-key-${keyFocus}`) ??
+      d?.querySelector<HTMLElement>('[data-autofocus]') ??
       d?.querySelector<HTMLElement>('button')
     )?.focus();
     return () => trigger?.focus();
-  }, [dialogOpen]);
+    // keyFocus is set together with the dialog; it never changes while open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dialog]);
 
   useEffect(() => {
-    if (!modal && !info) return;
+    if (!dialog) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') {
         setModal(false);
         setInfo(null);
+        setSwitchTo(null);
         return;
       }
       // Keep Tab cycling through the open dialog.
@@ -197,7 +228,7 @@ export default function ChatApp() {
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [modal, info]);
+  }, [dialog]);
 
   useEffect(() => {
     const el = logRef.current;
@@ -209,21 +240,78 @@ export default function ChatApp() {
     setInfo(kind);
     setSide(false);
   };
-  const openKeys = () => {
+  const openKeys = (focus: 'anthropic' | 'openai' = 'anthropic') => {
     setKeyDrafts(keys);
+    setKeyFocus(focus);
     setModal(true);
   };
-  const notice = (text: string) => {
+  const notice = (code: NoticeCode) => {
     const s = getSession(c.id);
-    setSession(c.id, { ...s, items: [...s.items, { kind: 'notice', text }] });
+    setSession(c.id, {
+      ...s,
+      items: [...s.items, { kind: 'notice', id: nextNoticeId(), code }],
+    });
   };
   const setDraft = (v: string) => $drafts.setKey(c.id, v);
-  const pickCase = (k: ChatCase, fill = true) => {
-    if (busy) return;
-    $caseId.set(k.id);
-    if (fill && !($drafts.get()[k.id] ?? '').trim())
-      $drafts.setKey(k.id, pick(k.starter, es));
+  // A case starts from scratch: switching away from a started conversation
+  // asks first, then clears it (and anything left in the new case).
+  const pickCase = (k: ChatCase, confirmed = false) => {
+    if ($busy.get()) return;
     setSide(false);
+    if (k.id !== c.id) {
+      if (!confirmed && getSession(c.id).items.length > 0) {
+        setSwitchTo(k);
+        return;
+      }
+      setSession(c.id, emptySession());
+      setSession(k.id, emptySession());
+      $caseId.set(k.id);
+    }
+    if (!($drafts.get()[k.id] ?? '').trim())
+      $drafts.setKey(k.id, pick(k.starter, es));
+  };
+
+  // Streams one turn from `start` (which already shows the user message).
+  const run = async (
+    start: ChatSession,
+    content: Anthropic.Beta.BetaContentBlockParam[],
+  ) => {
+    setSession(c.id, start);
+    $busy.set(true);
+    const ctrl = new AbortController();
+    setTurn(ctrl);
+    const err = await runTurn(keys.anthropic, c, start, content, {
+      update: (s) => setSession(c.id, s),
+      signal: ctrl.signal,
+      es,
+    });
+    $busy.set(false);
+    setTurn(null);
+    if (err) notice(err);
+  };
+
+  // Runs the failed turn again from where it started: whatever it left in the
+  // log (partial answer, tool calls, paused searches, the error) is dropped
+  // first, so it works however far the turn got.
+  const retry = () => {
+    const s = getSession(c.id);
+    if ($busy.get() || !s.turn) return;
+    void run(
+      {
+        ...s,
+        items: s.items.slice(0, s.turn.items),
+        api: s.api.slice(0, s.turn.api),
+      },
+      s.turn.content,
+    );
+  };
+
+  const fix = (f: Fix) => {
+    if (f === 'anthropic' || f === 'anthropicReview') openKeys('anthropic');
+    else if (f === 'openai' || f === 'openaiReview') openKeys('openai');
+    else if (f === 'retry') retry();
+    else if (f === 'clear') setSession(c.id, emptySession());
+    else fileRef.current?.click();
   };
 
   const send = async (override?: string) => {
@@ -231,20 +319,19 @@ export default function ChatApp() {
     // Read the store, not the render's `busy`: a transcription finishing
     // after a turn ended calls this from an older closure.
     if ((!text && files.length === 0) || $busy.get()) return;
+    // No key: the message stays in the composer and the assistant asks for
+    // the key, so sending again after adding it just works.
+    if (!keys.anthropic) {
+      if (override) setDraft(override);
+      notice('noKey');
+      return;
+    }
     const start = getSession(c.id);
     const user: ChatItem = {
       kind: 'user',
       text,
       files: files.map((f) => f.name),
     };
-    if (!keys.anthropic) {
-      setSession(c.id, {
-        ...start,
-        items: [...start.items, user, { kind: 'notice', text: x.errors.noKey }],
-      });
-      setDraft('');
-      return;
-    }
     const content: Anthropic.Beta.BetaContentBlockParam[] = [
       ...files.map((f) =>
         f.mediaType === 'application/pdf'
@@ -269,19 +356,14 @@ export default function ChatApp() {
     ];
     setDraft('');
     $attachments.setKey(c.id, []);
-    const withUser = { ...start, items: [...start.items, user] };
-    setSession(c.id, withUser);
-    $busy.set(true);
-    const ctrl = new AbortController();
-    setTurn(ctrl);
-    const err = await runTurn(keys.anthropic, c, withUser, content, {
-      update: (s) => setSession(c.id, s),
-      signal: ctrl.signal,
-      es,
-    });
-    $busy.set(false);
-    setTurn(null);
-    if (err) notice(x.errors[err]);
+    await run(
+      {
+        ...start,
+        items: [...start.items, user],
+        turn: { items: start.items.length + 1, api: start.api.length, content },
+      },
+      content,
+    );
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -300,7 +382,7 @@ export default function ChatApp() {
         (!IMAGE_TYPES.includes(f.type) && f.type !== 'application/pdf') ||
         f.size > MAX_BYTES
       ) {
-        notice(x.errors.file);
+        notice('file');
         continue;
       }
       next.push(await readAttachment(f));
@@ -311,7 +393,7 @@ export default function ChatApp() {
 
   const onMic = async () => {
     if ($busy.get()) return;
-    if (!keys.openai) return openKeys();
+    if (!keys.openai) return notice('micNoKey');
     if (rec === 'on') return recRef.current?.stop();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -333,14 +415,14 @@ export default function ChatApp() {
           if (text) void send(text);
         } catch {
           setRec('off');
-          notice(x.errors.transcribe);
+          notice('transcribe');
         }
       };
       recRef.current = mr;
       mr.start();
       setRec('on');
     } catch {
-      notice(x.errors.mic);
+      notice('mic');
     }
   };
   const cancelRec = () => {
@@ -480,7 +562,7 @@ export default function ChatApp() {
           />
           <button
             type="button"
-            onClick={openKeys}
+            onClick={() => openKeys()}
             className={`${mono} border-line2 text-ink hover:border-accent narrow:hidden inline-flex h-9 cursor-pointer items-center gap-3 border bg-transparent px-3 text-[10px] tracking-[0.04em] transition-colors`}
           >
             <span className="inline-flex items-center gap-1.5">
@@ -501,7 +583,7 @@ export default function ChatApp() {
           </button>
           <button
             type="button"
-            onClick={openKeys}
+            onClick={() => openKeys()}
             aria-label={x.keysBtn}
             className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
           >
@@ -542,7 +624,7 @@ export default function ChatApp() {
                 </span>
                 <button
                   type="button"
-                  onClick={openKeys}
+                  onClick={() => openKeys()}
                   className={`${mono} border-accent text-accent h-8 cursor-pointer border bg-transparent px-3 text-[10px] tracking-[0.06em] uppercase`}
                 >
                   {x.addKeys}
@@ -597,9 +679,26 @@ export default function ChatApp() {
                   </div>
                 </div>
               )}
-              {session.items.map((m, i) => (
-                <Message key={i} m={m} />
-              ))}
+              {session.items.map((m, i) =>
+                m.kind === 'notice' ? (
+                  <Notice
+                    key={m.id}
+                    id={m.id}
+                    text={x.errors[m.code]}
+                    // Only the latest message offers its fix; older ones are
+                    // past the point where it would help.
+                    fix={
+                      i === session.items.length - 1 && !busy
+                        ? FIXES[m.code]
+                        : undefined
+                    }
+                    fixLabel={x.fixes}
+                    onFix={fix}
+                  />
+                ) : (
+                  <Message key={i} m={m} />
+                ),
+              )}
               {busy &&
                 !session.items.some(
                   (m) => m.kind === 'assistant' && m.streaming && m.text,
@@ -1100,6 +1199,87 @@ export default function ChatApp() {
         </div>
       )}
 
+      {switchTo && (
+        <div className="bg-scrim absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={x.cancel}
+            onClick={closeDialogs}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="jd-switch-title"
+            aria-describedby="jd-switch-body"
+            className="bg-panel border-line2 relative w-full max-w-[440px] border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 px-7 pt-6 pb-5">
+              <div
+                className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+              >
+                {x.switchTag}
+              </div>
+              <h2
+                id="jd-switch-title"
+                className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+              >
+                {x.switchTitle}
+              </h2>
+              <p
+                id="jd-switch-body"
+                className="text-body mt-3 mb-0 text-sm leading-[1.55]"
+              >
+                {x.switchBody}
+              </p>
+              <div className="border-line2 bg-bg mt-4 flex items-center gap-2.5 border px-3 py-2.5 text-[13px]">
+                <span
+                  className={`${mono} text-muted shrink-0 text-[10px] line-through`}
+                >
+                  {pick(c.label, es)}
+                </span>
+                <span aria-hidden="true" className="text-muted">
+                  →
+                </span>
+                <span className="min-w-0 truncate font-medium">
+                  {pick(switchTo.label, es)}
+                </span>
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 flex justify-end gap-2 border-t px-7 py-3">
+              <button
+                type="button"
+                data-autofocus
+                onClick={closeDialogs}
+                className="border-line2 text-ink mob:h-11 mob:flex-1 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {x.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSwitchTo(null);
+                  pickCase(switchTo, true);
+                }}
+                className="bg-accent text-on-accent mob:h-11 mob:flex-[2] h-10 cursor-pointer border-0 px-4 text-sm font-semibold"
+              >
+                {x.switchOk}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {info &&
         (() => {
           const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
@@ -1241,8 +1421,8 @@ export default function ChatApp() {
                         type="button"
                         disabled={busy}
                         onClick={() => {
-                          pickCase(ic);
                           setInfo(null);
+                          pickCase(ic);
                         }}
                         className="bg-accent text-on-accent mob:h-11 h-10 cursor-pointer border-0 px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                       >
@@ -1307,14 +1487,7 @@ function Message({ m }: { m: ChatItem }) {
       </details>
     );
   }
-  if (m.kind === 'notice') {
-    return (
-      <div className="border-warn text-body flex items-center gap-2.5 border px-3.5 py-2.5 text-sm">
-        <span aria-hidden="true" className="bg-warn size-[7px] shrink-0" />
-        {m.text}
-      </div>
-    );
-  }
+  if (m.kind === 'notice') return null;
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2">
       <div className="border-accent border-l-2 py-0.5 pl-3 text-sm leading-[1.6] whitespace-pre-wrap">
@@ -1329,6 +1502,67 @@ function Message({ m }: { m: ChatItem }) {
       <div className={`${mono} text-muted pl-4 text-[10px] tracking-[0.04em]`}>
         {m.meta}
       </div>
+    </div>
+  );
+}
+
+// Notices already typed out. Module state, so returning to the chat (or a
+// language switch) shows them whole instead of typing them again.
+const typed = new Set<number>();
+const TYPE_MS = 14;
+
+// An error, told by the assistant: typed out like a streamed answer, then
+// the button that fixes it.
+function Notice({
+  id,
+  text,
+  fix,
+  fixLabel,
+  onFix,
+}: {
+  id: number;
+  text: string;
+  fix?: Fix;
+  fixLabel: ChatCopy['fixes'];
+  onFix: (f: Fix) => void;
+}) {
+  const [n, setN] = useState(() =>
+    typed.has(id) || matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? Infinity
+      : 0,
+  );
+  const done = n >= text.length;
+  useEffect(() => {
+    if (done) {
+      typed.add(id);
+      return;
+    }
+    const t = setInterval(() => setN((v) => v + 1), TYPE_MS);
+    return () => clearInterval(t);
+  }, [done, id]);
+  return (
+    <div className="mob:max-w-full flex max-w-[88%] flex-col items-start gap-2.5">
+      <div className="border-warn border-l-2 py-0.5 pl-3 text-sm leading-[1.6] whitespace-pre-wrap">
+        {/* Screen readers get the whole message once, not every letter. */}
+        <span className="sr-only">{text}</span>
+        <span aria-hidden="true">{text.slice(0, n)}</span>
+        {!done && (
+          <span
+            aria-hidden="true"
+            className="jd-blink bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"
+          />
+        )}
+      </div>
+      {done && fix && (
+        <button
+          type="button"
+          onClick={() => onFix(fix)}
+          className={`jd-rise ${mono} border-accent text-accent hover:bg-accent hover:text-on-accent mob:h-11 ml-3.5 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.06em] uppercase transition-colors`}
+        >
+          {fixLabel[fix]}
+          <span aria-hidden="true">→</span>
+        </button>
+      )}
     </div>
   );
 }

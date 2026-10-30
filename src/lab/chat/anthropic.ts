@@ -31,6 +31,7 @@ async function getClient(key: string) {
 }
 
 const clone = (s: ChatSession): ChatSession => ({
+  ...s,
   items: [...s.items],
   api: [...s.api],
   usage: { ...s.usage },
