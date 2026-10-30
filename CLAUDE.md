@@ -27,7 +27,7 @@ AWS icons in `public/aws/*.svg` are generated stand-ins (replace with official i
 
 ## Development rules
 
-- Work happens directly on `main`; CI (`.github/workflows/ci.yml`) runs lint, format check, `astro check` and build on every push.
+- `main` is protected: no direct pushes. Work on short-lived branches named `<type>/<slug>` (e.g. `feat/hero-photo`), open a PR, and squash-merge once the `verify` CI check (`.github/workflows/ci.yml`: lint, format check, `astro check`, build) passes. The PR title becomes the commit message, so it must be a Conventional Commit. Branches are deleted on merge.
 - Commits follow Conventional Commits (`commitlint.config.js`): `feat`, `fix`, `content` (copy changes), `style`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`, `revert`. English, imperative, header ≤ 72 chars. One logical change per commit.
 - Husky hooks: `pre-commit` runs lint-staged (ESLint + Prettier on staged files); `commit-msg` runs commitlint. Don't bypass with `--no-verify`.
 - Colors come from theme tokens (`text-accent`), never raw hex. New copy goes in `src/i18n/content.ts` for both languages. No `any`.
