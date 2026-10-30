@@ -1,5 +1,5 @@
 // Copy and data lifted from the Signal design (EN/ES). Cases, cycle, domains, etc. are built per language.
-export type FlowNode = {
+export type RawFlowNode = {
   label: string;
   meta: string;
   hot: boolean;
@@ -275,13 +275,13 @@ function build(isEs: boolean) {
         },
       ];
 
-  const mkFlow = function (nodes: [string, string?][]): FlowNode[] {
+  const mkFlow = function (nodes: [string, string?][]): RawFlowNode[] {
     return nodes.map(function (n: [string, string?]) {
       const hot = n[0].charAt(0) === '*';
       return { label: hot ? n[0].slice(1) : n[0], meta: n[1] || '', hot: hot };
     });
   };
-  const ragFlow: FlowNode[] = isEs
+  const ragFlow: RawFlowNode[] = isEs
     ? [
         ...mkFlow([
           ['Pregunta', 'usuario'],
@@ -728,5 +728,5 @@ function build(isEs: boolean) {
 }
 
 export const content = { en: build(false), es: build(true) };
-export type Content = ReturnType<typeof build>;
+export type RawContent = ReturnType<typeof build>;
 export type Lang = keyof typeof content;

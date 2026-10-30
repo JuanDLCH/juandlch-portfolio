@@ -1,9 +1,10 @@
 ---
-import type { FlowNode } from '../i18n';
+import { attrs, type FlowNode, type Txt } from '../i18n';
+import T from './T.astro';
 
 interface Props {
   nodes: FlowNode[];
-  label: string;
+  label: Txt;
   dense?: boolean;
 }
 const { nodes, label, dense = false } = Astro.props;
@@ -13,7 +14,7 @@ const box = `flex items-center justify-between gap-3 self-stretch border ${pad}`
 ---
 
 <ol
-  aria-label={label}
+  {...attrs({ 'aria-label': label })}
   class="m-0 mx-auto mt-stack flex max-w-[360px] list-none flex-col items-stretch p-0"
 >
   {nodes.map((n, i) => (
@@ -23,7 +24,7 @@ const box = `flex items-center justify-between gap-3 self-stretch border ${pad}`
       )}
       {n.kind === 'loop' ? (
         <span class="border-accent/60 text-accent mono flex items-center gap-2 self-stretch border border-dashed px-3 py-1 text-[11px] tracking-[0.04em]">
-          {n.label}
+          <T v={n.label} />
         </span>
       ) : n.kind === 'split' ? (
         <span
@@ -33,15 +34,17 @@ const box = `flex items-center justify-between gap-3 self-stretch border ${pad}`
           ]}
         >
           <span class="flex items-center justify-between gap-3">
-            <span>{n.label}</span>
+            <span>
+              <T v={n.label} />
+            </span>
             <span class="mono text-muted text-[10px] tracking-[0.06em] uppercase">
-              {n.meta}
+              <T v={n.meta} />
             </span>
           </span>
           <span class="grid grid-cols-2 gap-1.5">
             {n.parts?.map((p) => (
               <span class="mono border-line2 text-chip border px-2 py-1 text-center text-[11px]">
-                {p}
+                <T v={p} />
               </span>
             ))}
           </span>
@@ -55,14 +58,16 @@ const box = `flex items-center justify-between gap-3 self-stretch border ${pad}`
               : 'border-line2 text-ink bg-transparent',
           ]}
         >
-          <span>{n.label}</span>
+          <span>
+            <T v={n.label} />
+          </span>
           <span
             class:list={[
               'mono text-[10px] tracking-[0.06em] uppercase',
               n.hot ? 'text-accent' : 'text-muted',
             ]}
           >
-            {n.meta}
+            <T v={n.meta} />
           </span>
         </span>
       )}

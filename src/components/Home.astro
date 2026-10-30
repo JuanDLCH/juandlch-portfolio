@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getContent, type Lang } from '../i18n';
+import { getContent, pick } from '../i18n';
 import About from './About.astro';
 import Certifications from './Certifications.astro';
 import Footer from './Footer.astro';
@@ -13,10 +13,6 @@ import Rag from './Rag.astro';
 import Stack from './Stack.astro';
 import Work from './Work.astro';
 
-interface Props {
-  lang: Lang;
-}
-const { lang } = Astro.props;
 const {
   x,
   cycle,
@@ -27,11 +23,11 @@ const {
   domains,
   stackGroups,
   principles,
-} = getContent(lang);
+} = getContent();
 ---
 
-<Layout lang={lang} title="JuanDLCH — Signal" description={x.heroSub}>
-  <Header x={x} lang={lang} />
+<Layout title="JuanDLCH — Signal" description={pick(x.heroSub, 'en')}>
+  <Header x={x} />
   <div class="mx-auto max-w-[1200px] px-[clamp(16px,4vw,48px)]">
     <Hero x={x} />
     <Work x={x} cases={cases} />

@@ -1,5 +1,6 @@
 ---
 import type { Content } from '../i18n';
+import T from './T.astro';
 import CornerMarks from './CornerMarks.astro';
 import FlowDiagram from './FlowDiagram.astro';
 import SectionHeading from './SectionHeading.astro';
@@ -13,8 +14,12 @@ const { x, cases } = Astro.props;
 
 <section id="work" class="border-line border-t py-section">
   <div class="flex flex-wrap items-baseline justify-between gap-3">
-    <SectionHeading n="01">{x.workTitle}</SectionHeading>
-    <span class="mono text-muted text-xs">{x.workNote}</span>
+    <SectionHeading n="01">
+      <T v={x.workTitle} />
+    </SectionHeading>
+    <span class="mono text-muted text-xs">
+      <T v={x.workNote} />
+    </span>
   </div>
   <div class="mt-head flex flex-col gap-3">
     {cases.map((c) => (
@@ -24,9 +29,11 @@ const { x, cases } = Astro.props;
       >
         <summary class="flex items-center justify-between gap-6 px-card py-3.5">
           <span class="flex min-w-0 flex-col gap-2">
-            <span class="tag text-accent">{c.tag}</span>
+            <span class="tag text-accent">
+              <T v={c.tag} />
+            </span>
             <span class="text-h3 leading-[1.15] font-medium tracking-[-0.03em]">
-              {c.title}
+              <T v={c.title} />
             </span>
           </span>
           <span
@@ -41,28 +48,38 @@ const { x, cases } = Astro.props;
             <CornerMarks only={['tl']} offset="10px" size="14px" />
             <CornerMarks only={['br']} offset="10px" size="14px" />
             <div class="mono text-muted flex justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
-              <span>{c.figTag}</span>
-              <span>{x.recreated}</span>
+              <span>
+                <T v={c.figTag} />
+              </span>
+              <span>
+                <T v={x.recreated} />
+              </span>
             </div>
             <FlowDiagram nodes={c.flow} label={c.figLabel} />
           </figure>
           <div class="flex min-w-0 flex-[1.15_1_440px] flex-col gap-stack p-card">
             <dl class="m-0 flex flex-col gap-4">
               <div>
-                <dt class="eyebrow text-muted">{x.problem}</dt>
+                <dt class="eyebrow text-muted">
+                  <T v={x.problem} />
+                </dt>
                 <dd class="text-body m-0 mt-1.5 text-sm leading-[1.55]">
-                  {c.problem}
+                  <T v={c.problem} />
                 </dd>
               </div>
               <div>
-                <dt class="eyebrow text-muted">{x.contribution}</dt>
-                <dd class="m-0 mt-1.5 text-sm leading-[1.55]">{c.role}</dd>
+                <dt class="eyebrow text-muted">
+                  <T v={x.contribution} />
+                </dt>
+                <dd class="m-0 mt-1.5 text-sm leading-[1.55]">
+                  <T v={c.role} />
+                </dd>
               </div>
             </dl>
             <div class="mono flex flex-wrap gap-1.5 text-xs">
               {c.stack.map((s) => (
                 <span class="border-line2 text-chip border px-[9px] py-[5px]">
-                  {s}
+                  <T v={s} />
                 </span>
               ))}
             </div>
@@ -72,6 +89,9 @@ const { x, cases } = Astro.props;
     ))}
   </div>
   <p class="text-body m-0 mt-7 text-sm leading-[1.6]">
-    <span class="eyebrow text-muted">{x.alsoLabel}</span> {x.alsoBody}
+    <span class="eyebrow text-muted">
+      <T v={x.alsoLabel} />
+    </span>{' '}
+    <T v={x.alsoBody} />
   </p>
 </section>

@@ -7,6 +7,11 @@ import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
+  // Old per-language URLs keep working and pick the language.
+  redirects: {
+    '/en': '/?lang=en',
+    '/es': '/?lang=es',
+  },
   integrations: [react()],
 
   vite: {

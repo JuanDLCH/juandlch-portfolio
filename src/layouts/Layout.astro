@@ -2,14 +2,13 @@
 import '../styles/global.css';
 
 interface Props {
-  lang: 'en' | 'es';
   title: string;
   description: string;
 }
-const { lang, title, description } = Astro.props;
+const { title, description } = Astro.props;
 ---
 
-<html lang={lang}>
+<html lang="en" data-lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
@@ -25,16 +24,47 @@ const { lang, title, description } = Astro.props;
     />
     <title>{title}</title>
     <script is:inline>
-      try {
-        const t = localStorage.getItem('theme');
-        document.documentElement.dataset.theme =
-          t === 'light' ? 'light' : 'dark';
-      } catch {
-        document.documentElement.dataset.theme = 'dark';
-      }
+      // Runs before paint: theme and language come from the URL (?lang=),
+      // then storage, then the browser. Shared by every page on this origin.
+      (function () {
+        const root = document.documentElement;
+        let store = null;
+        try {
+          store = window.localStorage;
+        } catch {
+          /* storage unavailable */
+        }
+        const get = function (k) {
+          try {
+            return store && store.getItem(k);
+          } catch {
+            return null;
+          }
+        };
+        const theme = get('theme');
+        root.dataset.theme = theme === 'light' ? 'light' : 'dark';
+
+        const param = new URLSearchParams(location.search).get('lang');
+        let lang = param === 'en' || param === 'es' ? param : get('lang');
+        if (lang !== 'en' && lang !== 'es') {
+          lang = /^es\b/i.test(navigator.language || '') ? 'es' : 'en';
+        }
+        if (param === lang) {
+          try {
+            if (store) store.setItem('lang', lang);
+          } catch {
+            /* storage unavailable */
+          }
+        }
+        root.dataset.lang = lang;
+        root.lang = lang;
+      })();
     </script>
   </head>
   <body>
     <slot />
+    <script>
+      import '../scripts/prefs';
+    </script>
   </body>
 </html>
