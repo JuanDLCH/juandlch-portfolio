@@ -78,6 +78,33 @@ const searchSummary = (
   return es ? 'búsqueda hecha' : 'searched';
 };
 
+// Turns `url_citation` annotations into Markdown links over the cited text.
+// Spans that already contain a link are left alone.
+const withCitations = (part: OpenAI.Responses.ResponseOutputText) => {
+  const cites = part.annotations
+    .flatMap((a) => (a.type === 'url_citation' ? [a] : []))
+    .sort((a, b) => b.start_index - a.start_index);
+  let text = part.text;
+  let limit = text.length;
+  for (const a of cites) {
+    // Overlapping or out-of-range spans are skipped rather than mangled.
+    if (
+      a.start_index < 0 ||
+      a.end_index > limit ||
+      a.start_index >= a.end_index
+    )
+      continue;
+    const span = text.slice(a.start_index, a.end_index);
+    if (!/https?:\/\//.test(span))
+      text =
+        text.slice(0, a.start_index) +
+        `[${span.replace(/[[\]]/g, '')}](${a.url})` +
+        text.slice(a.end_index);
+    limit = a.start_index;
+  }
+  return text;
+};
+
 /** See runTurn in turn.ts. */
 export async function runTurn(
   key: string,
@@ -123,12 +150,15 @@ export async function runTurn(
     for (let guard = 0; guard < 12; guard++) {
       const started: Record<string, number> = {};
       let assistantIndex = -1;
-      const appendText = (delta: string) => {
+      // Bubble that shows each message item, to add its citations at the end.
+      const bubbleOf: Record<string, number> = {};
+      const appendText = (delta: string, itemId: string) => {
         if (assistantIndex === -1) {
           push({ kind: 'assistant', text: '', meta, streaming: true });
           assistantIndex = s.items.length - 1;
         }
         const idx = assistantIndex;
+        bubbleOf[itemId] = idx;
         s.items = s.items.map((it, k) =>
           k === idx && it.kind === 'assistant'
             ? { ...it, text: it.text + delta }
@@ -185,7 +215,7 @@ export async function runTurn(
           ev.type === 'response.output_text.delta' ||
           ev.type === 'response.refusal.delta'
         ) {
-          appendText(ev.delta);
+          appendText(ev.delta, ev.item_id);
         }
       }
 
@@ -216,6 +246,27 @@ export async function runTurn(
       );
       for (const call of calls)
         patchTool(call.call_id, (i) => ({ ...i, input: call.arguments }));
+      // Web search cites its sources as annotations on the text, not in it.
+      // Rewrite each bubble from the final text with the cited spans as
+      // Markdown links, which the chat renders as clickable links.
+      const rewritten: Record<number, string> = {};
+      for (const o of response.output) {
+        if (o.type !== 'message') continue;
+        const idx = bubbleOf[o.id];
+        if (idx === undefined) continue;
+        rewritten[idx] =
+          (rewritten[idx] ?? '') +
+          o.content
+            .map((p) =>
+              p.type === 'output_text' ? withCitations(p) : p.refusal,
+            )
+            .join('');
+      }
+      s.items = s.items.map((it, k) =>
+        it.kind === 'assistant' && rewritten[k] !== undefined
+          ? { ...it, text: rewritten[k] }
+          : it,
+      );
       endStreaming();
       // Replay everything the model produced (reasoning, calls, messages).
       // The SDK adds parsed fields the API doesn't accept back; this helper
