@@ -123,7 +123,7 @@ export const CV: CvSection[] = [
           {
             id: 'lead-team',
             cite: 'Lead AI Engineer: team',
-            text: 'Lead a 2-person team delivering custom AI solutions (chatbots, RAG/OCR, voice and text automation) on AWS for clients in food service, retail, cinema, finance and education.',
+            text: 'Lead a 3-person team delivering custom AI solutions (chatbots, RAG/OCR, voice and text automation) on AWS for clients in food service, retail, cinema, finance and education, coordinating cross-team development with the front-end, back-end and QA teams.',
           },
           {
             id: 'lead-rag',
