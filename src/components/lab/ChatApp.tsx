@@ -172,7 +172,15 @@ const initials = (s: string) =>
     .map((w) => w[0].toUpperCase())
     .join('');
 
-export default function ChatApp({ devKey }: { devKey?: string }) {
+export default function ChatApp({
+  devKey,
+  only,
+}: {
+  devKey?: string;
+  // Locks the chat to one case (the hero's "Chat with my CV"): no case
+  // picker, settings panel or demo dialogs, just the chat and the keys.
+  only?: string;
+}) {
   // Dev only (see lab/chat.astro): start with the .env key unless one is set.
   useEffect(() => {
     if (devKey && !$keys.get().openai)
@@ -190,7 +198,7 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
   const drafts = live(useStore($drafts), {});
   const attachments = live(useStore($attachments), {});
   const busy = live(useStore($busy), false);
-  const c = CASES.find((k) => k.id === caseId) ?? CASES[0];
+  const c = CASES.find((k) => k.id === (only ?? caseId)) ?? CASES[0];
   const session = sessions[c.id] ?? emptySession();
   const draft = drafts[c.id] ?? '';
   const files = attachments[c.id] ?? [];
@@ -533,80 +541,92 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
       >
         <div className="flex min-w-0 items-center gap-3.5">
           <a
-            href="/#lab"
-            aria-label={x.backLabel}
+            href={only ? '/' : '/#lab'}
+            aria-label={only ? x.homeLabel : x.backLabel}
             className={`${mono} border-line2 hover:border-accent mob:size-11 mob:justify-center mob:p-0 mob:text-base inline-flex h-9 shrink-0 items-center gap-2 border px-3 text-[11px] tracking-[0.06em] uppercase no-underline transition-colors`}
           >
             <span aria-hidden="true">←</span>
-            <span className="mob:hidden">{x.back}</span>
+            <span className="mob:hidden">{only ? x.home : x.back}</span>
           </a>
           <span
             aria-hidden="true"
             className="bg-line2 narrow:hidden h-6 w-px"
           />
-          <div className="mob:hidden flex min-w-0 items-baseline gap-2.5">
-            <h1 className="m-0 text-base font-medium tracking-[-0.02em] whitespace-nowrap">
-              {x.title}
+          {only ? (
+            <h1 className="m-0 min-w-0 truncate text-base font-medium tracking-[-0.02em]">
+              {x.cvChat}
             </h1>
-            <span className={`${label} narrow:hidden text-[11px]`}>
-              Lab 02 · BYOK
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSide(!side)}
-            aria-label={`${x.changeCase}: ${pick(c.label, es)}`}
-            className="text-ink mob:flex hidden min-h-11 min-w-0 cursor-pointer items-center gap-2.5 border-0 bg-transparent p-0 text-left"
-          >
-            <span
-              aria-hidden="true"
-              className={`${mono} bg-panel border-accent text-accent grid size-9 shrink-0 place-items-center border text-xs font-medium`}
-            >
-              {initials(pick(c.label, es))}
-            </span>
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="truncate text-[15px] font-medium tracking-[-0.01em]">
-                {pick(c.label, es)}
+          ) : (
+            <div className="mob:hidden flex min-w-0 items-baseline gap-2.5">
+              <h1 className="m-0 text-base font-medium tracking-[-0.02em] whitespace-nowrap">
+                {x.title}
+              </h1>
+              <span className={`${label} narrow:hidden text-[11px]`}>
+                Lab 02 · BYOK
               </span>
+            </div>
+          )}
+          {!only && (
+            <button
+              type="button"
+              onClick={() => setSide(!side)}
+              aria-label={`${x.changeCase}: ${pick(c.label, es)}`}
+              className="text-ink mob:flex hidden min-h-11 min-w-0 cursor-pointer items-center gap-2.5 border-0 bg-transparent p-0 text-left"
+            >
               <span
-                className={`${mono} text-muted flex items-center gap-1.5 text-[10px]`}
+                aria-hidden="true"
+                className={`${mono} bg-panel border-accent text-accent grid size-9 shrink-0 place-items-center border text-xs font-medium`}
               >
+                {initials(pick(c.label, es))}
+              </span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-[15px] font-medium tracking-[-0.01em]">
+                  {pick(c.label, es)}
+                </span>
                 <span
-                  aria-hidden="true"
-                  className={`size-1.5 shrink-0 ${ready ? 'bg-ok' : 'bg-warn'}`}
-                />
-                <span className="truncate">
-                  {ready
-                    ? `${model.short} · ${tools.length} ${x.toolsWord}`
-                    : x.caseNeedsKey}
+                  className={`${mono} text-muted flex items-center gap-1.5 text-[10px]`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`size-1.5 shrink-0 ${ready ? 'bg-ok' : 'bg-warn'}`}
+                  />
+                  <span className="truncate">
+                    {ready
+                      ? `${model.short} · ${tools.length} ${x.toolsWord}`
+                      : x.caseNeedsKey}
+                  </span>
                 </span>
               </span>
-            </span>
-          </button>
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => openInfo('video')}
-            aria-label={x.watchDemo}
-            className="border-accent text-accent hover:bg-accent hover:text-on-accent mob:hidden narrow:px-0 narrow:w-9 narrow:justify-center inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 border bg-transparent px-3.5 text-[13px] font-medium transition-colors"
-          >
-            <Icon d={I.play} size={14} />
-            <span className="narrow:hidden">{x.watchDemo}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => openInfo('build')}
-            aria-label={x.buildBtn}
-            title={x.buildBtn}
-            className={`${iconBtn} mob:hidden size-9`}
-          >
-            <Icon d={I.diagram} />
-          </button>
-          <span
-            aria-hidden="true"
-            className="bg-line2 mob:hidden mx-1 h-6 w-px"
-          />
+          {!only && (
+            <>
+              <button
+                type="button"
+                onClick={() => openInfo('video')}
+                aria-label={x.watchDemo}
+                className="border-accent text-accent hover:bg-accent hover:text-on-accent mob:hidden narrow:px-0 narrow:w-9 narrow:justify-center inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 border bg-transparent px-3.5 text-[13px] font-medium transition-colors"
+              >
+                <Icon d={I.play} size={14} />
+                <span className="narrow:hidden">{x.watchDemo}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openInfo('build')}
+                aria-label={x.buildBtn}
+                title={x.buildBtn}
+                className={`${iconBtn} mob:hidden size-9`}
+              >
+                <Icon d={I.diagram} />
+              </button>
+              <span
+                aria-hidden="true"
+                className="bg-line2 mob:hidden mx-1 h-6 w-px"
+              />
+            </>
+          )}
           <button
             type="button"
             onClick={() => openKeys()}
@@ -631,21 +651,24 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
           >
             <Icon d={I.key} />
           </button>
-          <button
-            type="button"
-            onClick={() => setSide(!side)}
-            aria-label={x.settings}
-            className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
-          >
-            <Icon d={I.sliders} />
-          </button>
-          <div className="mob:hidden">{langGroup()}</div>
+          {!only && (
+            <button
+              type="button"
+              onClick={() => setSide(!side)}
+              aria-label={x.settings}
+              className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
+            >
+              <Icon d={I.sliders} />
+            </button>
+          )}
+          {/* Phone: without the settings sheet, language and theme stay here. */}
+          <div className={only ? '' : 'mob:hidden'}>{langGroup()}</div>
           <button
             type="button"
             onClick={toggleTheme}
             aria-label={themeLabel}
             title={themeLabel}
-            className={`${iconBtn} mob:hidden size-9`}
+            className={`${iconBtn} ${only ? 'mob:size-11' : 'mob:hidden'} size-9`}
           >
             <Icon d={dark ? I.sun : I.moon} />
           </button>
@@ -688,37 +711,39 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                   <div
                     className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
                   >
-                    Lab 02
+                    {only ? pick(c.tag, es) : 'Lab 02'}
                   </div>
                   <h2 className="text-h2 mt-2 mb-0 leading-[1.05] font-medium tracking-[-0.04em]">
-                    {x.emptyTitle}
+                    {only ? pick(c.label, es) : x.emptyTitle}
                   </h2>
                   <p className="text-body mt-2 mb-0 max-w-[560px] text-sm leading-[1.55]">
-                    {x.emptyBody}
+                    {only ? pick(c.desc, es) : x.emptyBody}
                   </p>
-                  <div className="mt-[clamp(12px,3svh,24px)] grid grid-cols-[repeat(auto-fit,minmax(min(170px,100%),1fr))] gap-2">
-                    {CASES.map((k) => (
-                      <button
-                        key={k.id}
-                        type="button"
-                        onClick={() => pickCase(k)}
-                        className={`bg-panel text-ink hover:border-accent flex cursor-pointer flex-col items-start gap-1 border p-3 text-left transition-colors ${k.id === c.id ? 'border-accent' : 'border-line2'}`}
-                      >
-                        <span
-                          className={`${mono} text-accent text-[10px] tracking-[0.08em] uppercase`}
+                  {!only && (
+                    <div className="mt-[clamp(12px,3svh,24px)] grid grid-cols-[repeat(auto-fit,minmax(min(170px,100%),1fr))] gap-2">
+                      {CASES.map((k) => (
+                        <button
+                          key={k.id}
+                          type="button"
+                          onClick={() => pickCase(k)}
+                          className={`bg-panel text-ink hover:border-accent flex cursor-pointer flex-col items-start gap-1 border p-3 text-left transition-colors ${k.id === c.id ? 'border-accent' : 'border-line2'}`}
                         >
-                          {pick(k.tag, es)}
-                        </span>
-                        <span className="text-[13px] font-medium">
-                          {pick(k.label, es)}
-                        </span>
-                        <span className={`${mono} text-muted text-[10px]`}>
-                          {caseModel(k).short} · {caseTools(k).length}{' '}
-                          {x.toolsWord}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                          <span
+                            className={`${mono} text-accent text-[10px] tracking-[0.08em] uppercase`}
+                          >
+                            {pick(k.tag, es)}
+                          </span>
+                          <span className="text-[13px] font-medium">
+                            {pick(k.label, es)}
+                          </span>
+                          <span className={`${mono} text-muted text-[10px]`}>
+                            {caseModel(k).short} · {caseTools(k).length}{' '}
+                            {x.toolsWord}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               {session.items.map((m, i) => (
@@ -958,7 +983,7 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
           </div>
         </main>
 
-        {side && (
+        {side && !only && (
           <button
             type="button"
             aria-label={x.close}
@@ -966,161 +991,170 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
             className="bg-scrim narrow:block absolute inset-0 z-15 hidden cursor-pointer border-0 p-0"
           />
         )}
-        <aside
-          aria-label={x.settings}
-          className={`border-line bg-panel narrow:absolute narrow:inset-y-0 narrow:right-0 narrow:z-20 narrow:w-[min(360px,92vw)] narrow:shadow-[-24px_0_48px_rgba(0,0,0,.35)] mob:inset-x-0 mob:top-auto mob:max-h-[86%] mob:w-auto mob:border-t mob:border-l-0 flex w-[272px] shrink-0 flex-col border-l ${side ? '' : 'narrow:hidden'}`}
-        >
-          <div className="border-line mob:h-11 flex h-10 shrink-0 items-center justify-between border-b px-3.5">
-            <span className={label}>{x.settings}</span>
-            <button
-              type="button"
-              onClick={() => setSide(false)}
-              aria-label={x.close}
-              className="border-line2 text-ink narrow:grid hidden size-8 cursor-pointer place-items-center border bg-transparent"
-            >
-              ×
-            </button>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-            <div className="mob:flex hidden items-center justify-between gap-3">
-              {langGroup(true)}
+        {!only && (
+          <aside
+            aria-label={x.settings}
+            className={`border-line bg-panel narrow:absolute narrow:inset-y-0 narrow:right-0 narrow:z-20 narrow:w-[min(360px,92vw)] narrow:shadow-[-24px_0_48px_rgba(0,0,0,.35)] mob:inset-x-0 mob:top-auto mob:max-h-[86%] mob:w-auto mob:border-t mob:border-l-0 flex w-[272px] shrink-0 flex-col border-l ${side ? '' : 'narrow:hidden'}`}
+          >
+            <div className="border-line mob:h-11 flex h-10 shrink-0 items-center justify-between border-b px-3.5">
+              <span className={label}>{x.settings}</span>
               <button
                 type="button"
-                onClick={toggleTheme}
-                className={`${mono} border-line2 text-ink h-11 cursor-pointer border bg-transparent px-3.5 text-[11px] tracking-[0.06em] uppercase`}
+                onClick={() => setSide(false)}
+                aria-label={x.close}
+                className="border-line2 text-ink narrow:grid hidden size-8 cursor-pointer place-items-center border bg-transparent"
               >
-                {themeLabel}
+                ×
               </button>
             </div>
-            {/* Phone: the header has no room for these, so they live here. */}
-            <div className="mob:grid hidden grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => openInfo('video')}
-                className="border-accent text-accent inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm font-medium"
-              >
-                <Icon d={I.play} size={14} />
-                {x.watchDemo}
-              </button>
-              <button
-                type="button"
-                onClick={() => openInfo('build')}
-                className="border-line2 text-ink inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm"
-              >
-                <Icon d={I.diagram} size={16} />
-                <span className="truncate">{x.buildBtn}</span>
-              </button>
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+              <div className="mob:flex hidden items-center justify-between gap-3">
+                {langGroup(true)}
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className={`${mono} border-line2 text-ink h-11 cursor-pointer border bg-transparent px-3.5 text-[11px] tracking-[0.06em] uppercase`}
+                >
+                  {themeLabel}
+                </button>
+              </div>
+              {/* Phone: the header has no room for these, so they live here. */}
+              <div className="mob:grid hidden grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => openInfo('video')}
+                  className="border-accent text-accent inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm font-medium"
+                >
+                  <Icon d={I.play} size={14} />
+                  {x.watchDemo}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openInfo('build')}
+                  className="border-line2 text-ink inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm"
+                >
+                  <Icon d={I.diagram} size={16} />
+                  <span className="truncate">{x.buildBtn}</span>
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="jd-case" className={label}>
+                  {x.cases}
+                </label>
+                <select
+                  id="jd-case"
+                  value={c.id}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const k = CASES.find((v) => v.id === e.target.value);
+                    if (k) pickCase(k);
+                  }}
+                  className="border-line2 bg-bg text-ink mob:h-11 mob:text-sm h-8 w-full cursor-pointer border px-2 text-xs"
+                >
+                  {CASES.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {pick(k.label, es)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-body m-0 text-[11px] leading-[1.45]">
+                  {pick(c.desc, es)}
+                </p>
+              </div>
+
+              <div className="border-line flex flex-col gap-1.5 border-t pt-3">
+                <div className={label}>{x.setup}</div>
+                <dl className="border-line bg-line m-0 grid grid-cols-3 gap-px border">
+                  {[
+                    [x.model, model.short],
+                    [x.effort, c.effort],
+                    [x.maxTokens, c.maxTokens.toLocaleString()],
+                  ].map(([k, v]) => (
+                    <div key={k} className="bg-bg px-2 py-1.5">
+                      <dt
+                        className={`${mono} text-muted text-[9px] whitespace-nowrap`}
+                      >
+                        {k}
+                      </dt>
+                      <dd className="m-0 mt-0.5 text-[11px]">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="text-muted m-0 text-[11px]">{x.setupNote}</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className={`${label} flex justify-between`}>
+                  <span>{x.toolsTitle}</span>
+                  <span>
+                    {tools.length} {x.toolsWord}
+                  </span>
+                </div>
+                {tools.length === 0 ? (
+                  <p className="text-muted m-0 text-[11px]">{x.toolsSoon}</p>
+                ) : (
+                  <ul className="border-line2 m-0 flex list-none flex-col border p-0">
+                    {tools.map((t, i) => (
+                      <li
+                        key={t.name}
+                        className={`mob:min-h-11 flex items-center justify-between gap-2 px-2 py-1.5 ${i ? 'border-line2 border-t' : ''}`}
+                      >
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className={`${mono} text-[10px]`}>
+                            {t.name}
+                          </span>
+                          <span className="text-muted text-[10px] leading-[1.35]">
+                            {pick(t.desc, es)}
+                          </span>
+                        </span>
+                        <span
+                          className={`${mono} text-ok inline-flex shrink-0 items-center gap-1 text-[9px]`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="bg-ok size-[7px]"
+                          />
+                          {x.ready}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="jd-case" className={label}>
-                {x.cases}
-              </label>
-              <select
-                id="jd-case"
-                value={c.id}
-                disabled={busy}
-                onChange={(e) => {
-                  const k = CASES.find((v) => v.id === e.target.value);
-                  if (k) pickCase(k);
-                }}
-                className="border-line2 bg-bg text-ink mob:h-11 mob:text-sm h-8 w-full cursor-pointer border px-2 text-xs"
+            {/* Usage and clear stay pinned below the scrolling settings. */}
+            <div className="border-line bg-panel mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 flex-col gap-1.5 border-t px-3.5 py-3">
+              <div
+                className={`${label} flex justify-between tracking-[0.06em]`}
               >
-                {CASES.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {pick(k.label, es)}
-                  </option>
-                ))}
-              </select>
-              <p className="text-body m-0 text-[11px] leading-[1.45]">
-                {pick(c.desc, es)}
-              </p>
-            </div>
-
-            <div className="border-line flex flex-col gap-1.5 border-t pt-3">
-              <div className={label}>{x.setup}</div>
-              <dl className="border-line bg-line m-0 grid grid-cols-3 gap-px border">
+                <span>{x.usage}</span>
+                <span>{x.estimated}</span>
+              </div>
+              <div className="border-line bg-line grid grid-cols-3 gap-px border">
                 {[
-                  [x.model, model.short],
-                  [x.effort, c.effort],
-                  [x.maxTokens, c.maxTokens.toLocaleString()],
+                  ['IN', `${session.usage.input.toLocaleString()} tok`],
+                  ['OUT', `${session.usage.output.toLocaleString()} tok`],
+                  [x.cost, `$${session.usage.cost.toFixed(4)}`],
                 ].map(([k, v]) => (
                   <div key={k} className="bg-bg px-2 py-1.5">
-                    <dt
-                      className={`${mono} text-muted text-[9px] whitespace-nowrap`}
-                    >
-                      {k}
-                    </dt>
-                    <dd className="m-0 mt-0.5 text-[11px]">{v}</dd>
+                    <div className={`${mono} text-muted text-[9px]`}>{k}</div>
+                    <div className="mt-0.5 text-[11px]">{v}</div>
                   </div>
                 ))}
-              </dl>
-              <p className="text-muted m-0 text-[11px]">{x.setupNote}</p>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <div className={`${label} flex justify-between`}>
-                <span>{x.toolsTitle}</span>
-                <span>
-                  {tools.length} {x.toolsWord}
-                </span>
               </div>
-              {tools.length === 0 ? (
-                <p className="text-muted m-0 text-[11px]">{x.toolsSoon}</p>
-              ) : (
-                <ul className="border-line2 m-0 flex list-none flex-col border p-0">
-                  {tools.map((t, i) => (
-                    <li
-                      key={t.name}
-                      className={`mob:min-h-11 flex items-center justify-between gap-2 px-2 py-1.5 ${i ? 'border-line2 border-t' : ''}`}
-                    >
-                      <span className="flex min-w-0 flex-col gap-0.5">
-                        <span className={`${mono} text-[10px]`}>{t.name}</span>
-                        <span className="text-muted text-[10px] leading-[1.35]">
-                          {pick(t.desc, es)}
-                        </span>
-                      </span>
-                      <span
-                        className={`${mono} text-ok inline-flex shrink-0 items-center gap-1 text-[9px]`}
-                      >
-                        <span aria-hidden="true" className="bg-ok size-[7px]" />
-                        {x.ready}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setSession(c.id, emptySession())}
+                className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
+              >
+                {x.clear}
+              </button>
             </div>
-          </div>
-
-          {/* Usage and clear stay pinned below the scrolling settings. */}
-          <div className="border-line bg-panel mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 flex-col gap-1.5 border-t px-3.5 py-3">
-            <div className={`${label} flex justify-between tracking-[0.06em]`}>
-              <span>{x.usage}</span>
-              <span>{x.estimated}</span>
-            </div>
-            <div className="border-line bg-line grid grid-cols-3 gap-px border">
-              {[
-                ['IN', `${session.usage.input.toLocaleString()} tok`],
-                ['OUT', `${session.usage.output.toLocaleString()} tok`],
-                [x.cost, `$${session.usage.cost.toFixed(4)}`],
-              ].map(([k, v]) => (
-                <div key={k} className="bg-bg px-2 py-1.5">
-                  <div className={`${mono} text-muted text-[9px]`}>{k}</div>
-                  <div className="mt-0.5 text-[11px]">{v}</div>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setSession(c.id, emptySession())}
-              className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
-            >
-              {x.clear}
-            </button>
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
 
       {modal && (
