@@ -18,15 +18,13 @@ const icons = [
 ---
 
 <section id="leading" class="border-line border-t py-section">
-  <div class="flex flex-wrap gap-x-gutter gap-y-8">
-    <SectionHeading n="02" class="flex-[1_1_280px]">
-      {x.leadTitle}
-    </SectionHeading>
-    <p class="m-0 flex-[3_1_560px] text-lead leading-[1.45] font-light tracking-[-0.01em] text-pretty">
+  <div>
+    <SectionHeading n="02">{x.leadTitle}</SectionHeading>
+    <p class="mt-4 mb-0 max-w-[880px] text-lead leading-[1.45] font-light tracking-[-0.01em] text-pretty">
       {x.leadIntro}
     </p>
   </div>
-  <ol class="bg-line border-line m-0 mt-head grid list-none grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-px border p-0">
+  <ol class="bg-line border-line m-0 mt-[calc(var(--spacing-head)*1.4)] grid list-none grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-px border p-0">
     {cycle.map((p, i) => {
       const [num, label] = p.tag.split(' · ');
       return (
