@@ -431,32 +431,30 @@ function build(isEs: boolean) {
         },
       ];
 
+  // `icon` is the file name in src/assets/aws (resolved in Stack.astro).
   const awsIcons = [
-    ['bf2c663f4d7c124f4e5065c7632c3b95', 'Bedrock'],
-    ['62e7530510a493d35a3b94448f870617', 'AgentCore'],
-    ['201a432896dd4566945e797f0a32f06f', 'Nova'],
-    ['c7eed5241969faa36a5323ad3785fa3d', 'Transcribe'],
-    ['6f35d15c561a31af53fbbc6dfe8017dd', 'Textract'],
-    ['646d5fe3deae1ad841df31b0b1e89d98', 'Lambda'],
-    ['65ab489861a9fa04074b73d45b61c17c', 'EC2'],
-    ['7214beaaa4d1bf6a2ca1c2899f1a5be9', 'Step Functions'],
-    ['e15c4125232b28cfcf4cfe76f825f513', 'EventBridge'],
-    ['dd36bed31af5c0af1ee18ebc0bbea559', 'SQS'],
-    ['277ffec1e2e9f5896bcf9ce2372e9621', 'SNS'],
-    ['b794e983a8a12e6eaa7ce4c2420c6cac', 'API Gateway'],
-    ['c866b7ca53f8431fd1bde24c2d42c9b0', 'CloudFront'],
-    ['edd600fabba6746d21b3b816634053e8', 'WAF'],
-    ['282a3d0f3c1bd6809dab61c0b351992c', 'DynamoDB'],
-    ['3d7896c9de40d02e621b6dca73583ab0', 'Aurora'],
-    ['934bd988eaa3018469b0ecb0f2a8ea24', 'S3'],
-    ['1e00944b1cc0d53c41900f335a24f29b', 'Pinpoint'],
-    ['8a22e7c19e56342f0b98d47ffd5a1aab', 'Secrets Manager'],
-    ['5b7d1ea07bd845bb2cb408e42f0e22c5', 'CloudWatch'],
+    ['bedrock', 'Bedrock'],
+    ['agentcore', 'AgentCore'],
+    ['nova', 'Nova'],
+    ['transcribe', 'Transcribe'],
+    ['textract', 'Textract'],
+    ['lambda', 'Lambda'],
+    ['ec2', 'EC2'],
+    ['stepfunctions', 'Step Functions'],
+    ['eventbridge', 'EventBridge'],
+    ['sqs', 'SQS'],
+    ['sns', 'SNS'],
+    ['apigateway', 'API Gateway'],
+    ['cloudfront', 'CloudFront'],
+    ['waf', 'WAF'],
+    ['dynamodb', 'DynamoDB'],
+    ['aurora', 'Aurora'],
+    ['s3', 'S3'],
+    ['pinpoint', 'Pinpoint'],
+    ['secretsmanager', 'Secrets Manager'],
+    ['cloudwatch', 'CloudWatch'],
   ].map(function (a: string[]) {
-    return {
-      src: '/aws/' + a[1].toLowerCase().replace(/ /g, '-') + '.svg',
-      name: a[1],
-    };
+    return { icon: a[0], name: a[1] };
   });
 
   const domains = isEs

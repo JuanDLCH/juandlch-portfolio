@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "astro check",
-    "prepare": "husky"
+    "prepare": "husky",
+    "optimize:svg": "svgo -f src/assets -q --config svgo.config.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.2",
@@ -43,6 +44,7 @@
     "prettier": "^3.9.10",
     "prettier-plugin-astro": "^1.1.2",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "svgo": "^4.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1"
   },
