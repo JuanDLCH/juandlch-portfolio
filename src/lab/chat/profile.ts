@@ -120,8 +120,8 @@ const NOTES: Entry[] = [
     'AWS is his focus, not his limit: he works with whichever cloud or model provider a project requires (OpenAI, Anthropic, Amazon Nova, Google APIs among them).',
   ),
   notes(
-    'How he learns new technology',
-    'His path from full-stack ERP work to leading AI delivery came from picking up new stacks on real client projects. He learns by building: prototypes first, then production with evaluation and observability. Certifications (AWS, Anthropic) back the main areas.',
+    'Learning and new challenges',
+    'He is willing to learn new languages, frameworks, clouds and tools, and to take on challenges outside his current stack. His path from full-stack ERP work to leading AI delivery came from picking up new stacks on real client projects. He learns by building: prototypes first, then production with evaluation and observability. Certifications (AWS, Anthropic) back the main areas.',
   ),
   notes(
     'Contact',
