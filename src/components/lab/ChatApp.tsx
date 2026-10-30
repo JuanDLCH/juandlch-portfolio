@@ -294,7 +294,7 @@ export default function ChatApp() {
             type="button"
             aria-pressed={on}
             onClick={() => setLang(l)}
-            className={`${mono} ${big ? 'h-11 w-13' : 'h-9.5 w-10'} cursor-pointer border-0 p-0 text-[11px] ${i ? 'border-line2 border-l' : ''} ${on ? 'bg-ink text-bg' : 'text-ink bg-transparent'}`}
+            className={`${mono} ${big ? 'h-11 w-13' : 'h-9 w-9'} cursor-pointer border-0 p-0 text-[11px] ${i ? 'border-line2 border-l' : ''} ${on ? 'bg-ink text-bg' : 'text-ink bg-transparent'}`}
           >
             {l.toUpperCase()}
           </button>
@@ -308,12 +308,12 @@ export default function ChatApp() {
       lang={es ? 'es' : 'en'}
       className="bg-bg text-ink relative flex h-dvh flex-col overflow-hidden"
     >
-      <header className="border-line mob:h-14 mob:gap-2 mob:px-2.5 flex h-16 shrink-0 items-center justify-between gap-3 border-b px-4">
+      <header className="border-line mob:h-14 mob:gap-2 mob:px-2.5 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4">
         <div className="flex min-w-0 items-center gap-3.5">
           <a
             href="/#lab"
             aria-label={x.backLabel}
-            className={`${mono} border-line2 hover:border-accent mob:size-11 mob:justify-center mob:p-0 mob:text-base inline-flex h-10 shrink-0 items-center gap-2 border px-3.5 text-xs tracking-[0.06em] uppercase no-underline transition-colors`}
+            className={`${mono} border-line2 hover:border-accent mob:size-11 mob:justify-center mob:p-0 mob:text-base inline-flex h-9 shrink-0 items-center gap-2 border px-3 text-[11px] tracking-[0.06em] uppercase no-underline transition-colors`}
           >
             <span aria-hidden="true">←</span>
             <span className="mob:hidden">{x.back}</span>
@@ -323,7 +323,7 @@ export default function ChatApp() {
             className="bg-line2 narrow:hidden h-6 w-px"
           />
           <div className="mob:hidden flex min-w-0 items-baseline gap-2.5">
-            <h1 className="m-0 text-lg font-medium tracking-[-0.02em] whitespace-nowrap">
+            <h1 className="m-0 text-base font-medium tracking-[-0.02em] whitespace-nowrap">
               {x.title}
             </h1>
             <span className={`${label} narrow:hidden text-[11px]`}>
@@ -366,7 +366,7 @@ export default function ChatApp() {
           <button
             type="button"
             onClick={openKeys}
-            className={`${mono} border-line2 text-ink hover:border-accent narrow:hidden inline-flex h-10 cursor-pointer items-center gap-3 border bg-transparent px-3.5 text-[11px] tracking-[0.04em] transition-colors`}
+            className={`${mono} border-line2 text-ink hover:border-accent narrow:hidden inline-flex h-9 cursor-pointer items-center gap-3 border bg-transparent px-3 text-[10px] tracking-[0.04em] transition-colors`}
           >
             <span className="inline-flex items-center gap-1.5">
               <span
@@ -406,7 +406,7 @@ export default function ChatApp() {
             onClick={toggleTheme}
             aria-label={themeLabel}
             title={themeLabel}
-            className={`${iconBtn} mob:hidden size-10`}
+            className={`${iconBtn} mob:hidden size-9`}
           >
             <Icon d={dark ? I.sun : I.moon} />
           </button>
@@ -417,7 +417,7 @@ export default function ChatApp() {
         <main className="dots flex min-w-0 flex-1 flex-col">
           {!ready && (
             <div className="flex shrink-0 justify-center px-4 pt-3">
-              <div className="border-line2 bg-panel mob:text-[13px] flex w-full max-w-[780px] flex-wrap items-center justify-between gap-2.5 border border-dashed px-3.5 py-2.5 text-sm">
+              <div className="border-line2 bg-panel flex w-full max-w-[780px] flex-wrap items-center justify-between gap-2.5 border border-dashed px-3 py-2 text-[13px]">
                 <span className="text-body flex items-center gap-2.5">
                   <span
                     aria-hidden="true"
@@ -428,7 +428,7 @@ export default function ChatApp() {
                 <button
                   type="button"
                   onClick={openKeys}
-                  className={`${mono} border-accent text-accent h-[34px] cursor-pointer border bg-transparent px-3 text-[11px] tracking-[0.06em] uppercase`}
+                  className={`${mono} border-accent text-accent h-8 cursor-pointer border bg-transparent px-3 text-[10px] tracking-[0.06em] uppercase`}
                 >
                   {x.addKeys}
                 </button>
@@ -441,36 +441,36 @@ export default function ChatApp() {
             role="log"
             aria-live="polite"
             aria-label={x.conversation}
-            className="mob:px-3 mob:py-4 min-h-0 flex-1 overflow-y-auto px-4 py-6"
+            className="mob:px-3 min-h-0 flex-1 overflow-y-auto px-4 py-[clamp(12px,3svh,24px)]"
           >
-            <div className="mx-auto flex max-w-[780px] flex-col gap-[18px]">
+            <div className="mx-auto flex max-w-[780px] flex-col gap-4">
               {session.items.length === 0 && (
-                <div className="pt-12 pb-2">
+                <div className="pt-[clamp(4px,3svh,32px)] pb-2">
                   <div
                     className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
                   >
                     Lab 02
                   </div>
-                  <h2 className="mob:text-[28px] mt-3 mb-0 text-[34px] leading-[1.05] font-medium tracking-[-0.04em]">
+                  <h2 className="text-h2 mt-2 mb-0 leading-[1.05] font-medium tracking-[-0.04em]">
                     {x.emptyTitle}
                   </h2>
-                  <p className="text-body mt-3 mb-0 max-w-[520px] text-base leading-[1.55]">
+                  <p className="text-body mt-2 mb-0 max-w-[560px] text-sm leading-[1.55]">
                     {x.emptyBody}
                   </p>
-                  <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(220px,100%),1fr))] gap-2">
+                  <div className="mt-[clamp(12px,3svh,24px)] grid grid-cols-[repeat(auto-fit,minmax(min(170px,100%),1fr))] gap-2">
                     {CASES.map((k) => (
                       <button
                         key={k.id}
                         type="button"
                         onClick={() => pickCase(k)}
-                        className={`bg-panel text-ink hover:border-accent flex cursor-pointer flex-col items-start gap-1.5 border p-3.5 text-left transition-colors ${k.id === c.id ? 'border-accent' : 'border-line2'}`}
+                        className={`bg-panel text-ink hover:border-accent flex cursor-pointer flex-col items-start gap-1 border p-3 text-left transition-colors ${k.id === c.id ? 'border-accent' : 'border-line2'}`}
                       >
                         <span
                           className={`${mono} text-accent text-[10px] tracking-[0.08em] uppercase`}
                         >
                           {pick(k.tag, es)}
                         </span>
-                        <span className="text-sm font-medium">
+                        <span className="text-[13px] font-medium">
                           {pick(k.label, es)}
                         </span>
                         <span className={`${mono} text-muted text-[10px]`}>
@@ -502,7 +502,7 @@ export default function ChatApp() {
             </div>
           </div>
 
-          <div className="mob:px-2.5 mob:pb-[calc(10px+env(safe-area-inset-bottom))] shrink-0 px-4 pb-3.5">
+          <div className="mob:px-2.5 mob:pb-[calc(10px+env(safe-area-inset-bottom))] shrink-0 px-4 pb-3">
             <div className="mx-auto max-w-[780px]">
               <input
                 ref={fileRef}
@@ -581,9 +581,9 @@ export default function ChatApp() {
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={onKeyDown}
                       placeholder={x.placeholder}
-                      className="text-ink placeholder:text-muted mob:min-h-11 mob:text-base block [field-sizing:content] max-h-[9em] min-h-[3.6em] w-full resize-none border-0 bg-transparent px-3.5 pt-3.5 pb-1.5 text-[15px] leading-normal focus:outline-none"
+                      className="text-ink placeholder:text-muted mob:min-h-11 mob:text-base block [field-sizing:content] max-h-[8em] min-h-[2.6em] w-full resize-none border-0 bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal focus:outline-none"
                     />
-                    <div className="flex items-center justify-between gap-2 px-2 pt-1.5 pb-2">
+                    <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5">
                       <div className="flex gap-1">
                         <button
                           type="button"
@@ -654,9 +654,9 @@ export default function ChatApp() {
         )}
         <aside
           aria-label={x.settings}
-          className={`border-line bg-panel narrow:absolute narrow:inset-y-0 narrow:right-0 narrow:z-20 narrow:w-[min(360px,92vw)] narrow:shadow-[-24px_0_48px_rgba(0,0,0,.35)] mob:inset-x-0 mob:top-auto mob:max-h-[86%] mob:w-auto mob:border-t mob:border-l-0 flex w-[340px] shrink-0 flex-col border-l ${side ? '' : 'narrow:hidden'}`}
+          className={`border-line bg-panel narrow:absolute narrow:inset-y-0 narrow:right-0 narrow:z-20 narrow:w-[min(360px,92vw)] narrow:shadow-[-24px_0_48px_rgba(0,0,0,.35)] mob:inset-x-0 mob:top-auto mob:max-h-[86%] mob:w-auto mob:border-t mob:border-l-0 flex w-[300px] shrink-0 flex-col border-l ${side ? '' : 'narrow:hidden'}`}
         >
-          <div className="border-line flex h-12 shrink-0 items-center justify-between border-b px-[18px]">
+          <div className="border-line flex h-11 shrink-0 items-center justify-between border-b px-4">
             <span className={`${label} text-[11px]`}>{x.settings}</span>
             <button
               type="button"
@@ -667,7 +667,7 @@ export default function ChatApp() {
               ×
             </button>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-[18px] py-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 py-3">
             <div className="mob:flex hidden items-center justify-between gap-3">
               {langGroup(true)}
               <button
@@ -691,7 +691,7 @@ export default function ChatApp() {
                   const k = CASES.find((v) => v.id === e.target.value);
                   if (k) pickCase(k);
                 }}
-                className="border-line2 bg-bg text-ink h-10 w-full cursor-pointer border px-3 text-sm"
+                className="border-line2 bg-bg text-ink h-9 w-full cursor-pointer border px-2.5 text-[13px]"
               >
                 {CASES.map((k) => (
                   <option key={k.id} value={k.id}>
@@ -699,12 +699,12 @@ export default function ChatApp() {
                   </option>
                 ))}
               </select>
-              <p className="text-body m-0 text-[13px] leading-normal">
+              <p className="text-body m-0 text-xs leading-normal">
                 {pick(c.desc, es)}
               </p>
             </div>
 
-            <div className="border-line flex flex-col gap-2 border-t pt-4">
+            <div className="border-line flex flex-col gap-2 border-t pt-3">
               <div className={label}>{x.setup}</div>
               <dl className="border-line bg-line m-0 grid grid-cols-3 gap-px border">
                 {[
@@ -714,7 +714,7 @@ export default function ChatApp() {
                 ].map(([k, v]) => (
                   <div key={k} className="bg-bg p-2">
                     <dt className={`${mono} text-muted text-[10px]`}>{k}</dt>
-                    <dd className="m-0 mt-0.5 text-[13px]">{v}</dd>
+                    <dd className="m-0 mt-0.5 text-xs">{v}</dd>
                   </div>
                 ))}
               </dl>
@@ -732,11 +732,11 @@ export default function ChatApp() {
                 {c.tools.map((t, i) => (
                   <li
                     key={t.name}
-                    className={`flex min-h-[52px] items-center justify-between gap-2.5 px-3 py-2 ${i ? 'border-line2 border-t' : ''}`}
+                    className={`flex min-h-11 items-center justify-between gap-2.5 px-2.5 py-1.5 ${i ? 'border-line2 border-t' : ''}`}
                   >
                     <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className={`${mono} text-xs`}>{t.name}</span>
-                      <span className="text-muted text-xs">
+                      <span className={`${mono} text-[11px]`}>{t.name}</span>
+                      <span className="text-muted text-[11px]">
                         {pick(t.desc, es)}
                       </span>
                     </span>
@@ -766,7 +766,7 @@ export default function ChatApp() {
                 ].map(([k, v]) => (
                   <div key={k} className="bg-bg p-2">
                     <div className={`${mono} text-muted text-[10px]`}>{k}</div>
-                    <div className="mt-0.5 text-sm">{v}</div>
+                    <div className="mt-0.5 text-xs">{v}</div>
                   </div>
                 ))}
               </div>
@@ -774,7 +774,7 @@ export default function ChatApp() {
                 type="button"
                 disabled={busy}
                 onClick={() => setSession(c.id, emptySession())}
-                className={`${mono} border-line2 text-ink hover:border-accent h-9 cursor-pointer border bg-transparent text-[11px] tracking-[0.06em] uppercase transition-colors`}
+                className={`${mono} border-line2 text-ink hover:border-accent h-8 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
               >
                 {x.clear}
               </button>
@@ -953,7 +953,7 @@ function Message({ m }: { m: ChatItem }) {
           </span>
         ))}
         {m.text && (
-          <div className="bg-panel border-line2 border px-3.5 py-[11px] text-[15px] leading-[1.55] whitespace-pre-wrap">
+          <div className="bg-panel border-line2 border px-3 py-2 text-sm leading-[1.55] whitespace-pre-wrap">
             {m.text}
           </div>
         )}
@@ -997,7 +997,7 @@ function Message({ m }: { m: ChatItem }) {
   }
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2">
-      <div className="border-accent border-l-2 py-0.5 pl-3.5 text-[15px] leading-[1.6] whitespace-pre-wrap">
+      <div className="border-accent border-l-2 py-0.5 pl-3 text-sm leading-[1.6] whitespace-pre-wrap">
         {m.text}
         {m.streaming && (
           <span
