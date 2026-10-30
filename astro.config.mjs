@@ -11,5 +11,7 @@ export default defineConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    // Keep small images as separate files so loading="lazy" actually defers them.
+    build: { assetsInlineLimit: 0 },
   },
 });
