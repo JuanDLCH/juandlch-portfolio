@@ -143,6 +143,12 @@
   a:hover .jd-arrow {
     transform: translateX(4px);
   }
+  /* Sentence-case label for tags that are read as text, not data. */
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
   .jd-aws img {
     transition: transform 0.25s ease;
   }

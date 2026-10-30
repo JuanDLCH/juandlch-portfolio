@@ -13,18 +13,17 @@ const { x } = Astro.props;
 const fmt = new Intl.DateTimeFormat(x.locale, { dateStyle: 'medium' });
 const certs = [
   {
+    name: 'AWS Certified AI Practitioner — Early Adopter',
+    meta: 'Amazon Web Services · 2024',
+    href: 'https://www.credly.com/badges/01204e88-1b1e-48ca-a90d-3e52f5592e64/public_url',
+    badge: awsEarly,
+  },
+  {
     name: 'AWS Certified AI Practitioner',
     meta: 'Amazon Web Services · 2024',
     expires: new Date(2027, 8, 23),
     href: 'https://www.credly.com/badges/8fae51ff-40de-4bbc-aae7-3025afe5bd88/public_url',
     badge: awsAi,
-  },
-  {
-    name: 'AWS Certified AI Practitioner — Early Adopter',
-    meta: 'Amazon Web Services · 2024',
-
-    href: 'https://www.credly.com/badges/01204e88-1b1e-48ca-a90d-3e52f5592e64/public_url',
-    badge: awsEarly,
   },
   {
     name: 'Claude Certified Architect – Foundations',

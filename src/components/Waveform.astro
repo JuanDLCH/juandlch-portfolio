@@ -30,7 +30,8 @@ const bars = Array.from({ length: count }, (_, i) => {
   return {
     pct: (Math.max(4, Math.round(64 * env * wob)) / 64) * 100,
     color: 'var(--accent)',
-    anim: `jd-wave ${(0.8 + (i % 4) * 0.15).toFixed(2)}s ease-in-out ${(-(i % 6) * 0.11).toFixed(2)}s infinite alternate`,
+    // Only the hero waveform animates; the Lab preview stays still.
+    anim: 'none',
   };
 });
 ---
