@@ -1583,20 +1583,19 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
 const LINK =
   /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 type OnCv = (focus: string, ids: string[]) => void;
-function Linked({
-  text,
-  onCv,
-  cvLabel,
-}: {
-  text: string;
-  onCv: OnCv;
-  cvLabel: string;
-}) {
-  const matches = [...text.matchAll(LINK)];
-  const cvIds = matches.flatMap((m) => {
+/** CV items cited anywhere in the text, so the viewer highlights them all. */
+const citedCv = (text: string) =>
+  [...text.matchAll(LINK)].flatMap((m) => {
     const id = cvLinkId(m[2] ?? m[3]);
     return id ? [id] : [];
   });
+interface LinkCtx {
+  onCv: OnCv;
+  cvLabel: string;
+  cvIds: string[];
+}
+function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
+  const matches = [...text.matchAll(LINK)];
   const out: (string | React.JSX.Element)[] = [];
   let last = 0;
   for (const match of matches) {
@@ -1697,6 +1696,104 @@ function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
       )}
     </div>
   );
+}
+
+// Inline Markdown: **bold**, *italic*, `code`, then links in plain runs.
+// Built as React nodes, never as HTML, so model output can't inject markup.
+const INLINE =
+  /\*\*(.+?)\*\*|`([^`\n]+)`|(?<![\w*])\*(?![\s*])([^*\n]+?)\*(?![\w*])/g;
+function Inline({ text, ctx }: { text: string; ctx: LinkCtx }) {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(INLINE)) {
+    const i = m.index;
+    if (i > last)
+      out.push(<Linked key={`t${i}`} text={text.slice(last, i)} {...ctx} />);
+    out.push(
+      m[1] !== undefined ? (
+        <strong key={i} className="text-ink font-semibold">
+          <Inline text={m[1]} ctx={ctx} />
+        </strong>
+      ) : m[2] !== undefined ? (
+        <code
+          key={i}
+          className="bg-panel border-line2 border px-1 font-mono text-[12px]"
+        >
+          {m[2]}
+        </code>
+      ) : (
+        <em key={i}>
+          <Inline text={m[3]} ctx={ctx} />
+        </em>
+      ),
+    );
+    last = i + m[0].length;
+  }
+  out.push(<Linked key="end" text={text.slice(last)} {...ctx} />);
+  return out;
+}
+
+// Block Markdown: paragraphs, bullet and numbered lists, headings. `tail`
+// (the streaming cursor) is drawn at the end of the last block.
+type Block =
+  { kind: 'p' | 'h'; lines: string[] } | { kind: 'ul' | 'ol'; lines: string[] };
+function Markdown({
+  text,
+  ctx,
+  tail,
+}: {
+  text: string;
+  ctx: LinkCtx;
+  tail?: React.ReactNode;
+}) {
+  const blocks: Block[] = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.trimEnd();
+    const bullet = /^\s*[-*•]\s+(.*)$/.exec(line);
+    const num = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+    const head = /^#{1,4}\s+(.*)$/.exec(line);
+    const kind = bullet ? 'ul' : num ? 'ol' : head ? 'h' : line ? 'p' : null;
+    const content = (bullet ?? num ?? head)?.[1] ?? line;
+    const prev = blocks.at(-1);
+    if (!kind) blocks.push({ kind: 'p', lines: [] });
+    else if (prev && prev.kind === kind && kind !== 'h')
+      prev.lines.push(content);
+    else blocks.push({ kind, lines: [content] });
+  }
+  const shown = blocks.filter((b) => b.lines.length);
+  return shown.map((b, k) => {
+    const end = k === shown.length - 1 ? tail : null;
+    if (b.kind === 'ul' || b.kind === 'ol') {
+      const List = b.kind;
+      return (
+        <List
+          key={k}
+          className={`m-0 flex flex-col gap-0.5 pl-5 ${b.kind === 'ul' ? 'list-disc' : 'list-decimal'}`}
+        >
+          {b.lines.map((l, j) => (
+            <li key={j}>
+              <Inline text={l} ctx={ctx} />
+              {j === b.lines.length - 1 && end}
+            </li>
+          ))}
+        </List>
+      );
+    }
+    return (
+      <p
+        key={k}
+        className={`m-0 ${b.kind === 'h' ? 'text-ink font-semibold' : ''}`}
+      >
+        {b.lines.map((l, j) => (
+          <Fragment key={j}>
+            {j > 0 && <br />}
+            <Inline text={l} ctx={ctx} />
+          </Fragment>
+        ))}
+        {end}
+      </p>
+    );
+  });
 }
 
 // The answer's closing sources line ("Sources:", "Fuentes:"… one word and a
@@ -1820,20 +1917,26 @@ function Message({
 
   if (m.kind === 'notice') return null;
   const { body, sources } = splitSources(m.text);
+  const ctx = { onCv, cvLabel, cvIds: citedCv(m.text) };
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1">
-      <div className="border-accent border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] break-words whitespace-pre-wrap">
-        <Linked text={body} onCv={onCv} cvLabel={cvLabel} />
+      <div className="border-accent flex flex-col gap-1.5 border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] break-words">
+        <Markdown
+          text={body}
+          ctx={ctx}
+          tail={
+            m.streaming && (
+              <span
+                aria-hidden="true"
+                className="jd-blink bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"
+              />
+            )
+          }
+        />
         {sources && (
-          <span className="text-muted mt-1.5 block text-[11px] leading-normal">
-            <Linked text={sources} onCv={onCv} cvLabel={cvLabel} />
+          <span className="text-muted text-[11px] leading-normal">
+            <Inline text={sources} ctx={ctx} />
           </span>
-        )}
-        {m.streaming && (
-          <span
-            aria-hidden="true"
-            className="jd-blink bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"
-          />
         )}
       </div>
       <div className={`${mono} text-muted pl-4 text-[10px] tracking-[0.04em]`}>
