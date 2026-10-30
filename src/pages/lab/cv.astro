@@ -1,0 +1,16 @@
+---
+import ChatApp from '../../components/lab/ChatApp';
+import Layout from '../../layouts/Layout.astro';
+
+// Dev only: the OpenAI key from .env (see lab/chat.astro).
+const devKey: string | undefined = import.meta.env.DEV
+  ? import.meta.env.OPENAI_API_KEY
+  : undefined;
+---
+
+<Layout
+  title="Chat with my CV — Juan Diego Londoño"
+  description="Ask an AI grounded in Juan Diego's CV, case studies and portfolio about his experience, projects and stack. Runs on your own API key."
+>
+  <ChatApp client:load devKey={devKey} only="meet" />
+</Layout>
