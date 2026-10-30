@@ -1,7 +1,11 @@
 @import 'tailwindcss';
 
+/* Layout switches to the phone design at 720px and below (see the Landing · 390 px board). */
+@custom-variant mob (@media (max-width: 720px));
+@custom-variant desk (@media (min-width: 721px));
+
 :root {
-  --header-h: 96px;
+  --header-h: 60px;
   --bg: #f1f4f8;
   --panel: #ffffff;
   --line: #d8e0ea;
@@ -110,6 +114,18 @@
 }
 
 @layer components {
+  /* Full-screen mobile menu (native <dialog>). */
+  .jd-menu {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 80px 80px;
+    color: var(--ink);
+  }
+  .jd-menu::backdrop {
+    background: transparent;
+  }
   .dots {
     background-image: radial-gradient(var(--dots) 1px, transparent 1px);
     background-size: 16px 16px;
@@ -222,8 +238,9 @@
   }
 }
 
-@media (min-width: 40rem) {
+/* Phone layout: smaller card titles (tokens feed the text-h3 utility). */
+@media (max-width: 720px) {
   :root {
-    --header-h: 56px;
+    --text-h3: 16px;
   }
 }

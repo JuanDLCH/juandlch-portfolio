@@ -44,9 +44,9 @@ const { x, cases } = Astro.props;
           </span>
         </summary>
         <div class="border-line2 flex flex-wrap border-t">
-          <figure class="bg-bg dots border-line2 relative m-0 min-w-0 flex-[1_1_400px] border-r p-card">
-            <CornerMarks only={['tl']} offset="10px" size="14px" />
-            <CornerMarks only={['br']} offset="10px" size="14px" />
+          <figure class="bg-bg dots border-line2 relative m-0 min-w-0 flex-[1_1_400px] border-r p-card mob:border-r-0 mob:border-b">
+            <CornerMarks only={['tl']} size="14px" />
+            <CornerMarks only={['br']} size="14px" />
             <div class="mono text-muted flex justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
               <span>
                 <T v={c.figTag} />
