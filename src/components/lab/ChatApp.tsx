@@ -165,7 +165,13 @@ const initials = (s: string) =>
     .map((w) => w[0].toUpperCase())
     .join('');
 
-export default function ChatApp() {
+export default function ChatApp({ devKey }: { devKey?: string }) {
+  // Dev only (see lab/chat.astro): start with the .env key unless one is set.
+  useEffect(() => {
+    if (devKey && !$keys.get().openai)
+      $keys.set({ ...$keys.get(), openai: devKey });
+  }, [devKey]);
+
   const { es, dark } = useHtml();
   const phone = usePhone();
   const x = es ? CHAT.es : CHAT.en;
