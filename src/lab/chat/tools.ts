@@ -236,18 +236,12 @@ export const PROFILE_SECTIONS = [
 ] as const;
 export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
 
-// Sources become absolute URLs: the chat only links http(s) URLs.
+// `group` labels the tool card ("CV · Experience"); `source` is what the
+// model cites.
 const loadProfile = async () =>
   (await import('./profile')).PROFILE.map((e) => ({
-    section: e.section,
-    title: e.title,
-    text: e.text,
-    source: {
-      label: e.source.label,
-      ...(e.source.href
-        ? { url: new URL(e.source.href, location.origin).href }
-        : {}),
-    },
+    ...e,
+    group: e.group ?? e.source.label,
   }));
 
 // Lowercase, accents removed, split into words.
@@ -282,12 +276,10 @@ const getProfileSection: ClientTool = {
     entries: (await loadProfile()).filter((e) => e.section === i.section),
   }),
   summary: (r) => {
-    const labels = new Set(
-      (r as { entries: { source: { label: string } }[] }).entries.map(
-        (e) => e.source.label,
-      ),
+    const groups = new Set(
+      (r as { entries: { group: string }[] }).entries.map((e) => e.group),
     );
-    return [...labels].join(', ');
+    return [...groups].join(', ');
   },
 };
 
@@ -314,7 +306,7 @@ const searchProfile: ClientTool = {
   run: async (i) => {
     const q = words(String(i.query));
     const scored = (await loadProfile()).map((e) => {
-      const title = words(e.title);
+      const title = words(`${e.group} ${e.title}`);
       const body = words(e.text);
       // Title hits weigh more; prefixes match ("agent" finds "agents").
       const score = q.reduce(

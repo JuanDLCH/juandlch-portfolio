@@ -22,6 +22,8 @@ import {
   type Provider,
 } from '../../lab/chat/cases';
 import { runTurn } from '../../lab/chat/turn';
+import { cvLinkId, cvPdf } from '../../lab/chat/cv';
+import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
   $busy,
@@ -187,6 +189,9 @@ export default function ChatApp() {
   // "Watch demo" and "How I'd build it" dialogs, each with its own case pick.
   const [info, setInfo] = useState<'video' | 'build' | null>(null);
   const [infoCase, setInfoCase] = useState(CASES[0].id);
+  // CV viewer opened from a citation: the answer's cited items and the one
+  // clicked.
+  const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   // Key input the keys dialog focuses when it opens.
   const [keyFocus, setKeyFocus] = useState<'anthropic' | 'openai'>('anthropic');
@@ -197,11 +202,20 @@ export default function ChatApp() {
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const dialog = modal ? 'keys' : info ? info : switchTo ? 'switch' : null;
+  const dialog = modal
+    ? 'keys'
+    : info
+      ? info
+      : cv
+        ? 'cv'
+        : switchTo
+          ? 'switch'
+          : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
     setInfo(null);
+    setCv(null);
     setSwitchTo(null);
   };
 
@@ -228,6 +242,7 @@ export default function ChatApp() {
       if (e.key === 'Escape') {
         setModal(false);
         setInfo(null);
+        setCv(null);
         setSwitchTo(null);
         return;
       }
@@ -696,7 +711,12 @@ export default function ChatApp() {
                     onFix={fix}
                   />
                 ) : (
-                  <Message key={i} m={m} />
+                  <Message
+                    key={i}
+                    m={m}
+                    onCv={(focus, ids) => setCv({ focus, ids })}
+                    cvLabel={x.cvOpen}
+                  />
                 ),
               )}
               {busy &&
@@ -1286,6 +1306,79 @@ export default function ChatApp() {
         </div>
       )}
 
+      {cv && (
+        <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={x.close}
+            onClick={() => setCv(null)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jd-cv-title"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[760px] flex-col border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 mob:pt-5 flex min-h-0 flex-1 flex-col px-7 pt-6 pb-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
+                <div>
+                  <div
+                    className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                  >
+                    {x.cvTag}
+                  </div>
+                  <h2
+                    id="jd-cv-title"
+                    className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+                  >
+                    {x.cvTitle}
+                  </h2>
+                  <p className="text-muted m-0 mt-1 text-[13px]">{x.cvNote}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCv(null)}
+                  aria-label={x.close}
+                  className={`${iconBtn} size-9 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                <CvViewer ids={cv.ids} focus={cv.focus} />
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end gap-2 border-t px-7 py-3">
+              <button
+                type="button"
+                onClick={() => setCv(null)}
+                className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {x.close}
+              </button>
+              <a
+                href={cvPdf}
+                download
+                className="bg-accent text-on-accent mob:h-11 inline-flex h-10 items-center px-4 text-sm font-semibold no-underline"
+              >
+                {x.cvDownload}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {info &&
         (() => {
           const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
@@ -1447,22 +1540,48 @@ export default function ChatApp() {
 }
 
 // Markdown links and bare URLs in an answer become real links, so cited
-// sources can be opened.
+// sources can be opened. CV citations open the CV viewer on the cited items.
 const LINK =
   /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
-function Linked({ text }: { text: string }) {
+type OnCv = (focus: string, ids: string[]) => void;
+function Linked({
+  text,
+  onCv,
+  cvLabel,
+}: {
+  text: string;
+  onCv: OnCv;
+  cvLabel: string;
+}) {
+  const matches = [...text.matchAll(LINK)];
+  const cvIds = matches.flatMap((m) => {
+    const id = cvLinkId(m[2] ?? m[3]);
+    return id ? [id] : [];
+  });
   const out: (string | React.JSX.Element)[] = [];
   let last = 0;
-  for (const match of text.matchAll(LINK)) {
+  for (const match of matches) {
     const i = match.index;
     if (i > last) out.push(text.slice(last, i));
     const href = match[2] ?? match[3];
+    const cvId = cvLinkId(href);
     out.push(
       <a
         key={i}
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        title={cvId ? cvLabel : undefined}
+        onClick={
+          cvId
+            ? (e) => {
+                // Modified clicks still open the PDF itself.
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+                e.preventDefault();
+                onCv(cvId, cvIds);
+              }
+            : undefined
+        }
         className="text-accent underline underline-offset-2"
       >
         {match[1] ?? href}
@@ -1474,7 +1593,15 @@ function Linked({ text }: { text: string }) {
   return out;
 }
 
-function Message({ m }: { m: ChatItem }) {
+function Message({
+  m,
+  onCv,
+  cvLabel,
+}: {
+  m: ChatItem;
+  onCv: OnCv;
+  cvLabel: string;
+}) {
   if (m.kind === 'user') {
     return (
       <div className="mob:max-w-[85%] flex max-w-[80%] flex-col items-end gap-1.5 self-end">
@@ -1526,7 +1653,7 @@ function Message({ m }: { m: ChatItem }) {
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2">
       <div className="border-accent border-l-2 py-0.5 pl-3 text-sm leading-[1.6] break-words whitespace-pre-wrap">
-        <Linked text={m.text} />
+        <Linked text={m.text} onCv={onCv} cvLabel={cvLabel} />
         {m.streaming && (
           <span
             aria-hidden="true"
