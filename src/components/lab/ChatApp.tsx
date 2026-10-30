@@ -823,7 +823,7 @@ export default function ChatApp() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="jd-modal-title"
-            className="bg-panel border-line2 mob:h-full mob:max-w-none mob:border-0 relative w-full max-w-[520px] border"
+            className="bg-panel border-line2 mob:h-full mob:max-h-full mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[520px] flex-col border"
           >
             <span
               aria-hidden="true"
@@ -833,7 +833,7 @@ export default function ChatApp() {
               aria-hidden="true"
               className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
             />
-            <div className="mob:h-full mob:max-h-full mob:px-4 mob:py-5 max-h-[calc(100dvh-34px)] overflow-y-auto p-7">
+            <div className="mob:px-4 mob:py-5 min-h-0 flex-1 overflow-y-auto px-7 pt-7 pb-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div
@@ -931,39 +931,40 @@ export default function ChatApp() {
               <p className="text-muted mt-3 mb-0 text-xs leading-normal">
                 {x.billing}
               </p>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-2.5">
+            </div>
+            {/* Actions stay pinned below the scrolling body. */}
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] mob:flex-col mob:items-stretch mob:gap-2 flex shrink-0 flex-wrap items-center justify-between gap-2.5 border-t px-7 py-3.5">
+              <button
+                type="button"
+                onClick={() => {
+                  $keys.set({ anthropic: '', openai: '' });
+                  setKeyDrafts({ anthropic: '', openai: '' });
+                }}
+                className={`${mono} border-line2 text-muted mob:h-11 h-10 cursor-pointer border bg-transparent px-3.5 text-[11px] tracking-[0.06em] uppercase`}
+              >
+                {x.forget}
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModal(false)}
+                  className="border-line2 text-ink mob:h-11 mob:flex-1 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+                >
+                  {x.cancel}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
-                    $keys.set({ anthropic: '', openai: '' });
-                    setKeyDrafts({ anthropic: '', openai: '' });
+                    $keys.set({
+                      anthropic: keyDrafts.anthropic.trim(),
+                      openai: keyDrafts.openai.trim(),
+                    });
+                    setModal(false);
                   }}
-                  className={`${mono} border-line2 text-muted h-10 cursor-pointer border bg-transparent px-3.5 text-[11px] tracking-[0.06em] uppercase`}
+                  className="bg-accent text-on-accent mob:h-11 mob:flex-[2] h-10 cursor-pointer border-0 px-4 text-sm font-semibold"
                 >
-                  {x.forget}
+                  {x.useKeys}
                 </button>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setModal(false)}
-                    className="border-line2 text-ink h-10 cursor-pointer border bg-transparent px-4 text-sm"
-                  >
-                    {x.cancel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      $keys.set({
-                        anthropic: keyDrafts.anthropic.trim(),
-                        openai: keyDrafts.openai.trim(),
-                      });
-                      setModal(false);
-                    }}
-                    className="bg-accent text-on-accent h-10 cursor-pointer border-0 px-4 text-sm font-semibold"
-                  >
-                    {x.useKeys}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
