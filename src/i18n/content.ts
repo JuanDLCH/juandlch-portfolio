@@ -70,15 +70,16 @@ const EN = {
   labA: 'Don’t take my word for it. ',
   labB: 'Talk to it.',
   labSub:
-    'Both demos are in progress: you’ll be able to watch a recording or run them live with your own API key. Keys stay in your browser session — never stored, never logged.',
+    'The chat runs live on your own API key; the voice lab is on its way. Keys stay in your browser tab — never stored, never logged.',
   lab1Tag: 'Lab 01 · Flagship',
   lab1Body:
     'Full-duplex voice with interruptions, captions and a live latency panel.',
   lab2Tag: 'Lab 02 · Agents',
   lab2Body:
     'Text, images, documents and audio, with tool calls visible as they run.',
-  labCta: 'Demo in progress',
-  labOpen: 'Open the demo →',
+  labOpen: 'Open the demo',
+  labLive: 'Live demo',
+  labSoon: 'Coming soon',
   pvSim: 'Simulated preview',
   pvYou: 'You',
   pvAgent: 'Agent',
@@ -182,15 +183,16 @@ const ES: typeof EN = {
   labA: 'No me creas a mí. ',
   labB: 'Háblale.',
   labSub:
-    'Las dos demos están en construcción: podrás ver una grabación o probarlas en vivo con tu propia API key. Las llaves se quedan en tu sesión del navegador — nunca se guardan ni se registran.',
+    'El chat funciona en vivo con tu propia API key; el laboratorio de voz viene en camino. Las llaves se quedan en tu pestaña — nunca se guardan ni se registran.',
   lab1Tag: 'Lab 01 · Principal',
   lab1Body:
     'Voz bidireccional con interrupciones, subtítulos y un panel de latencia en vivo.',
   lab2Tag: 'Lab 02 · Agentes',
   lab2Body:
     'Texto, imágenes, documentos y audio, con las llamadas a herramientas visibles mientras ocurren.',
-  labCta: 'Demo en construcción',
-  labOpen: 'Abrir la demo →',
+  labOpen: 'Abrir la demo',
+  labLive: 'Demo en vivo',
+  labSoon: 'Próximamente',
   pvSim: 'Vista simulada',
   pvYou: 'Tú',
   pvAgent: 'Agente',
