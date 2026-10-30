@@ -39,7 +39,7 @@ No test suite.
 
 ## Pending placeholders
 
-The CV link (`#cv`), the hero/footer actions (`#talk-cv` "Chat with my CV", `#book-call`) and the `#voice`/`#chat`/`#case-*` anchors have no destination yet.
+The CV link (`#cv`), the hero action `#talk-cv` ("Chat with my CV") and the `#voice`/`#chat`/`#case-*` anchors have no destination yet.
 
 ## Development rules
 
