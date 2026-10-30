@@ -27,7 +27,7 @@ const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
 
 <section id="about" class="border-line border-t py-section">
   <div>
-    <SectionHeading n="01">{x.aboutTitle}</SectionHeading>
+    <SectionHeading n="05">{x.aboutTitle}</SectionHeading>
     <p class="mt-4 mb-0 max-w-[880px] text-lead leading-[1.38] font-light tracking-[-0.015em] text-pretty">
       {x.aboutA}
       <span class="text-accent font-normal">{x.aboutB}</span>
@@ -56,4 +56,5 @@ const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
       </li>
     ))}
   </ol>
+  <slot />
 </section>
