@@ -23,6 +23,12 @@ No test suite.
 - **Sizing is fluid.** Spacing and type come from tokens in `global.css` (`@theme`): `py-section`, `mt-block`, `gap-stack`, `p-card`, `gap-gutter`, `text-display|hero|h2|lead|h3|sub`, `h-wave`, `size-icon|badge`. They use `clamp()` with `vw` and `svh` so layout compacts on small/short screens. Don't add fixed px paddings/font sizes for layout; page width is `max-w-[1200px]`, anchors offset by `--header-h`.
 - Shared look helpers (`.dots`, `.eyebrow`, `.jd-card`, `.jd-fill`, animations) are in `global.css`; `Waveform.astro` generates bar heights in the frontmatter and animates with CSS only.
 
+## Lab demos
+
+- Pages under `src/pages/lab/` (chat: `lab/chat.astro` → `src/components/lab/ChatApp.tsx`). `<ClientRouter />` in `Layout.astro` makes same-tab navigation client-side, so module state survives landing ↔ demo navigation and a reload clears it. Scripts that touch the DOM must init on `astro:page-load` (see `Header.astro`) and anything imported by an island must be SSR-safe (see `prefs.ts`).
+- Demo state is in-memory nanostores (`src/lab/store.ts`, `src/lab/attachments.ts`): API keys, conversations, drafts. Never persist it (no storage, cookies or URL). Islands that read it must render the initial values while hydrating (`useHydrated` in `ChatApp.tsx`) to avoid hydration mismatches.
+- Chat cases live in `src/lab/chat/cases.ts`; each fixes model, effort, max tokens, system prompt and tools (visitors can't pick a model). Client tools are in `tools.ts` (validate model-supplied input before running), the Anthropic loop in `anthropic.ts` (official SDK, lazy-loaded, `dangerouslyAllowBrowser` because keys are the visitor's own), voice transcription in `openai.ts`. Chat copy is in `src/i18n/chat.ts`.
+
 ## Images
 
 - AWS icons are official SVGs in `src/assets/aws/` (sourced from the JuanDLCH profile repo; `sns.svg` from the design). `Stack.astro` resolves them via `import.meta.glob` to hashed URLs. Run `pnpm optimize:svg` (SVGO, `svgo.config.mjs`) after adding any SVG.
