@@ -143,10 +143,24 @@
   a:hover .jd-arrow {
     transform: translateX(4px);
   }
+  /* Sentence-case label for tags that are read as text, not data. */
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  /* AWS icons stay quiet until hovered so the accent stays the only color. */
   .jd-aws img {
-    transition: transform 0.25s ease;
+    filter: grayscale(1);
+    opacity: 0.75;
+    transition:
+      transform 0.25s ease,
+      filter 0.25s ease,
+      opacity 0.25s ease;
   }
   .jd-aws:hover img {
+    filter: none;
+    opacity: 1;
     transform: translateY(-3px);
   }
   .jd-details summary {

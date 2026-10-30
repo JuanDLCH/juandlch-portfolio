@@ -18,7 +18,7 @@ const preview =
     <SectionHeading n="02">{x.labTitle}</SectionHeading>
     <p class="mt-4 mb-0 text-h2 leading-none font-medium tracking-[-0.045em]">
       {x.labA}
-      <span class="text-accent">{x.labB}</span>
+      <span>{x.labB}</span>
     </p>
     <p class="text-body mt-3 mb-0 max-w-[560px] text-sm leading-[1.55]">
       {x.labSub}
@@ -33,7 +33,7 @@ const preview =
       <div aria-hidden="true" class:list={[preview, 'gap-2.5']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
           <span class="text-accent flex items-center gap-2">
-            <span class="jd-blink bg-accent size-1.5"></span>
+            <span class="bg-accent size-1.5"></span>
             {x.agentSpeaking}
           </span>
           <span class="text-muted">{x.pvSim} · 00:42</span>
@@ -51,7 +51,7 @@ const preview =
               {x.pvAgent}
             </span>
             {x.voiceAgent}
-            <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px] [animation:jd-blink_1s_steps(1)_infinite]"></span>
+            <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"></span>
           </div>
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -89,7 +89,7 @@ const preview =
       </div>
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="eyebrow text-accent">{x.lab1Tag}</span>
+          <span class="tag text-accent">{x.lab1Tag}</span>
           <span class="text-h3 font-medium tracking-[-0.03em]">
             Realtime Voice Lab
           </span>
@@ -142,7 +142,7 @@ const preview =
         </div>
         <div class="border-accent text-ink border-l-2 px-3 py-1 text-[13px] leading-[1.4]">
           {x.chatAgent}
-          <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px] [animation:jd-blink_1s_steps(1)_infinite]"></span>
+          <span class="bg-accent ml-[3px] inline-block h-3.5 w-[7px] align-[-2px]"></span>
         </div>
         <div class="border-line2 bg-panel text-muted mt-auto flex items-center gap-2.5 border py-1.5 pr-1.5 pl-3">
           <svg
@@ -187,7 +187,7 @@ const preview =
       </div>
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="eyebrow text-muted">{x.lab2Tag}</span>
+          <span class="tag text-muted">{x.lab2Tag}</span>
           <span class="text-h3 font-medium tracking-[-0.03em]">
             Multimodal Chat
           </span>
