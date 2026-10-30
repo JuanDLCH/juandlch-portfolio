@@ -4,6 +4,7 @@
 // Nothing here is ever written to storage, cookies or the URL.
 import type Anthropic from '@anthropic-ai/sdk';
 import { atom, map } from 'nanostores';
+import type { ChatCopy } from '../i18n/chat';
 import { CASES } from './chat/cases';
 
 export type ChatItem =
@@ -18,7 +19,12 @@ export type ChatItem =
       ms: number | null;
       status: 'running' | 'done' | 'error';
     }
-  | { kind: 'notice'; text: string };
+  /** An error told by the assistant; `code` keys the copy in CHAT.errors. */
+  | { kind: 'notice'; id: number; code: NoticeCode };
+
+export type NoticeCode = keyof ChatCopy['errors'];
+let noticeSeq = 0;
+export const nextNoticeId = () => ++noticeSeq;
 
 export interface ChatSession {
   items: ChatItem[];
