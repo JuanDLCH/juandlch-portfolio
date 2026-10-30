@@ -76,6 +76,7 @@ const EN = {
   lab2Body:
     'Text, images, documents and audio, with tool calls visible as they run.',
   labCta: 'Demo in progress',
+  labOpen: 'Open the demo →',
   pvSim: 'Simulated preview',
   pvYou: 'You',
   pvAgent: 'Agent',
@@ -185,6 +186,7 @@ const ES: typeof EN = {
   lab2Body:
     'Texto, imágenes, documentos y audio, con las llamadas a herramientas visibles mientras ocurren.',
   labCta: 'Demo en construcción',
+  labOpen: 'Abrir la demo →',
   pvSim: 'Vista simulada',
   pvYou: 'Tú',
   pvAgent: 'Agente',
