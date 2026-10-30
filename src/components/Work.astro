@@ -15,7 +15,7 @@ const { x, cases } = Astro.props;
     <SectionHeading n="03">{x.workTitle}</SectionHeading>
     <span class="mono text-muted text-xs">{x.workNote}</span>
   </div>
-  <div class="mt-block flex flex-col gap-3">
+  <div class="mt-head flex flex-col gap-3">
     {cases.map((c) => (
       <details
         name="cases"

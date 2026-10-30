@@ -11,7 +11,7 @@ const { x, principles } = Astro.props;
 
 <section id="principles" class="border-line border-t py-section">
   <SectionHeading n="06">{x.prTitle}</SectionHeading>
-  <ol class="m-0 mt-block grid list-none grid-cols-[repeat(auto-fit,minmax(min(440px,100%),1fr))] gap-x-gutter p-0">
+  <ol class="m-0 mt-head grid list-none grid-cols-[repeat(auto-fit,minmax(min(440px,100%),1fr))] gap-x-gutter p-0">
     {principles.map((p) => (
       <li class="border-line2 flex gap-5 border-t py-card">
         <span class="mono text-accent flex-none pt-1.5 text-[13px]">{p.n}</span>

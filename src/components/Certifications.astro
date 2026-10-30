@@ -41,7 +41,7 @@ const certs = [
     <SectionHeading n="07">{x.certTitle}</SectionHeading>
     <span class="mono text-muted text-xs">{x.certNote}</span>
   </div>
-  <div class="mt-block grid grid-cols-[repeat(auto-fit,minmax(min(250px,100%),1fr))] gap-4">
+  <div class="mt-head grid grid-cols-[repeat(auto-fit,minmax(min(250px,100%),1fr))] gap-4">
     {certs.map((c) => (
       <div class="bg-panel border-line2 flex items-center gap-4 border p-card">
         <Image

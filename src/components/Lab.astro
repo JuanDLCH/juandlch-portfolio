@@ -14,18 +14,18 @@ const preview =
 ---
 
 <section id="lab" class="border-line border-t py-section">
-  <div class="flex flex-wrap items-end justify-between gap-6">
-    <div>
-      <SectionHeading n="04">{x.labTitle}</SectionHeading>
-      <p class="mt-2 mb-0 text-h2 leading-none font-medium tracking-[-0.045em]">
-        {x.labA}
-        <span class="text-accent">{x.labB}</span>
-      </p>
-    </div>
-    <p class="text-body m-0 max-w-[440px] text-sm leading-[1.55]">{x.labSub}</p>
+  <div>
+    <SectionHeading n="04">{x.labTitle}</SectionHeading>
+    <p class="mt-4 mb-0 text-h2 leading-none font-medium tracking-[-0.045em]">
+      {x.labA}
+      <span class="text-accent">{x.labB}</span>
+    </p>
+    <p class="text-body mt-3 mb-0 max-w-[560px] text-sm leading-[1.55]">
+      {x.labSub}
+    </p>
   </div>
 
-  <div class="mt-block grid grid-cols-[repeat(auto-fit,minmax(min(420px,100%),1fr))] gap-4">
+  <div class="mt-head grid grid-cols-[repeat(auto-fit,minmax(min(420px,100%),1fr))] gap-4">
     <a
       href="#voice"
       class="jd-card bg-panel border-accent flex flex-col border no-underline"
