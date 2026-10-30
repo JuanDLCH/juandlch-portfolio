@@ -682,9 +682,9 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
             role="log"
             aria-live="polite"
             aria-label={x.conversation}
-            className="mob:px-3 min-h-0 flex-1 overflow-y-auto px-4 py-[clamp(12px,3svh,24px)]"
+            className="mob:px-3 min-h-0 flex-1 overflow-y-auto px-4 py-[clamp(10px,2svh,18px)]"
           >
-            <div className="mx-auto flex max-w-[780px] flex-col gap-4">
+            <div className="mx-auto flex max-w-[780px] flex-col gap-3">
               {session.items.length === 0 && (
                 <div className="pt-[clamp(4px,3svh,32px)] pb-2">
                   <div
@@ -843,21 +843,21 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                     </label>
                     <textarea
                       id="jd-prompt"
-                      rows={phone ? 1 : 2}
+                      rows={1}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={onKeyDown}
                       placeholder={phone ? x.placeholderShort : x.placeholder}
-                      className="text-ink placeholder:text-muted mob:min-h-11 mob:min-w-0 mob:flex-1 mob:self-center mob:px-0 mob:py-2.5 mob:text-base mob:max-h-[8.5em] block [field-sizing:content] max-h-[8em] min-h-[2.6em] w-full resize-none border-0 bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal focus:outline-none"
+                      className="text-ink placeholder:text-muted mob:min-h-11 mob:min-w-0 mob:flex-1 mob:self-center mob:px-0 mob:py-2.5 mob:text-base mob:max-h-[8.5em] block [field-sizing:content] max-h-[8em] min-h-[1.5em] w-full resize-none border-0 bg-transparent px-3 pt-2 pb-0.5 text-[13px] leading-normal focus:outline-none"
                     />
-                    <div className="mob:contents flex items-center justify-between gap-2 px-1.5 pb-1.5">
+                    <div className="mob:contents flex items-center justify-between gap-2 px-1 pb-1">
                       <div className="mob:contents flex gap-1">
                         <button
                           type="button"
                           onClick={() => fileRef.current?.click()}
                           aria-label={x.attach}
                           title={x.attachHint}
-                          className={`${iconBtn} text-muted size-11 border-transparent`}
+                          className={`${iconBtn} text-muted desk:size-8 size-11 border-transparent`}
                         >
                           <Icon d={I.clip} />
                         </button>
@@ -867,7 +867,7 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                           disabled={busy}
                           aria-label={x.mic}
                           title={keys.openai ? x.mic : x.micNeedsKey}
-                          className={`${iconBtn} mob:hidden size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
+                          className={`${iconBtn} mob:hidden desk:size-8 size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
                         >
                           <Icon d={I.mic} />
                         </button>
@@ -883,7 +883,7 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                             type="button"
                             onClick={stopTurn}
                             aria-label={x.stop}
-                            className="border-line2 text-ink grid size-11 cursor-pointer place-items-center border bg-transparent"
+                            className="border-line2 text-ink desk:size-8 grid size-11 cursor-pointer place-items-center border bg-transparent"
                           >
                             <Icon d={I.stop} size={14} />
                           </button>
@@ -893,7 +893,7 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                               type="button"
                               onClick={() => void send()}
                               aria-label={x.send}
-                              className={`bg-accent text-on-accent grid size-11 shrink-0 cursor-pointer place-items-center border-0 ${hasInput ? '' : 'mob:hidden'}`}
+                              className={`bg-accent text-on-accent desk:size-8 grid size-11 shrink-0 cursor-pointer place-items-center border-0 ${hasInput ? '' : 'mob:hidden'}`}
                             >
                               <Icon d={I.send} size={15} />
                             </button>
@@ -918,7 +918,7 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                 )}
               </div>
               <div
-                className={`${mono} text-muted mob:hidden mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1.5 text-[10px] tracking-[0.04em]`}
+                className={`${mono} text-muted mob:hidden mt-1.5 flex flex-wrap justify-between gap-x-4 gap-y-1.5 text-[10px] tracking-[0.04em]`}
               >
                 <span>{x.enterHint}</span>
                 <span>{x.privacyLine}</span>
@@ -1633,11 +1633,11 @@ function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
   const { options, topic } = contactInput(input);
   if (!options.length) return null;
   const btn =
-    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-10 items-center gap-2 border bg-transparent px-3.5 text-sm no-underline transition-colors';
+    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 items-center gap-2 border bg-transparent px-3 text-[13px] no-underline transition-colors';
   const subject = encodeURIComponent(topic || x.contactSubject);
   const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
   return (
-    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2 pl-3">
+    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1.5 pl-3">
       <div
         role="group"
         aria-label={x.contactLabel}
@@ -1663,7 +1663,7 @@ function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
               key={o}
               href={CONTACT.booking}
               {...external}
-              className="bg-accent text-on-accent mob:h-11 inline-flex h-10 items-center gap-2 px-3.5 text-sm font-semibold no-underline"
+              className="bg-accent text-on-accent mob:h-11 inline-flex h-8 items-center gap-2 px-3 text-[13px] font-semibold no-underline"
             >
               <Icon d={I.calendar} size={15} />
               {x.contactMeeting}
@@ -1685,10 +1685,27 @@ function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
         )}
       </div>
       {CONTACT.booking && options.includes('meeting') && (
-        <p className="text-muted m-0 text-xs leading-normal">{x.meetingHint}</p>
+        <p className="text-muted m-0 text-[11px] leading-normal">
+          {x.meetingHint}
+        </p>
       )}
     </div>
   );
+}
+
+// The answer's closing sources line ("Sources:", "Fuentes:"… one word and a
+// colon, then links or names joined by " · ") is set apart in smaller type.
+function splitSources(text: string) {
+  const cut = text.trimEnd().lastIndexOf('\n');
+  const last = text
+    .slice(cut + 1)
+    .trim()
+    .replace(/^\*\*([^*]+)\*\*/, '$1');
+  return cut > 0 &&
+    /^[\p{L}]{2,20}:\s/u.test(last) &&
+    (last.includes('](') || last.includes(' · '))
+    ? { body: text.slice(0, cut).trimEnd(), sources: last }
+    : { body: text, sources: '' };
 }
 
 function Message({
@@ -1706,14 +1723,14 @@ function Message({
         {m.files.map((f) => (
           <span
             key={f}
-            className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2.5 py-1.5 text-[11px]`}
+            className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2 py-1 text-[10px]`}
           >
             <Icon d={I.file} size={13} />
             {f}
           </span>
         ))}
         {m.text && (
-          <div className="bg-panel border-line2 border px-3 py-2 text-sm leading-[1.55] whitespace-pre-wrap">
+          <div className="bg-panel border-line2 border px-2.5 py-1.5 text-[13px] leading-normal whitespace-pre-wrap">
             {m.text}
           </div>
         )}
@@ -1724,8 +1741,8 @@ function Message({
     const status = m.status === 'running' ? '…' : m.result;
     const ms = m.ms !== null ? ` · ${m.ms} ms` : '';
     return (
-      <details className="jd-tool border-line2 text-muted border border-dashed font-mono text-[11px]">
-        <summary className="desk:min-h-0 flex min-h-11 items-center gap-2 px-3 py-2">
+      <details className="jd-tool border-line2 text-muted border border-dashed font-mono text-[10px] [.jd-tool+&]:-mt-2 [.jd-tool+&]:border-t-0">
+        <summary className="desk:min-h-0 flex min-h-11 items-center gap-2 px-2.5 py-1">
           <span className="text-accent">tool_use</span>
           <span className="text-chip">{m.name}</span>
           <span
@@ -1741,17 +1758,23 @@ function Message({
             ▾
           </span>
         </summary>
-        <div className="text-chip px-3 pb-3 leading-normal break-words">
+        <div className="text-chip px-2.5 pb-2 leading-normal break-words">
           {m.name}({m.input || '…'})
         </div>
       </details>
     );
   }
   if (m.kind === 'notice') return null;
+  const { body, sources } = splitSources(m.text);
   return (
-    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2">
-      <div className="border-accent border-l-2 py-0.5 pl-3 text-sm leading-[1.6] break-words whitespace-pre-wrap">
-        <Linked text={m.text} onCv={onCv} cvLabel={cvLabel} />
+    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1">
+      <div className="border-accent border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] break-words whitespace-pre-wrap">
+        <Linked text={body} onCv={onCv} cvLabel={cvLabel} />
+        {sources && (
+          <span className="text-muted mt-1.5 block text-[11px] leading-normal">
+            <Linked text={sources} onCv={onCv} cvLabel={cvLabel} />
+          </span>
+        )}
         {m.streaming && (
           <span
             aria-hidden="true"
@@ -1804,7 +1827,7 @@ function Notice({
   }, [done, id]);
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col items-start gap-2.5">
-      <div className="border-warn border-l-2 py-0.5 pl-3 text-sm leading-[1.6] whitespace-pre-wrap">
+      <div className="border-warn border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] whitespace-pre-wrap">
         {/* Screen readers get the whole message once, not every letter. */}
         <span className="sr-only">{text}</span>
         <span aria-hidden="true">{text.slice(0, n)}</span>
