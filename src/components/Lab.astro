@@ -1,6 +1,7 @@
 ---
 import type { Content } from '../i18n';
 import T from './T.astro';
+import CornerMarks from './CornerMarks.astro';
 import SectionHeading from './SectionHeading.astro';
 import Waveform from './Waveform.astro';
 
@@ -35,7 +36,9 @@ const preview =
   </div>
 
   <div class="mt-head grid grid-cols-[repeat(auto-fit,minmax(min(420px,100%),1fr))] gap-4">
-    <article class="bg-panel border-line2 flex flex-col border">
+    <article class="bg-panel border-line2 relative flex flex-col border">
+      <CornerMarks only={['tl']} size="14px" />
+      <CornerMarks only={['br']} size="14px" />
       <div aria-hidden="true" class:list={[preview, 'gap-2.5']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
           <span class="text-accent flex items-center gap-2">
@@ -95,19 +98,19 @@ const preview =
           </div>
         </div>
       </div>
-      <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
-        <div class="flex min-w-0 flex-col gap-0.5">
+      <div class="flex items-end justify-between gap-4 p-card mob:flex-wrap">
+        <div class="flex min-w-0 flex-1 basis-[240px] flex-col gap-1">
           <span class="tag text-muted">
             <T v={x.lab1Tag} />
           </span>
-          <span class="text-h3 font-medium tracking-[-0.03em]">
+          <span class="text-lead font-medium tracking-[-0.03em]">
             Realtime Voice Lab
           </span>
-          <span class="text-body text-[13px] leading-snug">
+          <span class="text-body text-sm leading-snug">
             <T v={x.lab1Body} />
           </span>
         </div>
-        <span class="mono border-line2 text-muted inline-flex min-h-9 items-center gap-2 border border-dashed px-3 text-[11px] tracking-[0.06em] uppercase">
+        <span class="mono border-line2 text-muted inline-flex min-h-9 shrink-0 mob:w-full mob:justify-center items-center gap-2 border border-dashed px-3 text-[11px] tracking-[0.06em] uppercase">
           <span aria-hidden="true" class="bg-warn size-1.5"></span>
           <T v={x.labSoon} />
         </span>
@@ -117,8 +120,9 @@ const preview =
     <a
       href="/lab/chat"
       data-astro-prefetch="viewport"
-      class="jd-card group bg-panel border-accent flex flex-col border no-underline"
+      class="jd-card group bg-panel border-accent relative flex flex-col border no-underline shadow-[0_24px_60px_-32px_var(--accent)]"
     >
+      <CornerMarks offset="-6px" size="18px" />
       <div aria-hidden="true" class:list={[preview, 'gap-2']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.06em]">
           <span class="flex gap-1.5">
@@ -206,19 +210,19 @@ const preview =
           </span>
         </div>
       </div>
-      <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
-        <div class="flex min-w-0 flex-col gap-0.5">
+      <div class="flex items-end justify-between gap-4 p-card mob:flex-wrap">
+        <div class="flex min-w-0 flex-1 basis-[240px] flex-col gap-1">
           <span class="tag text-accent">
             <T v={x.lab2Tag} />
           </span>
-          <span class="text-h3 font-medium tracking-[-0.03em]">
+          <span class="text-lead font-medium tracking-[-0.03em]">
             Multimodal Chat
           </span>
-          <span class="text-body text-[13px] leading-snug">
+          <span class="text-body text-sm leading-snug">
             <T v={x.lab2Body} />
           </span>
         </div>
-        <span class="bg-accent text-on-accent inline-flex min-h-10 items-center gap-2 px-4 text-sm font-semibold transition-[filter] group-hover:brightness-110">
+        <span class="bg-accent text-on-accent inline-flex min-h-10 shrink-0 mob:min-h-11 mob:w-full mob:justify-center items-center gap-2 px-4 text-sm font-semibold transition-[filter] group-hover:brightness-110">
           <T v={x.labOpen} />
           <span class="jd-arrow" aria-hidden="true">
             →
