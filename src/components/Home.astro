@@ -34,17 +34,18 @@ const {
   <Header x={x} lang={lang} />
   <div class="mx-auto max-w-[1200px] px-[clamp(16px,4vw,48px)]">
     <Hero x={x} />
-    <About x={x} />
-    <Leading x={x} cycle={cycle} />
     <Work x={x} cases={cases} />
     <Lab x={x} />
+    <Rag x={x} flow={ragFlow} ideas={ragIdeas} />
     <Stack
       x={x}
       awsIcons={awsIcons}
       domains={domains}
       stackGroups={stackGroups}
     />
-    <Rag x={x} flow={ragFlow} ideas={ragIdeas} />
+    <About x={x}>
+      <Leading x={x} cycle={cycle} />
+    </About>
     <Principles x={x} principles={principles} />
     <Certifications x={x} />
     <Footer x={x} />

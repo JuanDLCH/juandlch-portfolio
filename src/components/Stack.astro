@@ -21,7 +21,7 @@ const iconUrl = (name: string) => iconUrls[`../assets/aws/${name}.svg`];
 ---
 
 <section id="stack" class="border-line border-t py-section">
-  <SectionHeading n="05">{x.stackTitle}</SectionHeading>
+  <SectionHeading n="04">{x.stackTitle}</SectionHeading>
 
   <div class="bg-panel border-line2 relative mt-head flex flex-wrap gap-x-gutter gap-y-6 border p-block">
     <CornerMarks only={['tl']} />
@@ -70,9 +70,6 @@ const iconUrl = (name: string) => iconUrls[`../assets/aws/${name}.svg`];
         <h3 class="m-0 text-[15px] leading-[1.2] font-medium tracking-[-0.02em]">
           {d.title}
         </h3>
-        <p class="text-body mt-1.5 mb-0 text-[12.5px] leading-[1.45] [@media(max-height:700px)]:hidden">
-          {d.body}
-        </p>
         <p class="mono text-accent mt-3.5 mb-0 text-[11px] leading-[1.7]">
           {d.tools}
         </p>
