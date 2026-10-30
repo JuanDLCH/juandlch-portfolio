@@ -653,8 +653,8 @@ function build(isEs: boolean) {
       'React · Next.js · Tailwind CSS · Angular · Vue · MUI · Ant Design',
     ],
     [
-      isEs ? 'Entrega' : 'Delivery',
-      'Docker · Terraform · AWS SAM · GitHub Actions · CI/CD · Linux · CloudWatch',
+      isEs ? 'LLMOps y entrega' : 'LLMOps & delivery',
+      'LangSmith · CloudWatch · Docker · Terraform · AWS SAM · GitHub Actions · CI/CD · Linux',
     ],
   ].map(function (g: string[]) {
     return { title: g[0], items: g[1] };
@@ -669,11 +669,13 @@ function build(isEs: boolean) {
           ],
           [
             'Medir latencia, costo y confiabilidad',
-            'Cada funcionalidad de IA tiene un presupuesto: qué tan rápida, cuánto cuesta por solicitud y cómo falla. Las decisiones siguen a los números.',
+            'Cada funcionalidad de IA tiene un presupuesto: qué tan rápida, cuánto cuesta por solicitud y cómo falla. En LLMOps, agentes evaluadores prueban cada cambio en bucle y cada llamada se registra y se costea. Las decisiones siguen a los números.',
+            ['Evaluation agents', 'LangSmith', 'CloudWatch', 'Aurora logs'],
           ],
           [
             'Construir para producción, no para demos',
             'Autenticación, observabilidad, reintentos, estado y despliegue son parte del primer diseño, no una fase posterior.',
+            ['GitHub Actions', 'Terraform', 'AWS SAM'],
           ],
           [
             'El criterio humano sigue siendo esencial',
@@ -687,19 +689,26 @@ function build(isEs: boolean) {
           ],
           [
             'Measure latency, cost and reliability',
-            'Every AI feature gets a budget: how fast, how much per request, how it fails. Decisions follow the numbers.',
+            'Every AI feature gets a budget: how fast, how much per request, how it fails. In LLMOps terms, evaluation agents test every change in a loop and every call is logged and costed. Decisions follow the numbers.',
+            ['Evaluation agents', 'LangSmith', 'CloudWatch', 'Aurora logs'],
           ],
           [
             'Build for production, not just demos',
             'Auth, observability, retries, state and deployment are part of the first design, not a later phase.',
+            ['GitHub Actions', 'Terraform', 'AWS SAM'],
           ],
           [
             'Human judgment remains essential',
             'AI speeds up my work — Claude Code as my main tool, with Cursor and ChatGPT alongside — but I review every PR thoroughly and nothing reaches main or production without passing through me. I don’t automate myself; I optimize my work.',
           ],
         ]
-  ).map(function (p: string[], i: number) {
-    return { n: '0' + (i + 1), title: p[0], body: p[1] };
+  ).map(function (p: (string | string[])[], i: number) {
+    return {
+      n: '0' + (i + 1),
+      title: p[0] as string,
+      body: p[1] as string,
+      chips: (p[2] ?? []) as string[],
+    };
   });
   return {
     x,
