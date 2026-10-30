@@ -25,7 +25,7 @@ const langBtn =
 ---
 
 <header class="border-line bg-bg/85 sticky top-0 z-50 border-b backdrop-blur-md">
-  <div class="mx-auto flex max-w-[1200px] items-center justify-between gap-x-4 px-[clamp(16px,4vw,48px)] py-2">
+  <div class="mx-auto flex max-w-[1200px] items-center justify-between gap-x-4 px-[clamp(16px,4vw,48px)] py-2 narrow:gap-x-3">
     <a
       href="#top"
       class="mono flex items-center gap-2.5 text-[15px] font-medium tracking-[0.04em] no-underline"
@@ -40,23 +40,23 @@ const langBtn =
     </a>
     <nav
       {...attrs({ 'aria-label': x.navLabel })}
-      class="mono ml-auto flex items-center gap-1 text-[13px] tracking-[0.06em] uppercase mob:hidden"
+      class="mono ml-auto flex items-center gap-1 text-[13px] tracking-[0.06em] uppercase narrow:gap-0 narrow:text-xs narrow:tracking-[0.03em] mob:hidden"
     >
       {links.map(({ href, label, sections }) => (
         <a
           href={href}
           data-nav-link
           data-sections={sections}
-          class="px-3 py-2 whitespace-nowrap no-underline aria-[current=true]:text-accent"
+          class="px-3 py-2 whitespace-nowrap no-underline narrow:px-1.5 aria-[current=true]:text-accent"
         >
           <T v={label} />
         </a>
       ))}
     </nav>
-    <div class="mono ml-2 flex items-center gap-2 text-[13px] tracking-[0.06em] uppercase mob:ml-auto">
+    <div class="mono ml-2 flex items-center gap-2 text-[13px] tracking-[0.06em] uppercase narrow:ml-1 narrow:gap-1.5 narrow:text-xs mob:ml-auto">
       <a
         href="#cv"
-        class="border-line2 border px-3.5 py-2 whitespace-nowrap no-underline mob:hidden"
+        class="border-line2 border px-3.5 py-2 whitespace-nowrap no-underline narrow:px-2.5 mob:hidden"
       >
         <T v={x.navCv} />
       </a>
