@@ -195,7 +195,7 @@
   .jd-tool summary::-webkit-details-marker {
     display: none;
   }
-  .jd-tool[open] .jd-chev {
+  .jd-tool[open] > summary .jd-chev {
     transform: rotate(180deg);
   }
   .jd-details summary {

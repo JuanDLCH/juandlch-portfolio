@@ -740,6 +740,12 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                       labels={x.fixes}
                       onFix={fix}
                     />
+                  ) : m.kind === 'tool' ? (
+                    // A run of tool calls folds into one row; the first
+                    // item of the run draws it.
+                    session.items[i - 1]?.kind !== 'tool' && (
+                      <ToolGroup items={toolRun(session.items, i)} x={x} />
+                    )
                   ) : (
                     <Message
                       m={m}
@@ -1708,6 +1714,79 @@ function splitSources(text: string) {
     : { body: text, sources: '' };
 }
 
+type ToolCall = Extract<ChatItem, { kind: 'tool' }>;
+
+/** The consecutive tool calls starting at `i`. */
+const toolRun = (items: ChatItem[], i: number) => {
+  const run: ToolCall[] = [];
+  for (let k = i; items[k]?.kind === 'tool'; k++)
+    run.push(items[k] as ToolCall);
+  return run;
+};
+
+// Tool calls of a turn, folded into one line ("3 tools used"); opening it
+// lists each call, and each call opens to show its input.
+function ToolGroup({ items, x }: { items: ToolCall[]; x: ChatCopy }) {
+  const running = items.find((t) => t.status === 'running');
+  const failed = items.some((t) => t.status === 'error');
+  const ms = items.reduce((sum, t) => sum + (t.ms ?? 0), 0);
+  return (
+    <details className="jd-tool text-muted font-mono text-[10px]">
+      <summary className="desk:min-h-0 flex min-h-9 items-center gap-2 py-0.5 pl-3.5">
+        <span className="text-accent">tool_use</span>
+        <span className="text-chip truncate">
+          {running
+            ? `${running.name}…`
+            : `${items.length} ${items.length === 1 ? x.toolUsed : x.toolsUsed}`}
+        </span>
+        {!running && (
+          <span className={`shrink-0 ${failed ? 'text-warn' : ''}`}>
+            · {ms} ms
+          </span>
+        )}
+        <span
+          aria-hidden="true"
+          className="jd-chev inline-block shrink-0 transition-transform"
+        >
+          ▾
+        </span>
+      </summary>
+      <div className="border-line2 mt-1 ml-3.5 flex flex-col border-l border-dashed">
+        {items.map((t) => (
+          <ToolRow key={t.id} m={t} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function ToolRow({ m }: { m: ToolCall }) {
+  const status = m.status === 'running' ? '…' : m.result;
+  const ms = m.ms !== null ? ` · ${m.ms} ms` : '';
+  return (
+    <details className="jd-tool">
+      <summary className="desk:min-h-0 flex min-h-9 items-center gap-2 px-2.5 py-0.5">
+        <span className="text-chip shrink-0">{m.name}</span>
+        <span
+          className={`ml-auto min-w-0 truncate ${m.status === 'error' ? 'text-warn' : ''}`}
+        >
+          {status}
+          {ms}
+        </span>
+        <span
+          aria-hidden="true"
+          className="jd-chev inline-block shrink-0 transition-transform"
+        >
+          ▾
+        </span>
+      </summary>
+      <div className="text-chip px-2.5 pb-1.5 leading-normal break-words">
+        {m.name}({m.input || '…'})
+      </div>
+    </details>
+  );
+}
+
 function Message({
   m,
   onCv,
@@ -1737,33 +1816,8 @@ function Message({
       </div>
     );
   }
-  if (m.kind === 'tool') {
-    const status = m.status === 'running' ? '…' : m.result;
-    const ms = m.ms !== null ? ` · ${m.ms} ms` : '';
-    return (
-      <details className="jd-tool border-line2 text-muted border border-dashed font-mono text-[10px] [.jd-tool+&]:-mt-2 [.jd-tool+&]:border-t-0">
-        <summary className="desk:min-h-0 flex min-h-11 items-center gap-2 px-2.5 py-1">
-          <span className="text-accent">tool_use</span>
-          <span className="text-chip">{m.name}</span>
-          <span
-            className={`ml-auto truncate ${m.status === 'error' ? 'text-warn' : ''}`}
-          >
-            {status}
-            {ms}
-          </span>
-          <span
-            aria-hidden="true"
-            className="jd-chev inline-block transition-transform"
-          >
-            ▾
-          </span>
-        </summary>
-        <div className="text-chip px-2.5 pb-2 leading-normal break-words">
-          {m.name}({m.input || '…'})
-        </div>
-      </details>
-    );
-  }
+  if (m.kind === 'tool') return <ToolRow m={m} />;
+
   if (m.kind === 'notice') return null;
   const { body, sources } = splitSources(m.text);
   return (
