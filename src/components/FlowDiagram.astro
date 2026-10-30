@@ -1,0 +1,71 @@
+---
+import type { FlowNode } from '../i18n';
+
+interface Props {
+  nodes: FlowNode[];
+  label: string;
+  dense?: boolean;
+}
+const { nodes, label, dense = false } = Astro.props;
+const pad = dense ? 'px-3 py-1.5 text-[13px]' : 'px-3.5 py-[11px] text-sm';
+const link = dense ? 'h-2.5' : 'h-[18px]';
+const box = `flex items-center justify-between gap-3 self-stretch border ${pad}`;
+---
+
+<ol
+  aria-label={label}
+  class="m-0 mx-auto mt-stack flex max-w-[360px] list-none flex-col items-stretch p-0"
+>
+  {nodes.map((n, i) => (
+    <li class="flex flex-col items-center self-stretch">
+      {i > 0 && (
+        <span aria-hidden="true" class:list={['bg-line2 block w-px', link]} />
+      )}
+      {n.kind === 'loop' ? (
+        <span class="border-accent/60 text-accent mono flex items-center gap-2 self-stretch border border-dashed px-3 py-1 text-[11px] tracking-[0.04em]">
+          {n.label}
+        </span>
+      ) : n.kind === 'split' ? (
+        <span
+          class:list={[
+            'border-line2 flex flex-col gap-1.5 self-stretch border',
+            pad,
+          ]}
+        >
+          <span class="flex items-center justify-between gap-3">
+            <span>{n.label}</span>
+            <span class="mono text-muted text-[10px] tracking-[0.06em] uppercase">
+              {n.meta}
+            </span>
+          </span>
+          <span class="grid grid-cols-2 gap-1.5">
+            {n.parts?.map((p) => (
+              <span class="mono border-line2 text-chip border px-2 py-1 text-center text-[11px]">
+                {p}
+              </span>
+            ))}
+          </span>
+        </span>
+      ) : (
+        <span
+          class:list={[
+            box,
+            n.hot
+              ? 'border-accent bg-panel text-accent'
+              : 'border-line2 text-ink bg-transparent',
+          ]}
+        >
+          <span>{n.label}</span>
+          <span
+            class:list={[
+              'mono text-[10px] tracking-[0.06em] uppercase',
+              n.hot ? 'text-accent' : 'text-muted',
+            ]}
+          >
+            {n.meta}
+          </span>
+        </span>
+      )}
+    </li>
+  ))}
+</ol>
