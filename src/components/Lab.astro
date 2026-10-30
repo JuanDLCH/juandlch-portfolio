@@ -26,10 +26,7 @@ const preview =
   </div>
 
   <div class="mt-head grid grid-cols-[repeat(auto-fit,minmax(min(420px,100%),1fr))] gap-4">
-    <a
-      href="#voice"
-      class="jd-card bg-panel border-accent flex flex-col border no-underline"
-    >
+    <article class="bg-panel border-accent flex flex-col border">
       <div aria-hidden="true" class:list={[preview, 'gap-2.5']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
           <span class="text-accent flex items-center gap-2">
@@ -57,7 +54,7 @@ const preview =
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="mono text-chip flex flex-wrap gap-1.5 text-[10px]">
             {['STT', 'LLM', 'TTS'].map((k) => (
-              <span class="border-line2 border px-2 py-1">{k} — ms</span>
+              <span class="border-line2 border px-2 py-1">{k}</span>
             ))}
           </div>
           <div class="flex gap-1.5">
@@ -95,16 +92,11 @@ const preview =
           </span>
           <span class="text-body text-[13px] leading-snug">{x.lab1Body}</span>
         </div>
-        <span class="mono text-accent text-[12px] font-medium">
-          {x.labCta} <span class="jd-arrow">→</span>
-        </span>
+        <span class="mono text-muted text-[12px]">{x.labCta}</span>
       </div>
-    </a>
+    </article>
 
-    <a
-      href="#chat"
-      class="jd-card bg-panel border-line2 flex flex-col border no-underline"
-    >
+    <article class="bg-panel border-line2 flex flex-col border">
       <div aria-hidden="true" class:list={[preview, 'gap-2']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.06em]">
           <span class="flex gap-1.5">
@@ -193,10 +185,8 @@ const preview =
           </span>
           <span class="text-body text-[13px] leading-snug">{x.lab2Body}</span>
         </div>
-        <span class="mono text-[12px] font-medium">
-          {x.labCta} <span class="jd-arrow">→</span>
-        </span>
+        <span class="mono text-muted text-[12px]">{x.labCta}</span>
       </div>
-    </a>
+    </article>
   </div>
 </section>
