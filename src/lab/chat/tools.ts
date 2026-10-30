@@ -1,5 +1,6 @@
 // Client-side tools for the chat lab. They run in the visitor's browser; the
-// menu and orders are fake demo data, weather comes from Open-Meteo (no key).
+// profile is Juan Diego's CV and portfolio, the menu and orders are fake demo
+// data, weather comes from Open-Meteo (no key).
 import type Anthropic from '@anthropic-ai/sdk';
 
 type Input = Record<string, unknown>;
@@ -218,7 +219,134 @@ const getTime: ClientTool = {
   summary: (r) => (r as { local_time: string }).local_time,
 };
 
+// Profile tools of the "Meet my AI" case. The data (profile.ts) loads on the
+// first call; each entry carries the source the model must cite.
+export const PROFILE_SECTIONS = [
+  'summary',
+  'skills',
+  'experience',
+  'client_work',
+  'education_languages',
+  'certifications',
+  'portfolio_work',
+  'portfolio_stack',
+  'portfolio_principles',
+  'portfolio_approach',
+  'notes',
+] as const;
+export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
+
+// Sources become absolute URLs: the chat only links http(s) URLs.
+const loadProfile = async () =>
+  (await import('./profile')).PROFILE.map((e) => ({
+    section: e.section,
+    title: e.title,
+    text: e.text,
+    source: {
+      label: e.source.label,
+      ...(e.source.href
+        ? { url: new URL(e.source.href, location.origin).href }
+        : {}),
+    },
+  }));
+
+// Lowercase, accents removed, split into words.
+const words = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}+#.]+/u)
+    .map((w) => w.replace(/^\.+|\.+$/g, ''))
+    .filter((w) => w.length > 1);
+
+const getProfileSection: ClientTool = {
+  def: {
+    name: 'get_profile_section',
+    description:
+      "Return one section of Juan Diego's profile. CV sections: summary, skills, experience (roles and dates), client_work, education_languages, certifications. Portfolio sections: portfolio_work (case studies), portfolio_stack (full toolbox, clouds), portfolio_principles, portfolio_approach (RAG approach, career path, leadership). notes: roles he is looking for, availability, other clouds, how he learns, contact. Each entry has the source to cite.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        section: { type: 'string', enum: [...PROFILE_SECTIONS] },
+      },
+      required: ['section'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    PROFILE_SECTIONS.includes(i.section as ProfileSection)
+      ? null
+      : `section must be one of: ${PROFILE_SECTIONS.join(', ')}`,
+  run: async (i) => ({
+    entries: (await loadProfile()).filter((e) => e.section === i.section),
+  }),
+  summary: (r) => {
+    const labels = new Set(
+      (r as { entries: { source: { label: string } }[] }).entries.map(
+        (e) => e.source.label,
+      ),
+    );
+    return [...labels].join(', ');
+  },
+};
+
+const searchProfile: ClientTool = {
+  def: {
+    name: 'search_profile',
+    description:
+      'Keyword search over Juan Diego\'s CV, portfolio and notes. Use English keywords (technologies, clouds, companies, skills), e.g. "AWS Bedrock" or "voice agents". Returns the best-matching entries, each with the source to cite.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'English keywords' },
+      },
+      required: ['query'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    !str(i.query)
+      ? 'query must be a non-empty string'
+      : String(i.query).length > 200
+        ? 'query must be at most 200 characters'
+        : null,
+  run: async (i) => {
+    const q = words(String(i.query));
+    const scored = (await loadProfile()).map((e) => {
+      const title = words(e.title);
+      const body = words(e.text);
+      // Title hits weigh more; prefixes match ("agent" finds "agents").
+      const score = q.reduce(
+        (s, w) =>
+          s +
+          (title.some((t) => t.startsWith(w)) ? 2 : 0) +
+          (body.some((t) => t.startsWith(w)) ? 1 : 0),
+        0,
+      );
+      return { e, score };
+    });
+    const entries = scored
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((x) => x.e);
+    return entries.length
+      ? { entries }
+      : {
+          entries,
+          note: 'No matches. Try other keywords or get_profile_section; if it is still missing, it is not in his profile.',
+        };
+  },
+  summary: (r, es) => {
+    const n = (r as { entries: unknown[] }).entries.length;
+    return es ? `${n} resultados` : `${n} results`;
+  },
+};
+
 export const CLIENT_TOOLS: Record<string, ClientTool> = {
+  get_profile_section: getProfileSection,
+  search_profile: searchProfile,
   search_menu: searchMenu,
   place_order: placeOrder,
   get_weather: getWeather,
