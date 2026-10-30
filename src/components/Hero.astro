@@ -55,7 +55,10 @@ const stages = [
           </span>
           Medellín, Colombia
         </span>
-        <span aria-hidden="true" class="bg-line2 h-[22px] w-px"></span>
+        <span
+          aria-hidden="true"
+          class="bg-line2 hidden h-[22px] w-px sm:block"
+        ></span>
         <span class="mono flex flex-wrap items-center gap-2 text-xs tracking-[0.04em]">
           <span class="border-line2 text-chip border px-[11px] py-[7px]">
             {x.langEs}
@@ -65,7 +68,7 @@ const stages = [
           </span>
         </span>
       </div>
-      <div class="-mt-2.5 flex flex-wrap items-center gap-x-3.5 gap-y-2.5 text-lg">
+      <div class="-mt-2.5 flex items-start gap-3.5 text-lg">
         <svg
           aria-hidden="true"
           width="24"
@@ -75,14 +78,17 @@ const stages = [
           stroke="var(--accent)"
           stroke-width="1.5"
           stroke-linejoin="round"
+          class="mt-0.5 flex-none"
         >
           <path d="M2 9l10-5 10 5-10 5-10-5z"></path>
           <path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"></path>
           <path d="M22 9v6"></path>
         </svg>
-        <span>{x.degree} · Universidad de Medellín</span>
-        <span class="mono text-muted text-xs tracking-[0.06em]">
-          {x.degreeMeta}
+        <span class="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
+          <span>{x.degree} · Universidad de Medellín</span>
+          <span class="mono text-muted text-xs tracking-[0.06em]">
+            {x.degreeMeta}
+          </span>
         </span>
       </div>
     </div>
@@ -153,15 +159,15 @@ const stages = [
           <span>{s}</span>
         ))}
       </div>
-      <div class="mono mt-stack grid grid-cols-5 gap-1.5 text-[11px] tracking-[0.04em]">
+      <div class="mono mt-stack grid grid-cols-3 gap-1.5 text-[11px] sm:grid-cols-5 tracking-[0.04em]">
         {stages.map(([a, b]) => (
-          <div class="border-line2 text-chip border px-2 py-2.5">
+          <div class="border-line2 text-chip min-w-0 border px-2 py-2.5 break-words">
             {a}
             <br />
             <span class="text-muted">{b}</span>
           </div>
         ))}
-        <div class="border-accent text-accent border px-2 py-2.5">
+        <div class="border-accent text-accent min-w-0 border px-2 py-2.5 break-words">
           TTS
           <br />
           <span>streaming</span>

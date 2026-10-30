@@ -35,7 +35,7 @@ export default function ThemeToggle({ toLight, toDark }: Props) {
       onClick={toggle}
       aria-label={label}
       title={label}
-      className="border-line2 text-ink ml-2 grid size-9 cursor-pointer place-items-center border bg-transparent p-0"
+      className="border-line2 text-ink grid size-9 cursor-pointer place-items-center border bg-transparent p-0"
     >
       {dark ? (
         <svg
