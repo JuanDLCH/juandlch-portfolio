@@ -64,6 +64,20 @@ const useHydrated = () =>
     () => false,
   );
 
+// Phone layout (matches the `mob` variant in global.css).
+const phoneQuery = '(max-width: 720px)';
+const subscribePhone = (cb: () => void) => {
+  const mq = window.matchMedia(phoneQuery);
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+};
+const usePhone = () =>
+  useSyncExternalStore(
+    subscribePhone,
+    () => window.matchMedia(phoneQuery).matches,
+    () => false,
+  );
+
 const mono = 'font-mono';
 const label = `${mono} text-muted text-[10px] tracking-[0.08em] uppercase`;
 const iconBtn =
@@ -107,6 +121,7 @@ const initials = (s: string) =>
 
 export default function ChatApp() {
   const { es, dark } = useHtml();
+  const phone = usePhone();
   const x = es ? CHAT.es : CHAT.en;
   const hydrated = useHydrated();
   const live = <T,>(value: T, initial: T) => (hydrated ? value : initial);
@@ -120,6 +135,7 @@ export default function ChatApp() {
   const session = sessions[c.id] ?? emptySession();
   const draft = drafts[c.id] ?? '';
   const files = attachments[c.id] ?? [];
+  const hasInput = draft.trim().length > 0 || files.length > 0;
 
   const [side, setSide] = useState(false);
   const [modal, setModal] = useState(false);
@@ -570,21 +586,21 @@ export default function ChatApp() {
                     )}
                   </div>
                 ) : (
-                  <>
+                  <div className="mob:flex-row mob:items-end mob:gap-0.5 mob:pl-3 flex flex-col">
                     <label htmlFor="jd-prompt" className="sr-only">
                       {x.inputLabel}
                     </label>
                     <textarea
                       id="jd-prompt"
-                      rows={2}
+                      rows={phone ? 1 : 2}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={onKeyDown}
-                      placeholder={x.placeholder}
-                      className="text-ink placeholder:text-muted mob:min-h-11 mob:text-base block [field-sizing:content] max-h-[8em] min-h-[2.6em] w-full resize-none border-0 bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal focus:outline-none"
+                      placeholder={phone ? x.placeholderShort : x.placeholder}
+                      className="text-ink placeholder:text-muted mob:min-h-11 mob:min-w-0 mob:flex-1 mob:self-center mob:px-0 mob:py-2.5 mob:text-base mob:max-h-[8.5em] block [field-sizing:content] max-h-[8em] min-h-[2.6em] w-full resize-none border-0 bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal focus:outline-none"
                     />
-                    <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5">
-                      <div className="flex gap-1">
+                    <div className="mob:contents flex items-center justify-between gap-2 px-1.5 pb-1.5">
+                      <div className="mob:contents flex gap-1">
                         <button
                           type="button"
                           onClick={() => fileRef.current?.click()}
@@ -599,12 +615,12 @@ export default function ChatApp() {
                           onClick={() => void onMic()}
                           aria-label={x.mic}
                           title={keys.openai ? x.mic : x.micNeedsKey}
-                          className={`${iconBtn} border-transparent ${keys.openai ? 'text-ink' : 'text-muted'}`}
+                          className={`${iconBtn} mob:hidden border-transparent ${keys.openai ? 'text-ink' : 'text-muted'}`}
                         >
                           <Icon d={I.mic} />
                         </button>
                       </div>
-                      <div className="flex items-center gap-2.5">
+                      <div className="mob:contents flex items-center gap-2.5">
                         <span
                           className={`${mono} text-muted narrow:hidden text-[10px]`}
                         >
@@ -620,18 +636,32 @@ export default function ChatApp() {
                             <Icon d={I.stop} size={14} />
                           </button>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => void send()}
-                            aria-label={x.send}
-                            className="bg-accent text-on-accent grid size-11 cursor-pointer place-items-center border-0"
-                          >
-                            <Icon d={I.send} size={15} />
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void send()}
+                              aria-label={x.send}
+                              className={`bg-accent text-on-accent grid size-11 shrink-0 cursor-pointer place-items-center border-0 ${hasInput ? '' : 'mob:hidden'}`}
+                            >
+                              <Icon d={I.send} size={15} />
+                            </button>
+                            {/* Phone: one action button, the mic until there is something to send. */}
+                            {!hasInput && (
+                              <button
+                                type="button"
+                                onClick={() => void onMic()}
+                                aria-label={x.mic}
+                                title={keys.openai ? x.mic : x.micNeedsKey}
+                                className="bg-accent text-on-accent mob:grid hidden size-11 shrink-0 cursor-pointer place-items-center border-0"
+                              >
+                                <Icon d={I.mic} size={18} />
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
               <div
