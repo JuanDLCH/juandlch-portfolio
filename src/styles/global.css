@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 :root {
-  --header-h: 104px;
+  --header-h: 96px;
   --bg: #f1f4f8;
   --panel: #ffffff;
   --line: #d8e0ea;
@@ -51,20 +51,20 @@
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
   /* Fluid sizing scale: shrinks with viewport width and height. */
-  --spacing-section: clamp(32px, 7svh, 64px);
-  --spacing-block: clamp(20px, 4svh, 40px);
-  --spacing-stack: clamp(12px, 2.2svh, 24px);
+  --spacing-section: clamp(24px, 5svh, 56px);
+  --spacing-block: clamp(16px, 3.5svh, 36px);
+  --spacing-stack: clamp(10px, 2svh, 22px);
   --spacing-card: clamp(14px, 1.6vw, 22px);
   --spacing-gutter: clamp(20px, 3vw, 48px);
-  --spacing-photo: clamp(110px, 12vw, 170px);
-  --spacing-wave: clamp(80px, 16svh, 130px);
+  --spacing-photo: clamp(100px, min(12vw, 21svh), 170px);
+  --spacing-wave: clamp(64px, 14svh, 120px);
   --spacing-wave-sm: clamp(40px, 8svh, 60px);
-  --spacing-icon: clamp(30px, 2.8vw, 40px);
+  --spacing-icon: clamp(28px, min(2.8vw, 6svh), 40px);
   --spacing-badge: clamp(60px, 6vw, 80px);
-  --text-display: clamp(30px, 4.4vw, 68px);
-  --text-hero: clamp(22px, 2.6vw, 36px);
-  --text-h2: clamp(26px, 3vw, 44px);
-  --text-lead: clamp(17px, 1.8vw, 24px);
+  --text-display: clamp(28px, min(4.4vw, 9.5svh), 64px);
+  --text-hero: clamp(20px, min(2.6vw, 5.5svh), 36px);
+  --text-h2: clamp(24px, min(3vw, 6.5svh), 44px);
+  --text-lead: clamp(16px, min(1.8vw, 3.6svh), 24px);
   --text-h3: clamp(17px, 1.6vw, 22px);
   --text-sub: clamp(15px, 1.3vw, 18px);
   --font-sans: 'Geist', 'Helvetica Neue', Arial, sans-serif;
@@ -211,6 +211,6 @@
 
 @media (min-width: 40rem) {
   :root {
-    --header-h: 64px;
+    --header-h: 56px;
   }
 }
