@@ -24,7 +24,12 @@ import {
 } from '../../lab/chat/cases';
 import { runTurn } from '../../lab/chat/turn';
 import { cvLinkId, cvPdf } from '../../lab/chat/cv';
-import { CONTACT, contactInput } from '../../lab/chat/contact';
+import {
+  CONTACT,
+  MEETING_PURPOSES,
+  contactInput,
+  type MeetingPurpose,
+} from '../../lab/chat/contact';
 import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
@@ -127,6 +132,7 @@ const I = {
   play: '<path d="M7 4.5v15l12-7.5z"/>',
   mail: '<rect x="3" y="5" width="18" height="14"/><path d="M3 6l9 7 9-7"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
   calendar:
     '<rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   // A small tree: one node feeding two.
@@ -1625,64 +1631,149 @@ function Linked({
   return out;
 }
 
+// Contact buttons from show_contact_options. The meeting button copies a
+// short note (what the meeting is about) and opens the booking page; without
+// one from the agent, it first offers an optional form to write it.
 function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
-  const { options, topic } = contactInput(input);
-  if (!options.length) return null;
+  const given = contactInput(input);
+  const [form, setForm] = useState(false);
+  const [purpose, setPurpose] = useState<MeetingPurpose | null>(null);
+  const [note, setNote] = useState('');
+  const [copied, setCopied] = useState(false);
+  if (!given.options.length) return null;
   const btn =
-    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-10 items-center gap-2 border px-3.5 text-sm no-underline transition-colors';
-  const subject = encodeURIComponent(topic || x.contactSubject);
-  return (
-    <div
-      role="group"
-      aria-label={x.contactLabel}
-      className="mob:max-w-full flex max-w-[88%] flex-wrap gap-2 pl-3"
+    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-10 cursor-pointer items-center gap-2 border bg-transparent px-3.5 text-sm no-underline transition-colors';
+  const primary =
+    'bg-accent text-on-accent mob:h-11 inline-flex h-10 cursor-pointer items-center gap-2 border-0 px-3.5 text-sm font-semibold no-underline';
+  const subject = encodeURIComponent(given.topic || x.contactSubject);
+  const described = Boolean(given.purpose || given.note);
+  const noteText = (p: MeetingPurpose | null, n: string) =>
+    [p && x.meetingPurposes[p], n.trim()].filter(Boolean).join(': ');
+  // Copy first (needs the click), then open the booking page.
+  const book = (text: string) => {
+    if (text) {
+      navigator.clipboard?.writeText(text).then(
+        () => setCopied(true),
+        () => {},
+      );
+    }
+    window.open(CONTACT.booking!, '_blank', 'noopener,noreferrer');
+  };
+  const link = (o: 'linkedin' | 'github') => (
+    <a
+      key={o}
+      href={CONTACT[o]}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={btn}
     >
-      {options.map((o) =>
-        o === 'email' ? (
-          <a
-            key={o}
-            href={`mailto:${CONTACT.email}?subject=${subject}`}
-            className={btn}
-          >
-            <Icon d={I.mail} size={15} />
-            {x.contactEmail}
-          </a>
-        ) : o === 'linkedin' ? (
-          <a
-            key={o}
-            href={CONTACT.linkedin}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={btn}
-          >
-            <Icon d={I.link} size={15} />
-            {x.contactLinkedin}
-          </a>
-        ) : CONTACT.booking ? (
-          <a
-            key={o}
-            href={CONTACT.booking}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-accent text-on-accent mob:h-11 inline-flex h-10 items-center gap-2 px-3.5 text-sm font-semibold no-underline"
-          >
-            <Icon d={I.calendar} size={15} />
-            {x.contactMeeting}
-          </a>
-        ) : (
-          <button
-            key={o}
-            type="button"
-            disabled
-            className={`${btn} cursor-not-allowed opacity-60`}
-          >
-            <Icon d={I.calendar} size={15} />
-            {x.contactMeeting}
-            <span className={`${mono} text-muted text-[10px] uppercase`}>
-              · {x.contactSoon}
+      <Icon d={o === 'linkedin' ? I.link : I.code} size={15} />
+      {o === 'linkedin' ? x.contactLinkedin : x.contactGithub}
+    </a>
+  );
+
+  return (
+    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2.5 pl-3">
+      <div
+        role="group"
+        aria-label={x.contactLabel}
+        className="flex flex-wrap gap-2"
+      >
+        {given.options.map((o) =>
+          o === 'email' ? (
+            <a
+              key={o}
+              href={`mailto:${CONTACT.email}?subject=${subject}`}
+              className={btn}
+            >
+              <Icon d={I.mail} size={15} />
+              {x.contactEmail}
+            </a>
+          ) : o === 'linkedin' || o === 'github' ? (
+            link(o)
+          ) : CONTACT.booking ? (
+            <button
+              key={o}
+              type="button"
+              aria-expanded={described ? undefined : form}
+              onClick={() =>
+                described
+                  ? book(noteText(given.purpose, given.note))
+                  : setForm(!form)
+              }
+              className={primary}
+            >
+              <Icon d={I.calendar} size={15} />
+              {x.contactMeeting}
+            </button>
+          ) : (
+            <button
+              key={o}
+              type="button"
+              disabled
+              className={`${btn} cursor-not-allowed opacity-60`}
+            >
+              <Icon d={I.calendar} size={15} />
+              {x.contactMeeting}
+              <span className={`${mono} text-muted text-[10px] uppercase`}>
+                · {x.contactSoon}
+              </span>
+            </button>
+          ),
+        )}
+      </div>
+      {CONTACT.booking && described && (
+        <div className="border-line2 border border-dashed px-3 py-2 text-[13px]">
+          <div className={label}>{x.meetingNote}</div>
+          <p className="text-body m-0 mt-1">
+            {noteText(given.purpose, given.note)}
+          </p>
+          <p className="text-muted m-0 mt-1 text-xs">
+            {copied ? x.meetingCopied : x.meetingPaste}
+          </p>
+        </div>
+      )}
+      {CONTACT.booking && !described && form && (
+        <div className="border-line2 bg-panel flex flex-col gap-2.5 border p-3">
+          <div className={label}>{x.meetingAbout}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {MEETING_PURPOSES.map((p) => {
+              const on = purpose === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setPurpose(on ? null : p)}
+                  className={`mob:min-h-11 min-h-9 cursor-pointer border px-3 text-[13px] transition-colors ${on ? 'border-accent bg-accent text-on-accent' : 'border-line2 text-ink hover:border-accent bg-transparent'}`}
+                >
+                  {x.meetingPurposes[p]}
+                </button>
+              );
+            })}
+          </div>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={300}
+            rows={2}
+            aria-label={x.meetingAbout}
+            placeholder={x.meetingNotePh}
+            className="border-line2 bg-bg text-ink w-full resize-none border px-3 py-2 text-sm"
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-muted text-xs">
+              {copied ? x.meetingCopied : x.meetingHint}
             </span>
-          </button>
-        ),
+            <button
+              type="button"
+              onClick={() => book(noteText(purpose, note))}
+              className={primary}
+            >
+              {x.meetingGo}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
