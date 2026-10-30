@@ -981,27 +981,31 @@ export default function ChatApp() {
                   {tools.length} {x.toolsWord}
                 </span>
               </div>
-              <ul className="border-line2 m-0 flex list-none flex-col border p-0">
-                {tools.map((t, i) => (
-                  <li
-                    key={t.name}
-                    className={`mob:min-h-11 flex items-center justify-between gap-2 px-2 py-1.5 ${i ? 'border-line2 border-t' : ''}`}
-                  >
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className={`${mono} text-[10px]`}>{t.name}</span>
-                      <span className="text-muted text-[10px] leading-[1.35]">
-                        {pick(t.desc, es)}
-                      </span>
-                    </span>
-                    <span
-                      className={`${mono} text-ok inline-flex shrink-0 items-center gap-1 text-[9px]`}
+              {tools.length === 0 ? (
+                <p className="text-muted m-0 text-[11px]">{x.toolsSoon}</p>
+              ) : (
+                <ul className="border-line2 m-0 flex list-none flex-col border p-0">
+                  {tools.map((t, i) => (
+                    <li
+                      key={t.name}
+                      className={`mob:min-h-11 flex items-center justify-between gap-2 px-2 py-1.5 ${i ? 'border-line2 border-t' : ''}`}
                     >
-                      <span aria-hidden="true" className="bg-ok size-[7px]" />
-                      {x.ready}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className={`${mono} text-[10px]`}>{t.name}</span>
+                        <span className="text-muted text-[10px] leading-[1.35]">
+                          {pick(t.desc, es)}
+                        </span>
+                      </span>
+                      <span
+                        className={`${mono} text-ok inline-flex shrink-0 items-center gap-1 text-[9px]`}
+                      >
+                        <span aria-hidden="true" className="bg-ok size-[7px]" />
+                        {x.ready}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="border-line flex flex-col gap-1.5 border-t pt-3">
