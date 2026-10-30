@@ -24,3 +24,11 @@ No test suite.
 ## Pending placeholders
 
 AWS icons in `public/aws/*.svg` are generated stand-ins (replace with official icons, same filenames). Certification badges are placeholders until PNGs are added to `public/certs/` and wired in `Certifications.astro`. Photo, CV link, `[YEAR]` and the `#voice`/`#chat`/`#case-*` anchors are unfinished in the original design too.
+
+## Development rules
+
+- Work happens directly on `main`; CI (`.github/workflows/ci.yml`) runs lint, format check, `astro check` and build on every push.
+- Commits follow Conventional Commits (`commitlint.config.js`): `feat`, `fix`, `content` (copy changes), `style`, `refactor`, `perf`, `docs`, `test`, `build`, `ci`, `chore`, `revert`. English, imperative, header ≤ 72 chars. One logical change per commit.
+- Husky hooks: `pre-commit` runs lint-staged (ESLint + Prettier on staged files); `commit-msg` runs commitlint. Don't bypass with `--no-verify`.
+- Colors come from theme tokens (`text-accent`), never raw hex. New copy goes in `src/i18n/content.ts` for both languages. No `any`.
+- Dependabot ignores TypeScript major bumps (see TypeScript note above).
