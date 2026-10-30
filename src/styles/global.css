@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Chat lab: the settings panel turns into a drawer at 980px and below.
+   Declared before `mob` so phone rules win over drawer rules. */
+@custom-variant narrow (@media (max-width: 980px));
 /* Layout switches to the phone design at 720px and below (see the Landing · 390 px board). */
 @custom-variant mob (@media (max-width: 720px));
 @custom-variant desk (@media (min-width: 721px));

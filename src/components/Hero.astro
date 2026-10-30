@@ -19,7 +19,7 @@ const stages = [
 ---
 
 <section id="top" class="pt-block pb-section">
-  <div class="flex flex-wrap items-end gap-x-gutter gap-y-6 mob:grid mob:grid-cols-[auto_minmax(0,1fr)] mob:items-end mob:gap-x-4 mob:gap-y-3.5">
+  <div class="flex flex-wrap items-end gap-x-gutter gap-y-6 narrow:items-start mob:grid mob:grid-cols-[auto_minmax(0,1fr)] mob:items-end mob:gap-x-4 mob:gap-y-3.5">
     <div class="jd-rise relative aspect-[4/5] w-photo flex-none mob:col-start-1 mob:row-span-2 mob:row-start-1 mob:w-[clamp(72px,24vw,112px)]">
       <Image
         src={photo}
@@ -36,8 +36,8 @@ const stages = [
       />
       <CornerMarks offset="-8px" size="22px" />
     </div>
-    <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-stack [animation-delay:0.12s] mob:contents">
-      <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3.5 mob:contents">
+    <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-stack [animation-delay:0.12s] narrow:flex-[1_1_360px] mob:contents">
+      <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3.5 narrow:contents">
         <div class="flex min-w-0 flex-auto flex-col gap-stack mob:contents">
           <h1 class="m-0 text-display leading-[0.95] font-medium tracking-[-0.055em] mob:col-start-2 mob:row-start-1 mob:text-[clamp(26px,8.5vw,38px)] mob:leading-none">
             Juan Diego Londoño
@@ -50,7 +50,7 @@ const stages = [
             <T v={x.role} />
           </div>
         </div>
-        <div class="flex flex-none flex-col gap-2 mob:order-10 mob:col-span-full mob:mt-1">
+        <div class="flex flex-none flex-col gap-2 narrow:order-last narrow:flex-row narrow:flex-wrap mob:order-10 mob:flex-col mob:col-span-full mob:mt-1">
           <a
             href="#talk-cv"
             class="jd-cvbtn jd-fill bg-accent !text-on-accent inline-flex min-h-10 items-center justify-center gap-2 px-4 text-sm font-semibold mob:min-h-12 mob:text-[15px] whitespace-nowrap no-underline"
@@ -111,7 +111,7 @@ const stages = [
         </span>
         <span
           aria-hidden="true"
-          class="bg-line2 hidden h-[22px] w-px sm:block"
+          class="bg-line2 hidden h-[22px] w-px sm:block narrow:hidden"
         ></span>
         <span class="mono flex flex-wrap items-center gap-2 text-xs tracking-[0.04em]">
           <span class="border-line2 text-chip border px-[11px] py-[7px]">
