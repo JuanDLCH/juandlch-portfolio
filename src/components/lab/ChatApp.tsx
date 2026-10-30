@@ -24,12 +24,7 @@ import {
 } from '../../lab/chat/cases';
 import { runTurn } from '../../lab/chat/turn';
 import { cvLinkId, cvPdf } from '../../lab/chat/cv';
-import {
-  CONTACT,
-  MEETING_PURPOSES,
-  contactInput,
-  type MeetingPurpose,
-} from '../../lab/chat/contact';
+import { CONTACT, contactInput } from '../../lab/chat/contact';
 import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
@@ -1631,55 +1626,24 @@ function Linked({
   return out;
 }
 
-// Contact buttons from show_contact_options. The meeting button copies a
-// short note (what the meeting is about) and opens the booking page; without
-// one from the agent, it first offers an optional form to write it.
+// Contact buttons from show_contact_options. The booking page can't be
+// prefilled, so the meeting button comes with a hint to describe the meeting
+// in its form.
 function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
-  const given = contactInput(input);
-  const [form, setForm] = useState(false);
-  const [purpose, setPurpose] = useState<MeetingPurpose | null>(null);
-  const [note, setNote] = useState('');
-  const [copied, setCopied] = useState(false);
-  if (!given.options.length) return null;
+  const { options, topic } = contactInput(input);
+  if (!options.length) return null;
   const btn =
-    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-10 cursor-pointer items-center gap-2 border bg-transparent px-3.5 text-sm no-underline transition-colors';
-  const primary =
-    'bg-accent text-on-accent mob:h-11 inline-flex h-10 cursor-pointer items-center gap-2 border-0 px-3.5 text-sm font-semibold no-underline';
-  const subject = encodeURIComponent(given.topic || x.contactSubject);
-  const described = Boolean(given.purpose || given.note);
-  const noteText = (p: MeetingPurpose | null, n: string) =>
-    [p && x.meetingPurposes[p], n.trim()].filter(Boolean).join(': ');
-  // Copy first (needs the click), then open the booking page.
-  const book = (text: string) => {
-    if (text) {
-      navigator.clipboard?.writeText(text).then(
-        () => setCopied(true),
-        () => {},
-      );
-    }
-    window.open(CONTACT.booking!, '_blank', 'noopener,noreferrer');
-  };
-  const link = (o: 'linkedin' | 'github') => (
-    <a
-      key={o}
-      href={CONTACT[o]}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={btn}
-    >
-      <Icon d={o === 'linkedin' ? I.link : I.code} size={15} />
-      {o === 'linkedin' ? x.contactLinkedin : x.contactGithub}
-    </a>
-  );
-
+    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-10 items-center gap-2 border bg-transparent px-3.5 text-sm no-underline transition-colors';
+  const subject = encodeURIComponent(topic || x.contactSubject);
+  const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
   return (
-    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2.5 pl-3">
+    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2 pl-3">
       <div
         role="group"
         aria-label={x.contactLabel}
         className="flex flex-wrap gap-2"
       >
-        {given.options.map((o) =>
+        {options.map((o) =>
           o === 'email' ? (
             <a
               key={o}
@@ -1690,22 +1654,20 @@ function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
               {x.contactEmail}
             </a>
           ) : o === 'linkedin' || o === 'github' ? (
-            link(o)
+            <a key={o} href={CONTACT[o]} {...external} className={btn}>
+              <Icon d={o === 'linkedin' ? I.link : I.code} size={15} />
+              {o === 'linkedin' ? x.contactLinkedin : x.contactGithub}
+            </a>
           ) : CONTACT.booking ? (
-            <button
+            <a
               key={o}
-              type="button"
-              aria-expanded={described ? undefined : form}
-              onClick={() =>
-                described
-                  ? book(noteText(given.purpose, given.note))
-                  : setForm(!form)
-              }
-              className={primary}
+              href={CONTACT.booking}
+              {...external}
+              className="bg-accent text-on-accent mob:h-11 inline-flex h-10 items-center gap-2 px-3.5 text-sm font-semibold no-underline"
             >
               <Icon d={I.calendar} size={15} />
               {x.contactMeeting}
-            </button>
+            </a>
           ) : (
             <button
               key={o}
@@ -1722,58 +1684,8 @@ function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
           ),
         )}
       </div>
-      {CONTACT.booking && described && (
-        <div className="border-line2 border border-dashed px-3 py-2 text-[13px]">
-          <div className={label}>{x.meetingNote}</div>
-          <p className="text-body m-0 mt-1">
-            {noteText(given.purpose, given.note)}
-          </p>
-          <p className="text-muted m-0 mt-1 text-xs">
-            {copied ? x.meetingCopied : x.meetingPaste}
-          </p>
-        </div>
-      )}
-      {CONTACT.booking && !described && form && (
-        <div className="border-line2 bg-panel flex flex-col gap-2.5 border p-3">
-          <div className={label}>{x.meetingAbout}</div>
-          <div className="flex flex-wrap gap-1.5">
-            {MEETING_PURPOSES.map((p) => {
-              const on = purpose === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setPurpose(on ? null : p)}
-                  className={`mob:min-h-11 min-h-9 cursor-pointer border px-3 text-[13px] transition-colors ${on ? 'border-accent bg-accent text-on-accent' : 'border-line2 text-ink hover:border-accent bg-transparent'}`}
-                >
-                  {x.meetingPurposes[p]}
-                </button>
-              );
-            })}
-          </div>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={300}
-            rows={2}
-            aria-label={x.meetingAbout}
-            placeholder={x.meetingNotePh}
-            className="border-line2 bg-bg text-ink w-full resize-none border px-3 py-2 text-sm"
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-muted text-xs">
-              {copied ? x.meetingCopied : x.meetingHint}
-            </span>
-            <button
-              type="button"
-              onClick={() => book(noteText(purpose, note))}
-              className={primary}
-            >
-              {x.meetingGo}
-            </button>
-          </div>
-        </div>
+      {CONTACT.booking && options.includes('meeting') && (
+        <p className="text-muted m-0 text-xs leading-normal">{x.meetingHint}</p>
       )}
     </div>
   );

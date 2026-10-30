@@ -2,13 +2,7 @@
 // profile is Juan Diego's CV and portfolio, the menu and orders are fake demo
 // data, weather comes from Open-Meteo (no key).
 import type Anthropic from '@anthropic-ai/sdk';
-import {
-  CONTACT,
-  CONTACT_OPTIONS,
-  MEETING_PURPOSES,
-  type ContactOption,
-  type MeetingPurpose,
-} from './contact';
+import { CONTACT, CONTACT_OPTIONS, type ContactOption } from './contact';
 
 type Input = Record<string, unknown>;
 
@@ -348,7 +342,7 @@ const showContactOptions: ClientTool = {
   def: {
     name: 'show_contact_options',
     description:
-      'Show buttons under your answer so the user can reach Juan Diego: book a Google Meet with him, email him, or open his LinkedIn or GitHub. The buttons are the only way to reach him from here; you cannot send emails or book meetings yourself. For a meeting, pass what it is about when the user told you: the button copies it so they can paste it in the booking form.',
+      'Show buttons under your answer so the user can reach Juan Diego: book a Google Meet with him, email him, or open his LinkedIn or GitHub. The buttons are the only way to reach him from here; you cannot send emails or book meetings yourself.',
     input_schema: {
       type: 'object',
       properties: {
@@ -361,16 +355,6 @@ const showContactOptions: ClientTool = {
           type: 'string',
           description:
             'Short email subject in the language of the user, e.g. "Senior AI Engineer role at Acme"',
-        },
-        meeting_purpose: {
-          type: 'string',
-          enum: [...MEETING_PURPOSES],
-          description: 'What the meeting is about, if the user said so',
-        },
-        meeting_note: {
-          type: 'string',
-          description:
-            "One or two sentences with the user's context for the meeting, in their language. Only what they told you.",
         },
       },
       required: ['options'],
@@ -389,33 +373,17 @@ const showContactOptions: ClientTool = {
       (typeof i.topic !== 'string' || i.topic.length > 80)
     )
       return 'topic must be a string of at most 80 characters';
-    if (
-      i.meeting_purpose !== undefined &&
-      !MEETING_PURPOSES.includes(i.meeting_purpose as MeetingPurpose)
-    )
-      return `meeting_purpose must be one of: ${MEETING_PURPOSES.join(', ')}`;
-    if (
-      i.meeting_note !== undefined &&
-      (typeof i.meeting_note !== 'string' || i.meeting_note.length > 300)
-    )
-      return 'meeting_note must be a string of at most 300 characters';
     return null;
   },
-  run: async (i) => {
-    const meeting = (i.options as string[]).includes('meeting');
-    const described = Boolean(i.meeting_purpose || i.meeting_note);
-    return {
-      shown: i.options,
-      ...(meeting && {
-        meeting: !CONTACT.booking
-          ? 'Booking is not available yet: the button shows "coming soon". Do not offer to book; suggest email or LinkedIn to arrange a call.'
-          : described
-            ? 'The meeting button copies the note and opens his booking page: tell the user to pick a slot and paste the note in the form.'
-            : 'The meeting button first offers an optional short form (what it is about), then opens his booking page.',
-      }),
-      note: 'The buttons appear under your answer. Do not repeat the email address or links in your text.',
-    };
-  },
+  run: async (i) => ({
+    shown: i.options,
+    ...((i.options as string[]).includes('meeting') && {
+      meeting: CONTACT.booking
+        ? 'The meeting button opens his booking page. Its form has a field to say what the meeting is about (a freelance project, a job offer, technical consulting…): optional, but it makes it more likely he accepts.'
+        : 'Booking is not available yet: the button shows "coming soon". Do not offer to book; suggest email or LinkedIn to arrange a call.',
+    }),
+    note: 'The buttons appear under your answer. Do not repeat the email address or links in your text.',
+  }),
   summary: (r) => (r as { shown: string[] }).shown.join(' · '),
 };
 
