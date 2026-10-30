@@ -83,7 +83,7 @@ const usePhone = () =>
 const mono = 'font-mono';
 const label = `${mono} text-muted text-[10px] tracking-[0.08em] uppercase`;
 const iconBtn =
-  'border-line2 text-ink hover:border-accent grid size-11 shrink-0 cursor-pointer place-items-center border bg-transparent p-0 transition-colors';
+  'border-line2 text-ink hover:border-accent grid shrink-0 cursor-pointer place-items-center border bg-transparent p-0 transition-colors';
 
 const Icon = ({ d, size = 17 }: { d: string; size?: number }) => (
   <svg
@@ -111,8 +111,9 @@ const I = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
+  // A small tree: one node feeding two.
   diagram:
-    '<rect x="3" y="3" width="7" height="6"/><rect x="14" y="3" width="7" height="6"/><rect x="14" y="15" width="7" height="6"/><path d="M10 6h4M17.5 9v6"/>',
+    '<rect x="9" y="3" width="6" height="5"/><rect x="3" y="16" width="6" height="5"/><rect x="15" y="16" width="6" height="5"/><path d="M12 8v4M6 16v-4h12v4"/>',
 };
 
 const pick = (v: { en: string; es: string }, es: boolean) => (es ? v.es : v.en);
@@ -465,7 +466,7 @@ export default function ChatApp() {
             type="button"
             onClick={openKeys}
             aria-label={x.keysBtn}
-            className={`${iconBtn} narrow:grid hidden`}
+            className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
           >
             <Icon d={I.key} />
           </button>
@@ -473,7 +474,7 @@ export default function ChatApp() {
             type="button"
             onClick={() => setSide(!side)}
             aria-label={x.settings}
-            className={`${iconBtn} narrow:grid hidden`}
+            className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
           >
             <Icon d={I.sliders} />
           </button>
@@ -631,7 +632,7 @@ export default function ChatApp() {
                           type="button"
                           onClick={cancelRec}
                           aria-label={x.cancel}
-                          className={`${iconBtn} text-lg`}
+                          className={`${iconBtn} size-11 text-lg`}
                         >
                           ×
                         </button>
@@ -667,7 +668,7 @@ export default function ChatApp() {
                           onClick={() => fileRef.current?.click()}
                           aria-label={x.attach}
                           title={x.attachHint}
-                          className={`${iconBtn} text-muted border-transparent`}
+                          className={`${iconBtn} text-muted size-11 border-transparent`}
                         >
                           <Icon d={I.clip} />
                         </button>
@@ -677,7 +678,7 @@ export default function ChatApp() {
                           disabled={busy}
                           aria-label={x.mic}
                           title={keys.openai ? x.mic : x.micNeedsKey}
-                          className={`${iconBtn} mob:hidden border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
+                          className={`${iconBtn} mob:hidden size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
                         >
                           <Icon d={I.mic} />
                         </button>
