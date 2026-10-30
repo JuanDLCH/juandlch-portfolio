@@ -1,0 +1,179 @@
+---
+import type { Content } from '../i18n';
+import CornerMarks from './CornerMarks.astro';
+import Waveform from './Waveform.astro';
+
+interface Props {
+  x: Content['x'];
+}
+const { x } = Astro.props;
+const stages = [
+  [x.stUser, x.stSpeech],
+  ['STT', '— ms'],
+  [x.stAgent, '— ms'],
+  [x.stTool, 'get_menu()'],
+];
+---
+
+<section id="top" class="pt-[72px] pb-[104px]">
+  <div class="flex flex-wrap items-end gap-x-14 gap-y-8">
+    <div class="jd-rise relative aspect-[4/5] w-[clamp(180px,19vw,260px)] flex-none">
+      <div
+        role="img"
+        aria-label={x.photoAlt}
+        class="bg-panel border-line2 text-muted flex size-full flex-col items-center justify-center gap-2.5 border"
+      >
+        <svg
+          aria-hidden="true"
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1"
+        >
+          <circle cx="12" cy="8.5" r="4"></circle>
+          <path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"></path>
+        </svg>
+        <span class="mono text-[11px] tracking-[0.08em]">[YOUR PHOTO]</span>
+      </div>
+      <CornerMarks offset="-8px" size="22px" />
+    </div>
+    <div class="jd-rise flex min-w-0 flex-[1_1_560px] flex-col gap-7 [animation-delay:0.12s]">
+      <div class="mono text-accent flex items-center gap-3 text-[13px] tracking-[0.1em] uppercase">
+        <span aria-hidden="true" class="bg-accent h-px w-8"></span>
+        {x.role}
+      </div>
+      <h1 class="m-0 text-[clamp(36px,6vw,104px)] leading-[0.95] font-medium tracking-[-0.055em]">
+        Juan Diego Londoño
+      </h1>
+      <div class="border-line2 flex flex-wrap items-center gap-x-7 gap-y-3.5 border-t pt-[22px]">
+        <span class="flex items-center gap-3 text-lg">
+          <span
+            aria-hidden="true"
+            class="border-line2 flex h-[22px] w-[33px] flex-col border"
+          >
+            <span class="flex-[2_1_0] bg-[#FCD116]"></span>
+            <span class="flex-[1_1_0] bg-[#003893]"></span>
+            <span class="flex-[1_1_0] bg-[#CE1126]"></span>
+          </span>
+          Medellín, Colombia
+        </span>
+        <span aria-hidden="true" class="bg-line2 h-[22px] w-px"></span>
+        <span class="mono flex flex-wrap items-center gap-2 text-xs tracking-[0.04em]">
+          <span class="border-line2 text-chip border px-[11px] py-[7px]">
+            {x.langEs}
+          </span>
+          <span class="border-line2 text-chip border px-[11px] py-[7px]">
+            {x.langEn}
+          </span>
+        </span>
+      </div>
+      <div class="-mt-2.5 flex flex-wrap items-center gap-x-3.5 gap-y-2.5 text-lg">
+        <svg
+          aria-hidden="true"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--accent)"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        >
+          <path d="M2 9l10-5 10 5-10 5-10-5z"></path>
+          <path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"></path>
+          <path d="M22 9v6"></path>
+        </svg>
+        <span>{x.degree} · Universidad de Medellín</span>
+        <span class="mono text-muted text-xs tracking-[0.06em]">
+          {x.degreeMeta}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-[88px] flex flex-wrap items-center gap-14">
+    <div class="min-w-0 flex-[1_1_520px]">
+      <p class="m-0 text-[clamp(30px,3.4vw,48px)] leading-[1.08] font-medium tracking-[-0.04em] text-balance">
+        {x.heroA}
+        <span class="text-accent">{x.heroB}</span>
+        {x.heroC}
+      </p>
+      <p class="text-body mt-6 mb-0 max-w-[560px] text-[19px] leading-[1.55] font-light text-pretty">
+        {x.heroSub}
+      </p>
+      <div class="mt-10 flex flex-wrap gap-3">
+        <a
+          href="#lab"
+          class="jd-fill bg-accent !text-on-accent inline-flex min-h-[52px] items-center gap-3 px-6 text-[15px] font-semibold no-underline"
+        >
+          <svg
+            aria-hidden="true"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <path d="M12 19v3"></path>
+          </svg>
+          {x.ctaLab}{' '}
+          <span class="jd-arrow" aria-hidden="true">
+            →
+          </span>
+        </a>
+        <a
+          href="#work"
+          class="jd-card border-line2 inline-flex min-h-[52px] items-center gap-2.5 border px-6 text-[15px] font-medium no-underline"
+        >
+          {x.ctaWork}{' '}
+          <span class="jd-arrow" aria-hidden="true">
+            ↓
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <figure class="jd-rise bg-panel dots border-line relative m-0 min-w-0 flex-[1_1_500px] border p-7 [animation-delay:0.3s]">
+      <CornerMarks />
+      <div class="eyebrow text-muted flex flex-wrap justify-between gap-3 !text-[11px]">
+        <span class="flex items-center gap-2">
+          <span class="jd-blink bg-accent size-1.5" aria-hidden="true"></span>
+          <span class="text-accent">{x.agentSpeaking}</span>
+        </span>
+        <span>{x.turnLabel}</span>
+      </div>
+      <Waveform variant="hero" />
+      <div
+        aria-hidden="true"
+        class="mono border-line2 text-muted mt-2.5 flex justify-between border-t pt-1.5 text-[10px]"
+      >
+        {['0.0s', '0.5', '1.0', '1.5', '2.0', '2.5', '3.0'].map((s) => (
+          <span>{s}</span>
+        ))}
+      </div>
+      <div class="mono mt-[22px] grid grid-cols-5 gap-1.5 text-[11px] tracking-[0.04em]">
+        {stages.map(([a, b]) => (
+          <div class="border-line2 text-chip border px-2 py-2.5">
+            {a}
+            <br />
+            <span class="text-muted">{b}</span>
+          </div>
+        ))}
+        <div class="border-accent text-accent border px-2 py-2.5">
+          TTS
+          <br />
+          <span>streaming</span>
+        </div>
+      </div>
+      <figcaption class="border-line text-muted mt-5 border-t pt-4 text-sm leading-[1.55]">
+        {x.figCaption}
+      </figcaption>
+    </figure>
+  </div>
+</section>

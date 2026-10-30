@@ -1,0 +1,26 @@
+---
+interface Props {
+  offset?: string;
+  size?: string;
+  only?: ('tl' | 'tr' | 'bl' | 'br')[];
+}
+const {
+  offset = '-1px',
+  size = '16px',
+  only = ['tl', 'tr', 'bl', 'br'],
+} = Astro.props;
+const pos = {
+  tl: 'top-[var(--o)] left-[var(--o)] border-t-2 border-l-2',
+  tr: 'top-[var(--o)] right-[var(--o)] border-t-2 border-r-2',
+  bl: 'bottom-[var(--o)] left-[var(--o)] border-b-2 border-l-2',
+  br: 'bottom-[var(--o)] right-[var(--o)] border-b-2 border-r-2',
+};
+---
+
+{only.map((k) => (
+  <span
+    aria-hidden="true"
+    class:list={['border-accent absolute', pos[k]]}
+    style={`--o:${offset};width:${size};height:${size}`}
+  />
+))}

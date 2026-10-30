@@ -1,0 +1,27 @@
+---
+import type { Content } from '../i18n';
+import SectionHeading from './SectionHeading.astro';
+
+interface Props {
+  x: Content['x'];
+  principles: Content['principles'];
+}
+const { x, principles } = Astro.props;
+---
+
+<section id="principles" class="border-line border-t py-[88px]">
+  <SectionHeading n="06">{x.prTitle}</SectionHeading>
+  <ol class="m-0 mt-8 grid list-none grid-cols-[repeat(auto-fit,minmax(min(520px,100%),1fr))] gap-x-14 p-0">
+    {principles.map((p) => (
+      <li class="border-line2 flex gap-6 border-t py-7">
+        <span class="mono text-accent flex-none pt-1.5 text-[13px]">{p.n}</span>
+        <div>
+          <h3 class="m-0 text-[clamp(22px,2vw,28px)] leading-[1.15] font-medium tracking-[-0.03em]">
+            {p.title}
+          </h3>
+          <p class="text-body mt-2.5 mb-0 text-base leading-[1.6]">{p.body}</p>
+        </div>
+      </li>
+    ))}
+  </ol>
+</section>

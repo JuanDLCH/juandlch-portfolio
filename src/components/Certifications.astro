@@ -1,0 +1,93 @@
+---
+import type { Content } from '../i18n';
+import SectionHeading from './SectionHeading.astro';
+
+interface Props {
+  x: Content['x'];
+}
+const { x } = Astro.props;
+// Badge PNGs are not bundled yet: drop them in public/certs/ and set `badge`.
+const certs = [
+  {
+    name: 'AWS Certified AI Practitioner',
+    meta: 'Amazon Web Services · [YEAR]',
+    href: 'https://www.credly.com/badges/8fae51ff-40de-4bbc-aae7-3025afe5bd88/public_url',
+    badge: undefined,
+  },
+  {
+    name: 'AWS Certified AI Practitioner — Early Adopter',
+    meta: `Amazon Web Services · ${x.earlyNote}`,
+    href: 'https://www.credly.com/badges/01204e88-1b1e-48ca-a90d-3e52f5592e64/public_url',
+    badge: undefined,
+  },
+  {
+    name: 'Claude Certified Architect – Foundations',
+    meta: 'Anthropic · CCA-F · [YEAR]',
+    href: 'https://www.credly.com/badges/1c2e844c-9c17-4030-9cb5-b052673ca22a/public_url',
+    badge: undefined,
+  },
+];
+---
+
+<section id="certifications" class="border-line border-t py-[72px]">
+  <div class="flex flex-wrap items-baseline justify-between gap-3">
+    <SectionHeading n="07">{x.certTitle}</SectionHeading>
+    <span class="mono text-muted text-xs">{x.certNote}</span>
+  </div>
+  <div class="mt-7 grid grid-cols-[repeat(auto-fill,minmax(min(290px,100%),1fr))] gap-4">
+    {certs.map((c) => (
+      <div class="bg-panel border-line2 flex items-center gap-5 border p-5">
+        {c.badge ? (
+          <img
+            src={c.badge}
+            alt={`${c.name} badge`}
+            width="88"
+            height="88"
+            class="size-[88px] flex-none object-contain"
+          />
+        ) : (
+          <div
+            role="img"
+            aria-label={`${c.name} badge`}
+            class="border-line2 text-muted mono grid size-[88px] flex-none place-items-center border text-[10px]"
+          >
+            BADGE
+          </div>
+        )}
+        <div class="flex min-w-0 flex-col gap-1">
+          <div class="text-[17px] leading-tight font-medium tracking-[-0.015em]">
+            {c.name}
+          </div>
+          <div class="text-muted text-sm">{c.meta}</div>
+          <a
+            href={c.href}
+            class="mono text-accent mt-1.5 py-1 text-xs no-underline"
+          >
+            {x.verify}
+          </a>
+        </div>
+      </div>
+    ))}
+    <div class="text-muted flex items-center gap-5 border border-dashed border-line2 p-5">
+      <div
+        aria-hidden="true"
+        class="border-line2 grid size-[88px] flex-none place-items-center border border-dashed"
+      >
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+        >
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+      </div>
+      <div class="flex flex-col gap-1">
+        <div class="mono text-xs tracking-[0.06em] uppercase">{x.nextCert}</div>
+        <div class="text-sm">{x.nextCertBody}</div>
+      </div>
+    </div>
+  </div>
+</section>

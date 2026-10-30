@@ -1,0 +1,16 @@
+---
+interface Props {
+  n: string;
+  class?: string;
+}
+const { n, class: cls } = Astro.props;
+---
+
+<h2
+  class:list={[
+    'mono text-muted m-0 text-xs font-medium tracking-[0.08em] uppercase',
+    cls,
+  ]}
+>
+  <span class="text-accent">{n}</span> · <slot />
+</h2>

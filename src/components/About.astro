@@ -1,0 +1,61 @@
+---
+import type { Content } from '../i18n';
+import SectionHeading from './SectionHeading.astro';
+
+interface Props {
+  x: Content['x'];
+}
+const { x } = Astro.props;
+const steps = [
+  { year: '2022', title: 'Full Stack', text: x.tl1, tone: 'dim' },
+  { year: '2023', title: 'Cloud & Backend', text: x.tl2, tone: 'dim' },
+  { year: '2024', title: 'AI Engineering', text: x.tl3, tone: 'mid' },
+  {
+    year: '2024 — 2026',
+    title: 'Lead AI Engineer',
+    text: x.tl4,
+    tone: 'accent',
+  },
+] as const;
+const border = {
+  dim: 'border-line2',
+  mid: 'border-mid',
+  accent: 'border-accent',
+};
+const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
+---
+
+<section id="about" class="border-line border-t py-[88px]">
+  <div class="flex flex-wrap gap-x-16 gap-y-8">
+    <SectionHeading n="01" class="flex-[1_1_280px]">
+      {x.aboutTitle}
+    </SectionHeading>
+    <p class="m-0 flex-[3_1_560px] text-[28px] leading-[1.38] font-light tracking-[-0.015em] text-pretty">
+      {x.aboutA}
+      <span class="text-accent font-normal">{x.aboutB}</span>
+      {x.aboutC}
+    </p>
+  </div>
+  <ol class="m-0 mt-[72px] grid list-none grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] p-0">
+    {steps.map((s) => (
+      <li class:list={['relative border-t pt-5 pr-6', border[s.tone]]}>
+        <span
+          aria-hidden="true"
+          class:list={['absolute -top-1 left-0 size-[7px]', fill[s.tone]]}
+        ></span>
+        <div
+          class:list={[
+            'mono text-xs',
+            s.tone === 'accent' ? 'text-accent' : 'text-muted',
+          ]}
+        >
+          {s.year}
+        </div>
+        <div class="mt-2.5 text-[22px] font-medium tracking-[-0.02em]">
+          {s.title}
+        </div>
+        <div class="text-muted mt-1.5 text-[15px] leading-normal">{s.text}</div>
+      </li>
+    ))}
+  </ol>
+</section>

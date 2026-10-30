@@ -1,0 +1,73 @@
+---
+import type { Content, Lang } from '../i18n';
+import ThemeToggle from './ThemeToggle';
+
+interface Props {
+  x: Content['x'];
+  lang: Lang;
+}
+const { x, lang } = Astro.props;
+const links = [
+  ['#work', x.navWork],
+  ['#lab', x.navLab],
+  ['#about', x.navAbout],
+  ['#contact', x.navContact],
+];
+const langBtn =
+  'grid h-[42px] w-11 place-items-center text-xs font-medium tracking-[0.06em] no-underline hover:!text-current';
+---
+
+<header class="border-line flex flex-wrap items-center justify-between gap-4 border-b py-[22px]">
+  <a
+    href="#top"
+    class="mono flex items-center gap-2.5 text-[15px] font-medium tracking-[0.04em] no-underline"
+  >
+    <span
+      aria-hidden="true"
+      class="border-accent grid size-3.5 place-items-center border-[1.5px]"
+    >
+      <span class="bg-accent size-1"></span>
+    </span>
+    JUANDLCH
+  </a>
+  <nav
+    aria-label={x.navLabel}
+    class="mono flex flex-wrap items-center gap-1 text-[13px] tracking-[0.06em] uppercase"
+  >
+    {links.map(([href, label]) => (
+      <a href={href} class="px-3.5 py-3 no-underline">
+        {label}
+      </a>
+    ))}
+    <a href="#cv" class="border-line2 ml-2 border px-4 py-2.5 no-underline">
+      {x.navCv}
+    </a>
+    <div
+      role="group"
+      aria-label={x.langGroup}
+      class="border-line2 mono ml-2 flex border"
+    >
+      <a
+        href="/en/"
+        hreflang="en"
+        aria-current={lang === 'en' ? 'true' : undefined}
+        class:list={[langBtn, lang === 'en' ? 'bg-ink !text-bg' : 'text-ink']}
+      >
+        EN
+      </a>
+      <a
+        href="/es/"
+        hreflang="es"
+        aria-current={lang === 'es' ? 'true' : undefined}
+        class:list={[
+          langBtn,
+          'border-line2 border-l',
+          lang === 'es' ? 'bg-ink !text-bg' : 'text-ink',
+        ]}
+      >
+        ES
+      </a>
+    </div>
+    <ThemeToggle client:load toLight={x.toLight} toDark={x.toDark} />
+  </nav>
+</header>
