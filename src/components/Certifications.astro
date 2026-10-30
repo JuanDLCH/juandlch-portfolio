@@ -1,30 +1,37 @@
 ---
+import { Image } from 'astro:assets';
 import type { Content } from '../i18n';
+import awsAi from '../assets/certs/aws-ai-practitioner.png';
+import awsEarly from '../assets/certs/aws-ai-practitioner-early-adopter.png';
+import claudeCca from '../assets/certs/claude-certified-architect.png';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
   x: Content['x'];
 }
 const { x } = Astro.props;
-// Badge PNGs are not bundled yet: drop them in public/certs/ and set `badge`.
+const fmt = new Intl.DateTimeFormat(x.locale, { dateStyle: 'medium' });
 const certs = [
   {
     name: 'AWS Certified AI Practitioner',
-    meta: 'Amazon Web Services · [YEAR]',
+    meta: 'Amazon Web Services · 2024',
+    expires: new Date(2027, 8, 23),
     href: 'https://www.credly.com/badges/8fae51ff-40de-4bbc-aae7-3025afe5bd88/public_url',
-    badge: undefined,
+    badge: awsAi,
   },
   {
     name: 'AWS Certified AI Practitioner — Early Adopter',
-    meta: `Amazon Web Services · ${x.earlyNote}`,
+    meta: 'Amazon Web Services · 2024',
+
     href: 'https://www.credly.com/badges/01204e88-1b1e-48ca-a90d-3e52f5592e64/public_url',
-    badge: undefined,
+    badge: awsEarly,
   },
   {
     name: 'Claude Certified Architect – Foundations',
-    meta: 'Anthropic · CCA-F · [YEAR]',
+    meta: 'Anthropic · CCA-F · 2026',
+    expires: new Date(2027, 6, 28),
     href: 'https://www.credly.com/badges/1c2e844c-9c17-4030-9cb5-b052673ca22a/public_url',
-    badge: undefined,
+    badge: claudeCca,
   },
 ];
 ---
@@ -37,28 +44,28 @@ const certs = [
   <div class="mt-7 grid grid-cols-[repeat(auto-fill,minmax(min(290px,100%),1fr))] gap-4">
     {certs.map((c) => (
       <div class="bg-panel border-line2 flex items-center gap-5 border p-5">
-        {c.badge ? (
-          <img
-            src={c.badge}
-            alt={`${c.name} badge`}
-            width="88"
-            height="88"
-            class="size-[88px] flex-none object-contain"
-          />
-        ) : (
-          <div
-            role="img"
-            aria-label={`${c.name} badge`}
-            class="border-line2 text-muted mono grid size-[88px] flex-none place-items-center border text-[10px]"
-          >
-            BADGE
-          </div>
-        )}
+        <Image
+          src={c.badge}
+          alt={`${c.name} badge`}
+          width={88}
+          height={88}
+          widths={[88, 128]}
+          sizes="88px"
+          format="webp"
+          quality={85}
+          loading="lazy"
+          class="size-[88px] flex-none object-contain"
+        />
         <div class="flex min-w-0 flex-col gap-1">
           <div class="text-[17px] leading-tight font-medium tracking-[-0.015em]">
             {c.name}
           </div>
           <div class="text-muted text-sm">{c.meta}</div>
+          {c.expires && (
+            <div class="mono text-muted text-xs">
+              {x.expires} {fmt.format(c.expires)}
+            </div>
+          )}
           <a
             href={c.href}
             class="mono text-accent mt-1.5 py-1 text-xs no-underline"
