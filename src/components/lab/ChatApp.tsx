@@ -147,6 +147,15 @@ export default function ChatApp() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!modal) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setModal(false);
+    };
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, [modal]);
+
+  useEffect(() => {
     const el = logRef.current;
     if (el && session.items.length) el.scrollTop = el.scrollHeight;
   }, [session.items]);
@@ -819,6 +828,14 @@ export default function ChatApp() {
 
       {modal && (
         <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          {/* Backdrop: a click that starts and ends outside the dialog closes it. */}
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={x.close}
+            onClick={() => setModal(false)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
           <div
             role="dialog"
             aria-modal="true"
