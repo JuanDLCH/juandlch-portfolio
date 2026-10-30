@@ -47,7 +47,19 @@ export const setTheme = (theme: Theme, persist = true) => {
   if (persist) save('theme', theme);
 };
 
-setLang(root.dataset.lang === 'es' ? 'es' : 'en', false);
+const current = (): Lang => (root.dataset.lang === 'es' ? 'es' : 'en');
+
+setLang(current(), false);
+
+// ClientRouter swaps in a page rendered with default attributes: carry the
+// live theme and language over before it paints, then refresh its attributes.
+document.addEventListener('astro:before-swap', (e) => {
+  const next = e.newDocument.documentElement;
+  next.dataset.theme = root.dataset.theme ?? 'dark';
+  next.dataset.lang = current();
+  next.lang = current();
+});
+document.addEventListener('astro:page-load', () => setLang(current(), false));
 
 document.addEventListener('click', (e) => {
   const btn = (e.target as Element).closest<HTMLElement>('[data-set-lang]');

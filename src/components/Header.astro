@@ -168,61 +168,76 @@ const langBtn =
 </dialog>
 
 <script>
-  // Mobile menu: a native modal <dialog> (Esc and focus handling for free).
-  const menu = document.querySelector<HTMLDialogElement>('[data-menu]');
-  const openBtn = document.querySelector<HTMLButtonElement>('[data-menu-open]');
-  openBtn?.addEventListener('click', () => {
-    menu?.showModal();
-    openBtn.setAttribute('aria-expanded', 'true');
-  });
-  menu?.addEventListener('close', () =>
-    openBtn?.setAttribute('aria-expanded', 'false'),
-  );
-  menu
-    ?.querySelectorAll('[data-menu-close], [data-menu-link]')
-    .forEach((el) => el.addEventListener('click', () => menu.close()));
-
-  // Highlight the nav link whose group contains the section in view.
-  const linkFor = new Map<string, HTMLAnchorElement>();
-  document
-    .querySelectorAll<HTMLAnchorElement>('[data-nav-link]')
-    .forEach((a) =>
-      (a.dataset.sections ?? '').split(' ').forEach((id) => linkFor.set(id, a)),
+  // Runs on every page view (ClientRouter keeps this module loaded); the
+  // previous page's observer and scroll listener are torn down on swap.
+  let teardown: (() => void) | undefined;
+  document.addEventListener('astro:before-swap', () => teardown?.());
+  document.addEventListener('astro:page-load', () => {
+    // Mobile menu: a native modal <dialog> (Esc and focus handling for free).
+    const menu = document.querySelector<HTMLDialogElement>('[data-menu]');
+    const openBtn =
+      document.querySelector<HTMLButtonElement>('[data-menu-open]');
+    openBtn?.addEventListener('click', () => {
+      menu?.showModal();
+      openBtn.setAttribute('aria-expanded', 'true');
+    });
+    menu?.addEventListener('close', () =>
+      openBtn?.setAttribute('aria-expanded', 'false'),
     );
+    menu
+      ?.querySelectorAll('[data-menu-close], [data-menu-link]')
+      .forEach((el) => el.addEventListener('click', () => menu.close()));
 
-  const sections = [...linkFor.keys()]
-    .map((id) => document.getElementById(id))
-    .filter((el): el is HTMLElement => el !== null)
-    .sort((a, b) =>
-      a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
-    );
-  const visible = new Set<string>();
-
-  const paint = () => {
-    // Last visible section in document order wins; at the very bottom the
-    // short footer can't reach the middle band, so it wins there.
-    const atEnd =
-      innerHeight + scrollY >= document.documentElement.scrollHeight - 4;
-    const current = atEnd
-      ? sections[sections.length - 1]
-      : sections.filter((el) => visible.has(el.id)).pop();
-    const active = current ? linkFor.get(current.id) : undefined;
-    linkFor.forEach((a) =>
-      a.setAttribute('aria-current', String(a === active)),
-    );
-  };
-
-  const io = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((e) =>
-        e.isIntersecting
-          ? visible.add(e.target.id)
-          : visible.delete(e.target.id),
+    // Highlight the nav link whose group contains the section in view.
+    const linkFor = new Map<string, HTMLAnchorElement>();
+    document
+      .querySelectorAll<HTMLAnchorElement>('[data-nav-link]')
+      .forEach((a) =>
+        (a.dataset.sections ?? '')
+          .split(' ')
+          .forEach((id) => linkFor.set(id, a)),
       );
-      paint();
-    },
-    { rootMargin: '-35% 0px -55% 0px' },
-  );
-  sections.forEach((el) => io.observe(el));
-  addEventListener('scroll', paint, { passive: true });
+
+    const sections = [...linkFor.keys()]
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null)
+      .sort((a, b) =>
+        a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
+          ? -1
+          : 1,
+      );
+    const visible = new Set<string>();
+
+    const paint = () => {
+      // Last visible section in document order wins; at the very bottom the
+      // short footer can't reach the middle band, so it wins there.
+      const atEnd =
+        innerHeight + scrollY >= document.documentElement.scrollHeight - 4;
+      const current = atEnd
+        ? sections[sections.length - 1]
+        : sections.filter((el) => visible.has(el.id)).pop();
+      const active = current ? linkFor.get(current.id) : undefined;
+      linkFor.forEach((a) =>
+        a.setAttribute('aria-current', String(a === active)),
+      );
+    };
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) =>
+          e.isIntersecting
+            ? visible.add(e.target.id)
+            : visible.delete(e.target.id),
+        );
+        paint();
+      },
+      { rootMargin: '-35% 0px -55% 0px' },
+    );
+    sections.forEach((el) => io.observe(el));
+    addEventListener('scroll', paint, { passive: true });
+    teardown = () => {
+      io.disconnect();
+      removeEventListener('scroll', paint);
+    };
+  });
 </script>
