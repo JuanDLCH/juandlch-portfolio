@@ -27,32 +27,42 @@ const icons = [
     </p>
   </div>
   <ol class="bg-line border-line m-0 mt-block grid list-none grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-px border p-0">
-    {cycle.map((p, i) => (
-      <li class="bg-panel p-card">
-        <div class="flex items-center justify-between gap-3">
-          <div class="eyebrow text-accent">{p.tag}</div>
+    {cycle.map((p, i) => {
+      const [num, label] = p.tag.split(' · ');
+      return (
+        <li class="bg-panel hover:bg-bg group relative p-card transition-colors">
           <span
             aria-hidden="true"
-            class="border-line2 text-accent grid size-9 place-items-center border"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              set:html={icons[i]}
-            />
-          </span>
-        </div>
-        <h3 class="mt-3 mb-2 text-h3 font-medium tracking-[-0.02em]">
-          {p.title}
-        </h3>
-        <p class="text-body m-0 text-[15px] leading-[1.55]">{p.body}</p>
-      </li>
-    ))}
+            class="bg-accent absolute top-0 left-0 size-[7px]"
+          />
+          <div class="flex items-center justify-between gap-3">
+            <div class="eyebrow flex items-center gap-2">
+              <span class="text-accent text-[13px] font-semibold">{num}</span>
+              <span class="text-muted">{label}</span>
+            </div>
+            <span
+              aria-hidden="true"
+              class="border-line2 text-accent grid size-9 place-items-center border"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                set:html={icons[i]}
+              />
+            </span>
+          </div>
+          <h3 class="mt-3 mb-1.5 text-h3 font-medium tracking-[-0.02em]">
+            {p.title}
+          </h3>
+          <p class="text-body m-0 text-sm leading-[1.5]">{p.body}</p>
+        </li>
+      );
+    })}
   </ol>
 </section>

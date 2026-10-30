@@ -8,9 +8,12 @@ const { n, class: cls } = Astro.props;
 
 <h2
   class:list={[
-    'mono text-muted m-0 text-[11px] font-medium tracking-[0.08em] uppercase',
+    'mono text-ink m-0 flex items-center gap-3 text-[clamp(12px,1.05vw,14px)] font-semibold tracking-[0.1em] uppercase',
     cls,
   ]}
 >
-  <span class="text-accent">{n}</span> · <slot />
+  <span aria-hidden="true" class="bg-accent h-px w-8 flex-none"></span>
+  <span>
+    <span class="text-accent">{n}</span> · <slot />
+  </span>
 </h2>
