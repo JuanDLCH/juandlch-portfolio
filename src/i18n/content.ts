@@ -26,16 +26,18 @@ const EN = {
   heroC: ' — inside real software.',
   heroSub:
     'Software engineer first. I design and ship agents, realtime voice and document pipelines for companies, from the first discovery call to the AWS infrastructure they run on.',
-  ctaLab: 'Try the Voice Lab',
+  ctaLab: 'Preview the Voice Lab',
   ctaWork: 'Selected work',
   agentSpeaking: 'Agent speaking',
   turnLabel: 'voice.turn 04 · illustrative',
   stUser: 'USER',
   stSpeech: 'speech',
+  stStt: 'partials',
+  stReason: 'reasoning',
   stAgent: 'AGENT',
   stTool: 'TOOL',
   figCaption:
-    'One conversational turn — speech in, transcription, reasoning, a tool call, speech out — interruptible at every step. Live in the Realtime Voice Lab.',
+    'One conversational turn — speech in, transcription, reasoning, a tool call, speech out — interruptible at every step. A live version is on its way to the Lab.',
   aboutTitle: 'From full stack to AI lead',
   aboutA:
     'I spent my first years shipping ERP systems, cloud backends and integrations. That is why the AI I build today comes with ',
@@ -62,14 +64,14 @@ const EN = {
   labA: 'Don’t take my word for it. ',
   labB: 'Talk to it.',
   labSub:
-    'Watch a recorded demo, or run it live with your own API key. Keys stay in your browser session — never stored, never logged.',
+    'Both demos are in progress: you’ll be able to watch a recording or run them live with your own API key. Keys stay in your browser session — never stored, never logged.',
   lab1Tag: 'Lab 01 · Flagship',
   lab1Body:
     'Full-duplex voice with interruptions, captions and a live latency panel.',
   lab2Tag: 'Lab 02 · Agents',
   lab2Body:
     'Text, images, documents and audio, with tool calls visible as they run.',
-  labCta: 'Watch demo · Try it',
+  labCta: 'Demo in progress',
   pvSim: 'Simulated preview',
   pvYou: 'You',
   pvAgent: 'Agent',
@@ -129,16 +131,18 @@ const ES: typeof EN = {
   heroC: ' — dentro de software real.',
   heroSub:
     'Ingeniero de software ante todo. Diseño y llevo a producción agentes, voz en tiempo real y procesamiento de documentos para empresas, desde la primera reunión de descubrimiento hasta la infraestructura en AWS donde corren.',
-  ctaLab: 'Probar el Voice Lab',
+  ctaLab: 'Ver el Voice Lab',
   ctaWork: 'Trabajo seleccionado',
   agentSpeaking: 'Agente hablando',
   turnLabel: 'voice.turn 04 · ilustrativo',
   stUser: 'USUARIO',
   stSpeech: 'voz',
+  stStt: 'parciales',
+  stReason: 'razona',
   stAgent: 'AGENTE',
   stTool: 'HERRAMIENTA',
   figCaption:
-    'Un turno de conversación — voz de entrada, transcripción, razonamiento, una llamada a herramienta, voz de salida — interrumpible en cada paso. En vivo en el Realtime Voice Lab.',
+    'Un turno de conversación — voz de entrada, transcripción, razonamiento, una llamada a herramienta, voz de salida — interrumpible en cada paso. La versión en vivo está en camino al Lab.',
   aboutTitle: 'De full stack a líder de IA',
   aboutA:
     'Mis primeros años los pasé construyendo ERPs, backends en la nube e integraciones. Por eso la IA que construyo hoy viene con ',
@@ -165,14 +169,14 @@ const ES: typeof EN = {
   labA: 'No me creas a mí. ',
   labB: 'Háblale.',
   labSub:
-    'Mira una demo grabada o pruébala en vivo con tu propia API key. Las llaves se quedan en tu sesión del navegador — nunca se guardan ni se registran.',
+    'Las dos demos están en construcción: podrás ver una grabación o probarlas en vivo con tu propia API key. Las llaves se quedan en tu sesión del navegador — nunca se guardan ni se registran.',
   lab1Tag: 'Lab 01 · Principal',
   lab1Body:
     'Voz bidireccional con interrupciones, subtítulos y un panel de latencia en vivo.',
   lab2Tag: 'Lab 02 · Agentes',
   lab2Body:
     'Texto, imágenes, documentos y audio, con las llamadas a herramientas visibles mientras ocurren.',
-  labCta: 'Ver demo · Probar',
+  labCta: 'Demo en construcción',
   pvSim: 'Vista simulada',
   pvYou: 'Tú',
   pvAgent: 'Agente',
