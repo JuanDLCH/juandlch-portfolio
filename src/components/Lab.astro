@@ -35,7 +35,7 @@ const preview =
   </div>
 
   <div class="mt-head grid grid-cols-[repeat(auto-fit,minmax(min(420px,100%),1fr))] gap-4">
-    <article class="bg-panel border-accent flex flex-col border">
+    <article class="bg-panel border-line2 flex flex-col border">
       <div aria-hidden="true" class:list={[preview, 'gap-2.5']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
           <span class="text-accent flex items-center gap-2">
@@ -97,7 +97,7 @@ const preview =
       </div>
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="tag text-accent">
+          <span class="tag text-muted">
             <T v={x.lab1Tag} />
           </span>
           <span class="text-h3 font-medium tracking-[-0.03em]">
@@ -107,8 +107,9 @@ const preview =
             <T v={x.lab1Body} />
           </span>
         </div>
-        <span class="mono text-muted text-[12px]">
-          <T v={x.labCta} />
+        <span class="mono border-line2 text-muted inline-flex min-h-9 items-center gap-2 border border-dashed px-3 text-[11px] tracking-[0.06em] uppercase">
+          <span aria-hidden="true" class="bg-warn size-1.5"></span>
+          <T v={x.labSoon} />
         </span>
       </div>
     </article>
@@ -116,7 +117,7 @@ const preview =
     <a
       href="/lab/chat"
       data-astro-prefetch="viewport"
-      class="jd-card bg-panel border-line2 flex flex-col border no-underline"
+      class="jd-card group bg-panel border-accent flex flex-col border no-underline"
     >
       <div aria-hidden="true" class:list={[preview, 'gap-2']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.06em]">
@@ -126,8 +127,9 @@ const preview =
             </span>
             <span class="border-line2 text-muted border px-2 py-1">BYOK</span>
           </span>
-          <span class="text-muted tracking-[0.08em] uppercase">
-            <T v={x.pvSim} />
+          <span class="text-ok flex items-center gap-1.5 tracking-[0.08em] uppercase">
+            <span aria-hidden="true" class="jd-blink bg-ok size-1.5"></span>
+            <T v={x.labLive} />
           </span>
         </div>
         <div class="flex max-w-[92%] items-center gap-2 self-end">
@@ -206,7 +208,7 @@ const preview =
       </div>
       <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-3 py-2.5">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="tag text-muted">
+          <span class="tag text-accent">
             <T v={x.lab2Tag} />
           </span>
           <span class="text-h3 font-medium tracking-[-0.03em]">
@@ -216,8 +218,11 @@ const preview =
             <T v={x.lab2Body} />
           </span>
         </div>
-        <span class="mono text-accent text-[12px] font-medium">
+        <span class="bg-accent text-on-accent inline-flex min-h-10 items-center gap-2 px-4 text-sm font-semibold transition-[filter] group-hover:brightness-110">
           <T v={x.labOpen} />
+          <span class="jd-arrow" aria-hidden="true">
+            →
+          </span>
         </span>
       </div>
     </a>
