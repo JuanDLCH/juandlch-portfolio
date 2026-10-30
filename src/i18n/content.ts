@@ -1,4 +1,12 @@
 // Copy and data lifted from the Signal design (EN/ES). Cases, cycle, domains, etc. are built per language.
+export type FlowNode = {
+  label: string;
+  meta: string;
+  hot: boolean;
+  kind?: 'split' | 'loop';
+  parts?: string[];
+};
+
 const EN = {
   navLabel: 'Primary',
   navWork: 'Work',
@@ -83,6 +91,13 @@ const EN = {
     'AWS is my focus, not my limit — I work with whichever cloud or model provider a project requires.',
   awsIconsLabel: 'AWS services I work with',
   toolboxLabel: 'Full toolbox',
+  ragTitle: 'Retrieval & RAG',
+  ragA: 'Retrieval that ',
+  ragB: 'earns its answers.',
+  ragSub:
+    'My agents don’t get a bare top-k. Every question is rewritten, searched with lexical and semantic retrieval, reranked and checked by a validator before anything is answered.',
+  ragFigTag: 'Fig. 05 · retrieval loop',
+  ragFigLabel: 'RAG pipeline diagram',
   prTitle: 'Engineering principles',
   certTitle: 'Certifications',
   certNote: 'Verifiable on Credly',
@@ -179,6 +194,13 @@ const ES: typeof EN = {
     'AWS es mi enfoque, no mi límite — trabajo con la nube o el proveedor de modelos que cada proyecto requiera.',
   awsIconsLabel: 'Servicios de AWS con los que trabajo',
   toolboxLabel: 'Caja de herramientas completa',
+  ragTitle: 'Recuperación y RAG',
+  ragA: 'Recuperación que ',
+  ragB: 'se gana sus respuestas.',
+  ragSub:
+    'Mis agentes no reciben un top-k a secas. Cada pregunta se reescribe, se busca de forma léxica y semántica, se reordena y un validador la revisa antes de responder.',
+  ragFigTag: 'Fig. 05 · ciclo de recuperación',
+  ragFigLabel: 'Diagrama del pipeline de RAG',
   prTitle: 'Principios de ingeniería',
   certTitle: 'Certificaciones',
   certNote: 'Verificables en Credly',
@@ -249,12 +271,104 @@ function build(isEs: boolean) {
         },
       ];
 
-  const mkFlow = function (nodes: [string, string?][]) {
+  const mkFlow = function (nodes: [string, string?][]): FlowNode[] {
     return nodes.map(function (n: [string, string?]) {
       const hot = n[0].charAt(0) === '*';
       return { label: hot ? n[0].slice(1) : n[0], meta: n[1] || '', hot: hot };
     });
   };
+  const ragFlow: FlowNode[] = isEs
+    ? [
+        ...mkFlow([
+          ['Pregunta', 'usuario'],
+          ['Reescritura de consulta', 'reescribir · descomponer'],
+        ]),
+        {
+          label: 'Recuperación híbrida',
+          meta: 'ranking fusionado',
+          hot: false,
+          kind: 'split',
+          parts: ['Postgres full-text', 'pgvector'],
+        },
+        ...mkFlow([
+          ['Reranking', 'top-k → top-n'],
+          ['*Agente validador', '¿alcanza?'],
+        ]),
+        {
+          label: '↺ No alcanza → reformular y buscar de nuevo',
+          meta: '',
+          hot: false,
+          kind: 'loop',
+        },
+        ...mkFlow([['Respuesta', 'fundamentada']]),
+      ]
+    : [
+        ...mkFlow([
+          ['Question', 'user'],
+          ['Query rewrite', 'rewrite · decompose'],
+        ]),
+        {
+          label: 'Hybrid retrieval',
+          meta: 'fused ranking',
+          hot: false,
+          kind: 'split',
+          parts: ['Postgres full-text', 'pgvector'],
+        },
+        ...mkFlow([
+          ['Reranker', 'top-k → top-n'],
+          ['*Validator agent', 'enough?'],
+        ]),
+        {
+          label: '↺ Not enough → rewrite and search again',
+          meta: '',
+          hot: false,
+          kind: 'loop',
+        },
+        ...mkFlow([['Answer', 'grounded']]),
+      ];
+
+  const ragIdeas = (
+    isEs
+      ? [
+          [
+            'Reescribir antes de buscar',
+            'Las preguntas ambiguas o de varias partes se reescriben o se dividen en subconsultas antes de buscar.',
+          ],
+          [
+            'Léxico y semántico, no uno solo',
+            'Postgres full-text y pgvector encuentran cosas distintas; los resultados se fusionan en un solo ranking.',
+          ],
+          [
+            'Reordenar lo recuperado',
+            'Una pasada de reranking pone primero los fragmentos más relevantes antes de que lleguen al agente.',
+          ],
+          [
+            'Validar antes de responder',
+            'Un agente validador decide si el contexto alcanza y devuelve la consulta cuando no.',
+          ],
+        ]
+      : [
+          [
+            'Rewrite before searching',
+            'Ambiguous or multi-part questions are rewritten or split into sub-queries before any search runs.',
+          ],
+          [
+            'Lexical and semantic, not one or the other',
+            'Postgres full-text and pgvector catch different things; results are fused into a single ranking.',
+          ],
+          [
+            'Rerank what you retrieve',
+            'A reranking pass puts the most relevant passages first before they reach the agent.',
+          ],
+          [
+            'Validate before answering',
+            'A validator agent decides whether the context is enough, and sends the query back when it is not.',
+          ],
+        ]
+  ).map(function (r: string[], i: number) {
+    return { n: '0' + (i + 1), title: r[0], body: r[1] };
+  });
+
   const cases = isEs
     ? [
         {
@@ -587,7 +701,17 @@ function build(isEs: boolean) {
   ).map(function (p: string[], i: number) {
     return { n: '0' + (i + 1), title: p[0], body: p[1] };
   });
-  return { x, cycle, cases, awsIcons, domains, stackGroups, principles };
+  return {
+    x,
+    cycle,
+    cases,
+    ragFlow,
+    ragIdeas,
+    awsIcons,
+    domains,
+    stackGroups,
+    principles,
+  };
 }
 
 export const content = { en: build(false), es: build(true) };
