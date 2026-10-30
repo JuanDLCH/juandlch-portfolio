@@ -1066,35 +1066,34 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                 </ul>
               )}
             </div>
+          </div>
 
-            <div className="border-line flex flex-col gap-1.5 border-t pt-3">
-              <div
-                className={`${label} flex justify-between tracking-[0.06em]`}
-              >
-                <span>{x.usage}</span>
-                <span>{x.estimated}</span>
-              </div>
-              <div className="border-line bg-line grid grid-cols-3 gap-px border">
-                {[
-                  ['IN', `${session.usage.input.toLocaleString()} tok`],
-                  ['OUT', `${session.usage.output.toLocaleString()} tok`],
-                  [x.cost, `$${session.usage.cost.toFixed(4)}`],
-                ].map(([k, v]) => (
-                  <div key={k} className="bg-bg px-2 py-1.5">
-                    <div className={`${mono} text-muted text-[9px]`}>{k}</div>
-                    <div className="mt-0.5 text-[11px]">{v}</div>
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setSession(c.id, emptySession())}
-                className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
-              >
-                {x.clear}
-              </button>
+          {/* Usage and clear stay pinned below the scrolling settings. */}
+          <div className="border-line bg-panel mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 flex-col gap-1.5 border-t px-3.5 py-3">
+            <div className={`${label} flex justify-between tracking-[0.06em]`}>
+              <span>{x.usage}</span>
+              <span>{x.estimated}</span>
             </div>
+            <div className="border-line bg-line grid grid-cols-3 gap-px border">
+              {[
+                ['IN', `${session.usage.input.toLocaleString()} tok`],
+                ['OUT', `${session.usage.output.toLocaleString()} tok`],
+                [x.cost, `$${session.usage.cost.toFixed(4)}`],
+              ].map(([k, v]) => (
+                <div key={k} className="bg-bg px-2 py-1.5">
+                  <div className={`${mono} text-muted text-[9px]`}>{k}</div>
+                  <div className="mt-0.5 text-[11px]">{v}</div>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setSession(c.id, emptySession())}
+              className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
+            >
+              {x.clear}
+            </button>
           </div>
         </aside>
       </div>
