@@ -288,7 +288,7 @@ function build(isEs: boolean) {
           meta: 'ranking fusionado',
           hot: false,
           kind: 'split',
-          parts: ['Postgres full-text', 'Vector search'],
+          parts: ['Keyword search', 'Vector search'],
         },
         ...mkFlow([
           ['Reranking', 'top-k → top-n'],
@@ -312,7 +312,7 @@ function build(isEs: boolean) {
           meta: 'fused ranking',
           hot: false,
           kind: 'split',
-          parts: ['Postgres full-text', 'Vector search'],
+          parts: ['Keyword search', 'Vector search'],
         },
         ...mkFlow([
           ['Reranker', 'top-k → top-n'],
@@ -336,7 +336,7 @@ function build(isEs: boolean) {
           ],
           [
             'Léxico y semántico, no uno solo',
-            'La búsqueda full-text y la vectorial encuentran cosas distintas; los resultados se fusionan en un solo ranking.',
+            'La búsqueda por palabras clave y la vectorial encuentran cosas distintas; los resultados se fusionan en un solo ranking.',
           ],
           [
             'Reordenar lo recuperado',
@@ -354,7 +354,7 @@ function build(isEs: boolean) {
           ],
           [
             'Lexical and semantic, not one or the other',
-            'Full-text and vector search catch different things; results are fused into a single ranking.',
+            'Keyword and vector search catch different things; results are fused into a single ranking.',
           ],
           [
             'Rerank what you retrieve',
