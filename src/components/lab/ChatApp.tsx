@@ -125,6 +125,7 @@ const I = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   mail: '<rect x="3" y="5" width="18" height="14"/><path d="M3 6l9 7 9-7"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
@@ -161,6 +162,12 @@ const BILLING: Record<Provider, string> = {
   anthropic: 'https://platform.claude.com/settings/billing',
   openai: 'https://platform.openai.com/settings/organization/billing/overview',
 };
+// Where the CV chat's intro sends visitors to create a key, and the contact
+// buttons it shows (same shape as a show_contact_options call).
+const KEYS_URL = 'https://platform.openai.com/api-keys';
+const INTRO_CONTACT = JSON.stringify({
+  options: ['meeting', 'email', 'linkedin'],
+});
 // Keys the dialog asks for: the chat provider's, plus OpenAI for voice input.
 const KEY_FIELDS: Provider[] =
   PROVIDER === 'openai' ? ['openai'] : ['anthropic', 'openai'];
@@ -226,6 +233,10 @@ export default function ChatApp({
   const [modal, setModal] = useState(false);
   // "Watch demo" and "How I'd build it" dialogs, each with its own case pick.
   const [info, setInfo] = useState<'video' | 'build' | null>(null);
+  // CV chat only: what the demo is, how to run it and how to reach me. Until
+  // the visitor opens or closes it (null), it shows while there's no key.
+  const [introPick, setIntro] = useState<boolean | null>(null);
+  const intro = introPick ?? (!!only && !chatKey);
   const [infoCase, setInfoCase] = useState(CASES[0].id);
   // CV viewer opened from a citation: the answer's cited items and the one
   // clicked.
@@ -242,16 +253,19 @@ export default function ChatApp({
   const dialogRef = useRef<HTMLDivElement>(null);
   const dialog = modal
     ? 'keys'
-    : info
-      ? info
-      : cv
-        ? 'cv'
-        : switchTo
-          ? 'switch'
-          : null;
+    : intro
+      ? 'intro'
+      : info
+        ? info
+        : cv
+          ? 'cv'
+          : switchTo
+            ? 'switch'
+            : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
+    setIntro(false);
     setInfo(null);
     setCv(null);
     setSwitchTo(null);
@@ -278,10 +292,7 @@ export default function ChatApp({
     if (!dialog) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setModal(false);
-        setInfo(null);
-        setCv(null);
-        setSwitchTo(null);
+        closeDialogs();
         return;
       }
       // Keep Tab cycling through the open dialog.
@@ -316,6 +327,8 @@ export default function ChatApp({
     setSide(false);
   };
   const openKeys = (focus: 'anthropic' | 'openai' = 'anthropic') => {
+    // Clearing the keys later must not bring the intro back by itself.
+    setIntro(false);
     setKeyDrafts(keys);
     setKeyFocus(focus);
     setModal(true);
@@ -601,6 +614,17 @@ export default function ChatApp({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {only && (
+            <button
+              type="button"
+              onClick={() => setIntro(true)}
+              aria-label={x.introBtn}
+              title={x.introBtn}
+              className={`${iconBtn} mob:size-11 size-9`}
+            >
+              <Icon d={I.info} />
+            </button>
+          )}
           {!only && (
             <>
               <button
@@ -1476,6 +1500,162 @@ export default function ChatApp({
         </div>
       )}
 
+      {intro &&
+        (() => {
+          // Same sizing as the demo dialogs: the 16:9 frame shrinks with the
+          // viewport height so the steps and contact stay in view.
+          const frameWidth = `min(100%, calc((100dvh - ${phone ? 260 : 540}px) * 16 / 9))`;
+          return (
+            <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={x.close}
+                onClick={() => setIntro(false)}
+                className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+              />
+              <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="jd-intro-title"
+                aria-describedby="jd-intro-body"
+                className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[760px] flex-col border"
+              >
+                <span
+                  aria-hidden="true"
+                  className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+                />
+                <span
+                  aria-hidden="true"
+                  className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+                />
+                <div className="mob:px-4 mob:pt-5 min-h-0 flex-1 overflow-y-auto px-7 pt-6 pb-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div
+                        className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                      >
+                        {x.introTag}
+                      </div>
+                      <h2
+                        id="jd-intro-title"
+                        className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+                      >
+                        {x.introTitle}
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIntro(false)}
+                      aria-label={x.close}
+                      className={`${iconBtn} size-9 shrink-0 text-lg`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <p
+                    id="jd-intro-body"
+                    className="text-body mt-2 mb-0 text-sm leading-[1.55]"
+                  >
+                    {x.introBody}
+                  </p>
+                  {c.video ? (
+                    <video
+                      src={c.video.src}
+                      controls
+                      preload="metadata"
+                      style={{ width: frameWidth }}
+                      className="border-line2 bg-bg mx-auto mt-4 block aspect-video max-w-full border"
+                    >
+                      <track
+                        kind="captions"
+                        src={c.video.captions}
+                        srcLang={es ? 'es' : 'en'}
+                        label={es ? 'Español' : 'English'}
+                        default
+                      />
+                    </video>
+                  ) : (
+                    <div
+                      style={{ width: frameWidth }}
+                      className="border-line2 bg-bg dots text-muted mx-auto mt-4 flex aspect-video max-w-full flex-col items-center justify-center gap-3 border border-dashed p-4 text-center text-sm"
+                    >
+                      <span className="border-line2 grid size-12 place-items-center border">
+                        <Icon d={I.play} size={20} />
+                      </span>
+                      {x.videoSoon}
+                    </div>
+                  )}
+                  <div className="mob:grid-cols-1 mt-5 grid grid-cols-2 gap-x-7 gap-y-5">
+                    <section aria-labelledby="jd-intro-run">
+                      <h3 id="jd-intro-run" className={`${label} m-0`}>
+                        {x.introRun}
+                      </h3>
+                      <ol className="text-body m-0 mt-2 flex list-none flex-col gap-2 p-0 text-[13px] leading-[1.5]">
+                        {x.introSteps.map((step, i) => (
+                          <li key={i} className="flex gap-2.5">
+                            <span
+                              aria-hidden="true"
+                              className={`${mono} text-accent shrink-0 text-[11px] leading-[1.75]`}
+                            >
+                              0{i + 1}
+                            </span>
+                            <span>
+                              {i === 0 ? (
+                                <a
+                                  href={KEYS_URL}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accent underline underline-offset-2"
+                                >
+                                  {step}
+                                </a>
+                              ) : (
+                                step
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                    <section aria-labelledby="jd-intro-talk">
+                      <h3 id="jd-intro-talk" className={`${label} m-0 mb-2`}>
+                        {x.introTalk}
+                      </h3>
+                      <ContactActions
+                        input={INTRO_CONTACT}
+                        x={x}
+                        inset={false}
+                      />
+                    </section>
+                  </div>
+                </div>
+                <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 justify-end gap-2 border-t px-7 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setIntro(false)}
+                    className="border-line2 text-ink mob:h-11 mob:flex-1 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+                  >
+                    {x.introBrowse}
+                  </button>
+                  <button
+                    type="button"
+                    data-autofocus
+                    onClick={() => {
+                      setIntro(false);
+                      openKeys(PROVIDER);
+                    }}
+                    className="bg-accent text-on-accent mob:h-11 mob:flex-1 h-10 cursor-pointer border-0 px-4 text-sm font-semibold"
+                  >
+                    {x.introAddKey}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
       {info &&
         (() => {
           const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
@@ -1692,7 +1872,16 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
 // Contact buttons from show_contact_options. The booking page can't be
 // prefilled, so the meeting button comes with a hint to describe the meeting
 // in its form.
-function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
+function ContactActions({
+  input,
+  x,
+  inset = true,
+}: {
+  input: string;
+  x: ChatCopy;
+  /** In the log the buttons line up with the answer above them. */
+  inset?: boolean;
+}) {
   const { options, topic } = contactInput(input);
   if (!options.length) return null;
   const btn =
@@ -1700,7 +1889,9 @@ function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
   const subject = encodeURIComponent(topic || x.contactSubject);
   const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
   return (
-    <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1.5 pl-3">
+    <div
+      className={`flex flex-col gap-1.5 ${inset ? 'mob:max-w-full max-w-[88%] pl-3' : ''}`}
+    >
       <div
         role="group"
         aria-label={x.contactLabel}
