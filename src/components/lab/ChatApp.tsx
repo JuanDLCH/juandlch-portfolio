@@ -153,13 +153,47 @@ export default function ChatApp() {
   const recRef = useRef<MediaRecorder | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogOpen = modal || info !== null;
+
+  // Dialogs: the rest of the page goes inert while one is open (so Tab and
+  // clicks stay inside), focus moves in on open and back to the trigger on
+  // close.
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    const d = dialogRef.current;
+    (
+      d?.querySelector<HTMLElement>('input') ??
+      d?.querySelector<HTMLElement>('button')
+    )?.focus();
+    return () => trigger?.focus();
+  }, [dialogOpen]);
 
   useEffect(() => {
     if (!modal && !info) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      setModal(false);
-      setInfo(null);
+      if (e.key === 'Escape') {
+        setModal(false);
+        setInfo(null);
+        return;
+      }
+      // Keep Tab cycling through the open dialog.
+      const d = dialogRef.current;
+      if (e.key !== 'Tab' || !d) return;
+      const items = [
+        ...d.querySelectorAll<HTMLElement>('button, input, video, [href]'),
+      ].filter((el) => !el.hasAttribute('disabled'));
+      const first = items[0];
+      const last = items[items.length - 1];
+      const inside = d.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || !inside)) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault();
+        first?.focus();
+      }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
@@ -364,7 +398,10 @@ export default function ChatApp() {
       lang={es ? 'es' : 'en'}
       className="bg-bg text-ink relative flex h-dvh flex-col overflow-hidden"
     >
-      <header className="border-line mob:h-14 mob:gap-2 mob:px-2.5 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4">
+      <header
+        inert={dialogOpen}
+        className="border-line mob:h-14 mob:gap-2 mob:px-2.5 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4"
+      >
         <div className="flex min-w-0 items-center gap-3.5">
           <a
             href="/#lab"
@@ -491,7 +528,7 @@ export default function ChatApp() {
         </div>
       </header>
 
-      <div className="relative flex min-h-0 flex-1">
+      <div inert={dialogOpen} className="relative flex min-h-0 flex-1">
         <main className="dots flex min-w-0 flex-1 flex-col">
           {!ready && (
             <div className="flex shrink-0 justify-center px-4 pt-3">
@@ -911,6 +948,7 @@ export default function ChatApp() {
             className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
           />
           <div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="jd-modal-title"
@@ -1080,6 +1118,7 @@ export default function ChatApp() {
                 className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
               />
               <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="jd-info-title"
