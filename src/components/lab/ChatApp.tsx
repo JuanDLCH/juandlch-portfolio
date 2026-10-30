@@ -334,8 +334,6 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
       setSession(k.id, emptySession());
       $caseId.set(k.id);
     }
-    if (!($drafts.get()[k.id] ?? '').trim())
-      $drafts.setKey(k.id, pick(k.starter, es));
   };
 
   // Streams one turn from `start` (which already shows the user message).
@@ -785,6 +783,33 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}
               />
+              {session.items.length === 0 && (
+                <div
+                  role="group"
+                  aria-label={x.suggestions}
+                  className="mob:flex-nowrap mob:overflow-x-auto mob:-mx-2.5 mob:px-2.5 mb-2 flex flex-wrap gap-1.5"
+                >
+                  {c.suggestions.map((sg) => {
+                    const text = pick(sg.text, es);
+                    return (
+                      <button
+                        key={text}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          if (!sg.attach) return void send(text);
+                          setDraft(text);
+                          fileRef.current?.click();
+                        }}
+                        className="border-line2 bg-panel text-body hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {sg.attach && <Icon d={I.clip} size={13} />}
+                        {sg.attach ? x.attachSuggestion : text}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <div className="border-line2 bg-panel border">
                 {files.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 px-3 pt-3">

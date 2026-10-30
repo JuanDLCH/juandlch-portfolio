@@ -27,7 +27,10 @@ export interface ChatCase {
   tag: L;
   label: L;
   desc: L;
-  starter: L;
+  /** Chips shown above the composer while the conversation is empty; a tap
+   * sends the text. `attach` ones fill the composer and open the file picker
+   * instead, since they need a file first. */
+  suggestions: { text: L; attach?: boolean }[];
   /** Model per provider, matched in tier (fast and cheap, or balanced). */
   models: Record<Provider, ModelId>;
   effort: Effort;
@@ -112,10 +115,39 @@ export const CASES: ChatCase[] = [
       en: 'Ask about my experience, projects, certifications and stack. Answers come from my CV, case studies and portfolio.',
       es: 'Pregunta por mi experiencia, proyectos, certificaciones y stack. Responde desde mi CV, mis casos de estudio y mi portafolio.',
     },
-    starter: {
-      en: 'What experience does Juan Diego have with AWS?',
-      es: '¿Qué experiencia tiene Juan Diego con AWS?',
-    },
+    suggestions: [
+      {
+        text: {
+          en: 'What experience does he have with AWS?',
+          es: '¿Qué experiencia tiene con AWS?',
+        },
+      },
+      {
+        text: {
+          en: 'What AI projects has he taken to production?',
+          es: '¿Qué proyectos de IA ha llevado a producción?',
+        },
+      },
+      {
+        text: {
+          en: 'I need someone with Kubernetes and GCP. Is he a fit?',
+          es: 'Busco alguien con Kubernetes y GCP, ¿encaja?',
+        },
+      },
+      {
+        text: {
+          en: 'I’d like to book a call with him',
+          es: 'Quiero agendar una llamada con él',
+        },
+      },
+      {
+        text: {
+          en: 'Is he a fit for this job post?',
+          es: '¿Encaja con esta oferta?',
+        },
+        attach: true,
+      },
+    ],
     models: LUNA,
     effort: 'low',
     maxTokens: 4000,
@@ -173,10 +205,14 @@ export const CASES: ChatCase[] = [
       en: 'A sample restaurant with a full menu, variants and availability. Build an order, customize it and check out (simulated).',
       es: 'Un restaurante de ejemplo con menú completo, variantes y disponibilidad. Arma tu pedido, personalízalo y finaliza una compra simulada.',
     },
-    starter: {
-      en: 'I want two burgers, one without onion and one with extra cheese. Oh, and swap the fries for a salad.',
-      es: 'Quiero dos hamburguesas, una sin cebolla y otra con queso extra. Ah, cambia las papas por ensalada.',
-    },
+    suggestions: [
+      {
+        text: {
+          en: 'I want two burgers, one without onion and one with extra cheese. Oh, and swap the fries for a salad.',
+          es: 'Quiero dos hamburguesas, una sin cebolla y otra con queso extra. Ah, cambia las papas por ensalada.',
+        },
+      },
+    ],
     models: SOL,
     effort: 'medium',
     maxTokens: 16000,
@@ -193,10 +229,14 @@ export const CASES: ChatCase[] = [
       en: 'A sample insurer with a car policy loaded. Ask about coverage and deductibles, or file a claim with photos of the damage (simulated).',
       es: 'Una aseguradora de ejemplo con una póliza de auto cargada. Pregunta por coberturas y deducibles, o registra un reclamo con fotos de los daños (simulado).',
     },
-    starter: {
-      en: 'I hit something while parking yesterday. Does my insurance cover it? I’ll show you the damage.',
-      es: 'Ayer choqué mi carro estacionando. ¿Mi seguro cubre esto? Te voy a mostrar los daños.',
-    },
+    suggestions: [
+      {
+        text: {
+          en: 'I hit something while parking yesterday. Does my insurance cover it? I’ll show you the damage.',
+          es: 'Ayer choqué mi carro estacionando. ¿Mi seguro cubre esto? Te voy a mostrar los daños.',
+        },
+      },
+    ],
     models: SOL,
     effort: 'medium',
     maxTokens: 16000,
@@ -213,10 +253,14 @@ export const CASES: ChatCase[] = [
       en: 'Upload your own PDF and ask about it: answers, summaries, comparisons and structured data, with the pages they come from.',
       es: 'Sube tu propio PDF y conversa sobre él: respuestas, resúmenes, comparaciones y datos estructurados, con las páginas de donde salen.',
     },
-    starter: {
-      en: 'What are each party’s obligations, and what happens if deadlines are missed?',
-      es: '¿Cuáles son las obligaciones de las partes y qué ocurre si se incumplen los plazos?',
-    },
+    suggestions: [
+      {
+        text: {
+          en: 'What are each party’s obligations, and what happens if deadlines are missed?',
+          es: '¿Cuáles son las obligaciones de las partes y qué ocurre si se incumplen los plazos?',
+        },
+      },
+    ],
     models: SOL,
     effort: 'medium',
     maxTokens: 16000,
