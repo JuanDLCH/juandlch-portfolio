@@ -1066,6 +1066,10 @@ export default function ChatApp() {
         (() => {
           const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
           const video = info === 'video';
+          // Height taken by everything around the 16:9 frame (dialog margin,
+          // header, case picker or text, footer).
+          const chrome = video ? (phone ? 300 : 280) : phone ? 320 : 300;
+          const frameWidth = `min(100%, calc((100dvh - ${chrome}px) * 16 / 9))`;
           return (
             <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
               <button
@@ -1089,7 +1093,7 @@ export default function ChatApp() {
                   aria-hidden="true"
                   className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
                 />
-                <div className="mob:px-4 mob:py-5 min-h-0 flex-1 overflow-y-auto px-7 pt-7 pb-5">
+                <div className="mob:px-4 mob:pt-5 min-h-0 flex-1 overflow-y-auto px-7 pt-6 pb-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div
@@ -1099,7 +1103,7 @@ export default function ChatApp() {
                       </div>
                       <h2
                         id="jd-info-title"
-                        className="mt-2 mb-0 text-2xl font-medium tracking-[-0.03em]"
+                        className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
                       >
                         {video ? x.videoTitle : x.buildTitle}
                       </h2>
@@ -1113,33 +1117,38 @@ export default function ChatApp() {
                       ×
                     </button>
                   </div>
-                  <div
-                    role="group"
-                    aria-label={x.caseLabel}
-                    className="mt-5 flex flex-wrap gap-1.5"
-                  >
-                    {CASES.map((k) => {
-                      const on = k.id === ic.id;
-                      return (
-                        <button
-                          key={k.id}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => setInfoCase(k.id)}
-                          className={`mob:min-h-11 min-h-9 cursor-pointer border px-3 text-[13px] transition-colors ${on ? 'border-accent bg-accent text-on-accent' : 'border-line2 text-ink hover:border-accent bg-transparent'}`}
-                        >
-                          {pick(k.label, es)}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {video && (
+                    <div
+                      role="group"
+                      aria-label={x.caseLabel}
+                      className="mt-4 flex flex-wrap gap-1.5"
+                    >
+                      {CASES.map((k) => {
+                        const on = k.id === ic.id;
+                        return (
+                          <button
+                            key={k.id}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setInfoCase(k.id)}
+                            className={`mob:min-h-11 min-h-9 cursor-pointer border px-3 text-[13px] transition-colors ${on ? 'border-accent bg-accent text-on-accent' : 'border-line2 text-ink hover:border-accent bg-transparent'}`}
+                          >
+                            {pick(k.label, es)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* 16:9 frame sized from the viewport height too, so the
+                      whole dialog fits without scrolling on short screens. */}
                   {video && ic.video ? (
                     <video
                       key={ic.id}
                       src={ic.video.src}
                       controls
                       preload="metadata"
-                      className="border-line2 bg-bg mt-4 block aspect-video w-full border"
+                      style={{ width: frameWidth }}
+                      className="border-line2 bg-bg mx-auto mt-4 block aspect-video max-w-full border"
                     >
                       <track
                         kind="captions"
@@ -1150,7 +1159,10 @@ export default function ChatApp() {
                       />
                     </video>
                   ) : (
-                    <div className="border-line2 bg-bg dots text-muted mt-4 flex aspect-video w-full flex-col items-center justify-center gap-3 border border-dashed p-4 text-center text-sm">
+                    <div
+                      style={{ width: frameWidth }}
+                      className="border-line2 bg-bg dots text-muted mx-auto mt-4 flex aspect-video max-w-full flex-col items-center justify-center gap-3 border border-dashed p-4 text-center text-sm"
+                    >
                       <span className="border-line2 grid size-12 place-items-center border">
                         <Icon d={video ? I.play : I.diagram} size={20} />
                       </span>
@@ -1163,10 +1175,14 @@ export default function ChatApp() {
                     </p>
                   )}
                 </div>
-                <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-between gap-2.5 border-t px-7 py-3.5">
-                  <span className={`${mono} text-muted truncate text-[11px]`}>
-                    {MODELS[ic.model].short} · {ic.tools.length} {x.toolsWord}
-                  </span>
+                <div
+                  className={`border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center gap-2.5 border-t px-7 py-3 ${video ? 'justify-between' : 'justify-end'}`}
+                >
+                  {video && (
+                    <span className={`${mono} text-muted truncate text-[11px]`}>
+                      {MODELS[ic.model].short} · {ic.tools.length} {x.toolsWord}
+                    </span>
+                  )}
                   <div className="flex shrink-0 gap-2">
                     <button
                       type="button"
@@ -1175,17 +1191,19 @@ export default function ChatApp() {
                     >
                       {x.close}
                     </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        pickCase(ic);
-                        setInfo(null);
-                      }}
-                      className="bg-accent text-on-accent mob:h-11 h-10 cursor-pointer border-0 px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {x.tryCase}
-                    </button>
+                    {video && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          pickCase(ic);
+                          setInfo(null);
+                        }}
+                        className="bg-accent text-on-accent mob:h-11 h-10 cursor-pointer border-0 px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {x.tryCase}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

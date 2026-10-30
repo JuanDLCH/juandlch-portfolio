@@ -16,7 +16,7 @@ const EN = {
   buildTitle: 'How would I build it?',
   diagramSoon: 'Architecture diagram on its way.',
   buildSoon:
-    'A short walkthrough of how this case is built (services, data flow and the trade-offs behind them) comes next.',
+    'A short walkthrough of the architecture behind these cases (services, data flow and the trade-offs between them) comes next.',
   caseLabel: 'Case',
   tryCase: 'Try this case',
   noKeyBanner: 'Add your Anthropic API key to run the chat. Nothing is stored.',
@@ -107,7 +107,7 @@ const ES: typeof EN = {
   buildTitle: '¿Cómo lo construiría?',
   diagramSoon: 'El diagrama de arquitectura viene en camino.',
   buildSoon:
-    'Pronto, un recorrido breve de cómo está construido este caso: servicios, flujo de datos y las decisiones detrás.',
+    'Pronto, un recorrido breve por la arquitectura detrás de estos casos: servicios, flujo de datos y las decisiones que hay detrás.',
   caseLabel: 'Caso',
   tryCase: 'Probar este caso',
   noKeyBanner:
