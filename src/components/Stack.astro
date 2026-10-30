@@ -97,13 +97,20 @@ const iconUrl = (name: string) => iconUrls[`../assets/aws/${name}.svg`];
         <span class="jd-plus text-xl leading-none">+</span>
       </span>
     </summary>
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(min(240px,100%),1fr))] gap-x-10 gap-y-6 px-card pt-2 pb-card">
+    <div class="border-line2 grid grid-cols-[repeat(auto-fit,minmax(min(260px,100%),1fr))] gap-x-gutter gap-y-5 border-t px-card py-card">
       {stackGroups.map((g) => (
         <div>
-          <h4 class="border-line m-0 mb-3 border-b pb-2 text-[15px] font-medium">
+          <h4 class="mono text-ink m-0 mb-2.5 flex items-center gap-2 text-xs font-semibold tracking-[0.08em] uppercase">
+            <span aria-hidden="true" class="bg-accent size-1.5 flex-none" />
             {g.title}
           </h4>
-          <p class="mono text-chip m-0 text-xs leading-[1.8]">{g.items}</p>
+          <ul class="m-0 flex list-none flex-wrap gap-1.5 p-0">
+            {g.items.split(' · ').map((item) => (
+              <li class="mono border-line2 text-chip border px-2 py-1 text-xs leading-none">
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
       ))}
     </div>
