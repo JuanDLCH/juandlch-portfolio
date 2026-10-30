@@ -17,74 +17,89 @@ const { x, cases } = Astro.props;
   </div>
   <div class="mt-8 flex flex-col gap-6">
     {cases.map((c) => (
-      <article class="border-line2 bg-panel flex flex-wrap border">
-        <figure class="bg-bg dots border-line2 relative m-0 min-w-0 flex-[1_1_400px] border-r p-7">
-          <CornerMarks only={['tl']} offset="10px" size="14px" />
-          <CornerMarks only={['br']} offset="10px" size="14px" />
-          <div class="mono text-muted flex justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
-            <span>{c.figTag}</span>
-            <span>{x.recreated}</span>
-          </div>
-          <ol
-            aria-label={c.figLabel}
-            class="m-0 mx-auto mt-[22px] flex max-w-[360px] list-none flex-col items-stretch p-0"
+      <details
+        name="cases"
+        class="jd-details bg-panel border-line2 open:border-accent border transition-colors"
+      >
+        <summary class="flex items-center justify-between gap-6 px-[clamp(20px,3vw,32px)] py-5">
+          <span class="flex min-w-0 flex-col gap-2">
+            <span class="eyebrow text-accent">{c.tag}</span>
+            <span class="text-[clamp(20px,2vw,26px)] leading-[1.15] font-medium tracking-[-0.03em]">
+              {c.title}
+            </span>
+          </span>
+          <span
+            class="jd-plus text-accent flex-none text-2xl"
+            aria-hidden="true"
           >
-            {c.flow.map((n, i) => (
-              <li class="flex flex-col items-center">
-                {i > 0 && (
-                  <span
-                    aria-hidden="true"
-                    class="bg-line2 block h-[18px] w-px"
-                  />
-                )}
-                <span
-                  class:list={[
-                    'flex items-center justify-between gap-3 self-stretch border px-3.5 py-[11px] text-sm',
-                    n.hot
-                      ? 'border-accent bg-panel text-accent'
-                      : 'border-line2 text-ink bg-transparent',
-                  ]}
-                >
-                  <span>{n.label}</span>
+            +
+          </span>
+        </summary>
+        <div class="border-line2 flex flex-wrap border-t">
+          <figure class="bg-bg dots border-line2 relative m-0 min-w-0 flex-[1_1_400px] border-r p-7">
+            <CornerMarks only={['tl']} offset="10px" size="14px" />
+            <CornerMarks only={['br']} offset="10px" size="14px" />
+            <div class="mono text-muted flex justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
+              <span>{c.figTag}</span>
+              <span>{x.recreated}</span>
+            </div>
+            <ol
+              aria-label={c.figLabel}
+              class="m-0 mx-auto mt-[22px] flex max-w-[360px] list-none flex-col items-stretch p-0"
+            >
+              {c.flow.map((n, i) => (
+                <li class="flex flex-col items-center">
+                  {i > 0 && (
+                    <span
+                      aria-hidden="true"
+                      class="bg-line2 block h-[18px] w-px"
+                    />
+                  )}
                   <span
                     class:list={[
-                      'mono text-[10px] tracking-[0.06em] uppercase',
-                      n.hot ? 'text-accent' : 'text-muted',
+                      'flex items-center justify-between gap-3 self-stretch border px-3.5 py-[11px] text-sm',
+                      n.hot
+                        ? 'border-accent bg-panel text-accent'
+                        : 'border-line2 text-ink bg-transparent',
                     ]}
                   >
-                    {n.meta}
+                    <span>{n.label}</span>
+                    <span
+                      class:list={[
+                        'mono text-[10px] tracking-[0.06em] uppercase',
+                        n.hot ? 'text-accent' : 'text-muted',
+                      ]}
+                    >
+                      {n.meta}
+                    </span>
                   </span>
+                </li>
+              ))}
+            </ol>
+          </figure>
+          <div class="flex min-w-0 flex-[1.15_1_440px] flex-col gap-[22px] p-[clamp(24px,3vw,40px)]">
+            <dl class="m-0 flex flex-col gap-4">
+              <div>
+                <dt class="eyebrow text-muted">{x.problem}</dt>
+                <dd class="text-body m-0 mt-1.5 text-base leading-[1.55]">
+                  {c.problem}
+                </dd>
+              </div>
+              <div>
+                <dt class="eyebrow text-muted">{x.contribution}</dt>
+                <dd class="m-0 mt-1.5 text-base leading-[1.55]">{c.role}</dd>
+              </div>
+            </dl>
+            <div class="mono flex flex-wrap gap-1.5 text-xs">
+              {c.stack.map((s) => (
+                <span class="border-line2 text-chip border px-[9px] py-[5px]">
+                  {s}
                 </span>
-              </li>
-            ))}
-          </ol>
-        </figure>
-        <div class="flex min-w-0 flex-[1.15_1_440px] flex-col gap-[22px] p-[clamp(24px,3vw,40px)]">
-          <div class="eyebrow text-accent">{c.tag}</div>
-          <h3 class="-mt-1.5 mb-0 text-[clamp(26px,2.6vw,34px)] leading-[1.1] font-medium tracking-[-0.035em] text-balance">
-            {c.title}
-          </h3>
-          <dl class="m-0 flex flex-col gap-4">
-            <div>
-              <dt class="eyebrow text-muted">{x.problem}</dt>
-              <dd class="text-body m-0 mt-1.5 text-base leading-[1.55]">
-                {c.problem}
-              </dd>
+              ))}
             </div>
-            <div>
-              <dt class="eyebrow text-muted">{x.contribution}</dt>
-              <dd class="m-0 mt-1.5 text-base leading-[1.55]">{c.role}</dd>
-            </div>
-          </dl>
-          <div class="mono flex flex-wrap gap-1.5 text-xs">
-            {c.stack.map((s) => (
-              <span class="border-line2 text-chip border px-[9px] py-[5px]">
-                {s}
-              </span>
-            ))}
           </div>
         </div>
-      </article>
+      </details>
     ))}
   </div>
   <p class="text-body m-0 mt-7 text-base leading-[1.6]">
