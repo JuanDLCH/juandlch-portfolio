@@ -83,7 +83,7 @@ const usePhone = () =>
 const mono = 'font-mono';
 const label = `${mono} text-muted text-[10px] tracking-[0.08em] uppercase`;
 const iconBtn =
-  'border-line2 text-ink hover:border-accent grid size-11 shrink-0 cursor-pointer place-items-center border bg-transparent p-0 transition-colors';
+  'border-line2 text-ink hover:border-accent grid shrink-0 cursor-pointer place-items-center border bg-transparent p-0 transition-colors';
 
 const Icon = ({ d, size = 17 }: { d: string; size?: number }) => (
   <svg
@@ -110,6 +110,10 @@ const I = {
   file: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  play: '<path d="M7 4.5v15l12-7.5z"/>',
+  // A small tree: one node feeding two.
+  diagram:
+    '<rect x="9" y="3" width="6" height="5"/><rect x="3" y="16" width="6" height="5"/><rect x="15" y="16" width="6" height="5"/><path d="M12 8v4M6 16v-4h12v4"/>',
 };
 
 const pick = (v: { en: string; es: string }, es: boolean) => (es ? v.es : v.en);
@@ -141,26 +145,70 @@ export default function ChatApp() {
 
   const [side, setSide] = useState(false);
   const [modal, setModal] = useState(false);
+  // "Watch demo" and "How I'd build it" dialogs, each with its own case pick.
+  const [info, setInfo] = useState<'video' | 'build' | null>(null);
+  const [infoCase, setInfoCase] = useState(CASES[0].id);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   const [rec, setRec] = useState<'off' | 'on' | 'busy'>('off');
   const recRef = useRef<MediaRecorder | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogOpen = modal || info !== null;
+
+  // Dialogs: the rest of the page goes inert while one is open (so Tab and
+  // clicks stay inside), focus moves in on open and back to the trigger on
+  // close.
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    const d = dialogRef.current;
+    (
+      d?.querySelector<HTMLElement>('input') ??
+      d?.querySelector<HTMLElement>('button')
+    )?.focus();
+    return () => trigger?.focus();
+  }, [dialogOpen]);
 
   useEffect(() => {
-    if (!modal) return;
+    if (!modal && !info) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setModal(false);
+      if (e.key === 'Escape') {
+        setModal(false);
+        setInfo(null);
+        return;
+      }
+      // Keep Tab cycling through the open dialog.
+      const d = dialogRef.current;
+      if (e.key !== 'Tab' || !d) return;
+      const items = [
+        ...d.querySelectorAll<HTMLElement>('button, input, video, [href]'),
+      ].filter((el) => !el.hasAttribute('disabled'));
+      const first = items[0];
+      const last = items[items.length - 1];
+      const inside = d.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || !inside)) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault();
+        first?.focus();
+      }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [modal]);
+  }, [modal, info]);
 
   useEffect(() => {
     const el = logRef.current;
     if (el && session.items.length) el.scrollTop = el.scrollHeight;
   }, [session.items]);
 
+  const openInfo = (kind: 'video' | 'build') => {
+    setInfoCase(c.id);
+    setInfo(kind);
+    setSide(false);
+  };
   const openKeys = () => {
     setKeyDrafts(keys);
     setModal(true);
@@ -350,7 +398,10 @@ export default function ChatApp() {
       lang={es ? 'es' : 'en'}
       className="bg-bg text-ink relative flex h-dvh flex-col overflow-hidden"
     >
-      <header className="border-line mob:h-14 mob:gap-2 mob:px-2.5 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4">
+      <header
+        inert={dialogOpen}
+        className="border-line mob:h-14 mob:gap-2 mob:px-2.5 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4"
+      >
         <div className="flex min-w-0 items-center gap-3.5">
           <a
             href="/#lab"
@@ -407,6 +458,28 @@ export default function ChatApp() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => openInfo('video')}
+            aria-label={x.watchDemo}
+            className="border-accent text-accent hover:bg-accent hover:text-on-accent mob:hidden narrow:px-0 narrow:w-9 narrow:justify-center inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 border bg-transparent px-3.5 text-[13px] font-medium transition-colors"
+          >
+            <Icon d={I.play} size={14} />
+            <span className="narrow:hidden">{x.watchDemo}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openInfo('build')}
+            aria-label={x.buildBtn}
+            title={x.buildBtn}
+            className={`${iconBtn} mob:hidden size-9`}
+          >
+            <Icon d={I.diagram} />
+          </button>
+          <span
+            aria-hidden="true"
+            className="bg-line2 mob:hidden mx-1 h-6 w-px"
+          />
+          <button
+            type="button"
             onClick={openKeys}
             className={`${mono} border-line2 text-ink hover:border-accent narrow:hidden inline-flex h-9 cursor-pointer items-center gap-3 border bg-transparent px-3 text-[10px] tracking-[0.04em] transition-colors`}
           >
@@ -430,7 +503,7 @@ export default function ChatApp() {
             type="button"
             onClick={openKeys}
             aria-label={x.keysBtn}
-            className={`${iconBtn} narrow:grid hidden`}
+            className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
           >
             <Icon d={I.key} />
           </button>
@@ -438,7 +511,7 @@ export default function ChatApp() {
             type="button"
             onClick={() => setSide(!side)}
             aria-label={x.settings}
-            className={`${iconBtn} narrow:grid hidden`}
+            className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
           >
             <Icon d={I.sliders} />
           </button>
@@ -455,7 +528,7 @@ export default function ChatApp() {
         </div>
       </header>
 
-      <div className="relative flex min-h-0 flex-1">
+      <div inert={dialogOpen} className="relative flex min-h-0 flex-1">
         <main className="dots flex min-w-0 flex-1 flex-col">
           {!ready && (
             <div className="flex shrink-0 justify-center px-4 pt-3">
@@ -596,7 +669,7 @@ export default function ChatApp() {
                           type="button"
                           onClick={cancelRec}
                           aria-label={x.cancel}
-                          className={`${iconBtn} text-lg`}
+                          className={`${iconBtn} size-11 text-lg`}
                         >
                           ×
                         </button>
@@ -632,7 +705,7 @@ export default function ChatApp() {
                           onClick={() => fileRef.current?.click()}
                           aria-label={x.attach}
                           title={x.attachHint}
-                          className={`${iconBtn} text-muted border-transparent`}
+                          className={`${iconBtn} text-muted size-11 border-transparent`}
                         >
                           <Icon d={I.clip} />
                         </button>
@@ -642,7 +715,7 @@ export default function ChatApp() {
                           disabled={busy}
                           aria-label={x.mic}
                           title={keys.openai ? x.mic : x.micNeedsKey}
-                          className={`${iconBtn} mob:hidden border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
+                          className={`${iconBtn} mob:hidden size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
                         >
                           <Icon d={I.mic} />
                         </button>
@@ -734,6 +807,25 @@ export default function ChatApp() {
                 className={`${mono} border-line2 text-ink h-11 cursor-pointer border bg-transparent px-3.5 text-[11px] tracking-[0.06em] uppercase`}
               >
                 {themeLabel}
+              </button>
+            </div>
+            {/* Phone: the header has no room for these, so they live here. */}
+            <div className="mob:grid hidden grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => openInfo('video')}
+                className="border-accent text-accent inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm font-medium"
+              >
+                <Icon d={I.play} size={14} />
+                {x.watchDemo}
+              </button>
+              <button
+                type="button"
+                onClick={() => openInfo('build')}
+                className="border-line2 text-ink inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm"
+              >
+                <Icon d={I.diagram} size={16} />
+                <span className="truncate">{x.buildBtn}</span>
               </button>
             </div>
 
@@ -856,10 +948,11 @@ export default function ChatApp() {
             className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
           />
           <div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="jd-modal-title"
-            className="bg-panel border-line2 mob:h-full mob:max-h-full mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[520px] flex-col border"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[520px] flex-col border"
           >
             <span
               aria-hidden="true"
@@ -1006,6 +1099,162 @@ export default function ChatApp() {
           </div>
         </div>
       )}
+
+      {info &&
+        (() => {
+          const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
+          const video = info === 'video';
+          // Height taken by everything around the 16:9 frame (dialog margin,
+          // header, case picker or text, footer).
+          const chrome = video ? (phone ? 300 : 280) : phone ? 320 : 300;
+          const frameWidth = `min(100%, calc((100dvh - ${chrome}px) * 16 / 9))`;
+          return (
+            <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={x.close}
+                onClick={() => setInfo(null)}
+                className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+              />
+              <div
+                ref={dialogRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="jd-info-title"
+                className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[760px] flex-col border"
+              >
+                <span
+                  aria-hidden="true"
+                  className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+                />
+                <span
+                  aria-hidden="true"
+                  className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+                />
+                {/* Build dialog: title and diagram stay put; only the text below
+                    scrolls once it outgrows the space left. */}
+                <div
+                  className={`mob:px-4 mob:pt-5 min-h-0 flex-1 px-7 pt-6 pb-4 ${video ? 'overflow-y-auto' : 'flex flex-col'}`}
+                >
+                  <div className="flex shrink-0 items-start justify-between gap-3">
+                    <div>
+                      <div
+                        className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                      >
+                        {video ? x.videoTag : x.buildTag}
+                      </div>
+                      <h2
+                        id="jd-info-title"
+                        className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+                      >
+                        {video ? x.videoTitle : x.buildTitle}
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInfo(null)}
+                      aria-label={x.close}
+                      className={`${iconBtn} size-9 text-lg`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {video && (
+                    <div
+                      role="group"
+                      aria-label={x.caseLabel}
+                      className="mt-4 flex flex-wrap gap-1.5"
+                    >
+                      {CASES.map((k) => {
+                        const on = k.id === ic.id;
+                        return (
+                          <button
+                            key={k.id}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setInfoCase(k.id)}
+                            className={`mob:min-h-11 min-h-9 cursor-pointer border px-3 text-[13px] transition-colors ${on ? 'border-accent bg-accent text-on-accent' : 'border-line2 text-ink hover:border-accent bg-transparent'}`}
+                          >
+                            {pick(k.label, es)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* 16:9 frame sized from the viewport height too, so the
+                      whole dialog fits without scrolling on short screens. */}
+                  {video && ic.video ? (
+                    <video
+                      key={ic.id}
+                      src={ic.video.src}
+                      controls
+                      preload="metadata"
+                      style={{ width: frameWidth }}
+                      className="border-line2 bg-bg mx-auto mt-4 block aspect-video max-w-full border"
+                    >
+                      <track
+                        kind="captions"
+                        src={ic.video.captions}
+                        srcLang={es ? 'es' : 'en'}
+                        label={es ? 'Español' : 'English'}
+                        default
+                      />
+                    </video>
+                  ) : (
+                    <div
+                      style={{ width: frameWidth }}
+                      className="border-line2 bg-bg dots text-muted mx-auto mt-4 flex aspect-video max-w-full shrink-0 flex-col items-center justify-center gap-3 border border-dashed p-4 text-center text-sm"
+                    >
+                      <span className="border-line2 grid size-12 place-items-center border">
+                        <Icon d={video ? I.play : I.diagram} size={20} />
+                      </span>
+                      {video ? x.videoSoon : x.diagramSoon}
+                    </div>
+                  )}
+                  {!video && (
+                    <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                      <p className="text-body m-0 text-sm leading-[1.55]">
+                        {x.buildSoon}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div
+                  className={`border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center gap-2.5 border-t px-7 py-3 ${video ? 'justify-between' : 'justify-end'}`}
+                >
+                  {video && (
+                    <span className={`${mono} text-muted truncate text-[11px]`}>
+                      {MODELS[ic.model].short} · {ic.tools.length} {x.toolsWord}
+                    </span>
+                  )}
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInfo(null)}
+                      className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+                    >
+                      {x.close}
+                    </button>
+                    {video && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          pickCase(ic);
+                          setInfo(null);
+                        }}
+                        className="bg-accent text-on-accent mob:h-11 h-10 cursor-pointer border-0 px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {x.tryCase}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

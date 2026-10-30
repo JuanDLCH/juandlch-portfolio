@@ -29,6 +29,9 @@ export interface ChatCase {
   serverTools?: Anthropic.Beta.BetaToolUnion[];
   /** Names of client tools from tools.ts that this case enables. */
   clientTools?: string[];
+  /** Recorded walkthrough with its WebVTT captions (URLs under public/ or a
+   * CDN). Cases without one show a placeholder in the Watch demo dialog. */
+  video?: { src: string; captions: string };
 }
 
 export const MODELS: Record<
