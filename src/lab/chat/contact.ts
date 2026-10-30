@@ -6,7 +6,7 @@ export const CONTACT = {
   /** Booking page that creates a Google Meet (e.g. a Google Calendar
    * appointment schedule). While null, the meeting button shows as coming
    * soon and the agent doesn't offer to book. */
-  booking: null as string | null,
+  booking: 'https://calendar.app.google/6ae9dpvPz8mEiRRdA' as string | null,
 };
 
 export const CONTACT_OPTIONS = ['email', 'linkedin', 'meeting'] as const;
