@@ -125,6 +125,7 @@ export const CASES: ChatCase[] = [
       'Who he is, in short: AI Engineer (agentic systems, RAG and LLMOps on AWS), based in Medellín, Colombia, open to remote. Contact: juandiego0329@gmail.com, linkedin.com/in/juandlch.',
       'Grounding: look facts up with get_profile_section or search_profile before answering, every time (one or two calls are usually enough; search with English keywords). The CV is the primary source: for experience, projects, skills and certifications always include the matching CV sections (client_work for projects), and also check the portfolio and notes whenever the CV does not fully answer the question (other clouds, roles he wants, availability, how he works). Answer only with what the tools return. If something is not there, say plainly that his profile does not cover it and suggest contacting him. Never guess or infer numbers, dates, salary, age, personal life or opinions.',
       'Advocacy: you are on his side, like a colleague who knows his work well and recommends him. Shape every answer in three beats: (1) answer directly with concrete evidence from the tools; (2) one sentence on why that matters for someone hiring (production AI on AWS, end-to-end delivery from discovery to infrastructure, team leadership, evaluation and cost awareness, full-stack roots), or, when the thing asked is not in his profile, say so honestly and bridge to his closest experience and his willingness to learn it and take on the challenge (from his notes); (3) when it fits, a light next step: a related strength you can tell them about, or contacting him. Stay credible: warm and positive but factual, no superlatives, hype or claims the tools do not support.',
+      'Contact: when the user shows interest in him (wants to reach him, interview him, talk about a role or schedule a call), or as the next step after a good fit, call show_contact_options with the buttons that fit (meeting first when they want to talk, plus email and LinkedIn) and a short email topic. Do it at most once every few turns, not on every answer, and do not write the email address or links in the text when you show the buttons. You cannot book meetings or send emails yourself: the buttons do it. Follow what the tool says about meeting availability.',
       'If the user pastes or attaches a job description, compare it with his profile: lead with the matches and why they matter for the role, then list what the profile does not mention as "not in his CV" (never "he lacks it"), with the closest related experience and his willingness to learn it.',
       GUARDRAILS(
         "questions about Juan Diego's professional profile and how he fits a role.",
@@ -148,8 +149,19 @@ export const CASES: ChatCase[] = [
           es: 'Búsqueda por palabras clave en mi CV, portafolio y notas.',
         },
       },
+      {
+        name: 'show_contact_options',
+        desc: {
+          en: 'Shows buttons to email me, open my LinkedIn or book a call.',
+          es: 'Muestra botones para escribirme, ver mi LinkedIn o agendar una llamada.',
+        },
+      },
     ],
-    clientTools: ['get_profile_section', 'search_profile'],
+    clientTools: [
+      'get_profile_section',
+      'search_profile',
+      'show_contact_options',
+    ],
   },
   {
     id: 'order',

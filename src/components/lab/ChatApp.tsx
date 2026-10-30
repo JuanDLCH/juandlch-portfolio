@@ -1,5 +1,6 @@
 import { useStore } from '@nanostores/react';
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -23,6 +24,7 @@ import {
 } from '../../lab/chat/cases';
 import { runTurn } from '../../lab/chat/turn';
 import { cvLinkId, cvPdf } from '../../lab/chat/cv';
+import { CONTACT, contactInput } from '../../lab/chat/contact';
 import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
@@ -123,6 +125,10 @@ const I = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14"/><path d="M3 6l9 7 9-7"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  calendar:
+    '<rect x="3" y="5" width="18" height="16"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   // A small tree: one node feeding two.
   diagram:
     '<rect x="9" y="3" width="6" height="5"/><rect x="3" y="16" width="6" height="5"/><rect x="15" y="16" width="6" height="5"/><path d="M12 8v4M6 16v-4h12v4"/>',
@@ -188,6 +194,23 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
   const draft = drafts[c.id] ?? '';
   const files = attachments[c.id] ?? [];
   const hasInput = draft.trim().length > 0 || files.length > 0;
+  // Contact buttons go at the end of the turn they were shown in, below the
+  // answer, wherever in the turn the tool was called.
+  const contactAt = new Map<number, string[]>();
+  for (let i = 0, turn: string[] = []; i < session.items.length; i++) {
+    const m = session.items[i];
+    if (
+      m.kind === 'tool' &&
+      m.name === 'show_contact_options' &&
+      m.status === 'done'
+    )
+      turn.push(m.input);
+    const next = session.items[i + 1];
+    if (turn.length && (!next || next.kind === 'user')) {
+      contactAt.set(i, turn);
+      turn = [];
+    }
+  }
   const chatKey = keys[PROVIDER];
 
   const [side, setSide] = useState(false);
@@ -699,32 +722,35 @@ export default function ChatApp({ devKey }: { devKey?: string }) {
                   </div>
                 </div>
               )}
-              {session.items.map((m, i) =>
-                m.kind === 'notice' ? (
-                  <Notice
-                    key={`notice-${m.id}`}
-                    id={m.id}
-                    text={fill(x.errors[m.code])}
-                    // Only the latest message offers its fix; older ones are
-                    // past the point where it would help.
-                    fix={
-                      i === session.items.length - 1 && !busy
-                        ? FIXES[m.code]
-                        : undefined
-                    }
-                    fixLabel={fill}
-                    labels={x.fixes}
-                    onFix={fix}
-                  />
-                ) : (
-                  <Message
-                    key={i}
-                    m={m}
-                    onCv={(focus, ids) => setCv({ focus, ids })}
-                    cvLabel={x.cvOpen}
-                  />
-                ),
-              )}
+              {session.items.map((m, i) => (
+                <Fragment key={m.kind === 'notice' ? `notice-${m.id}` : i}>
+                  {m.kind === 'notice' ? (
+                    <Notice
+                      id={m.id}
+                      text={fill(x.errors[m.code])}
+                      // Only the latest message offers its fix; older ones are
+                      // past the point where it would help.
+                      fix={
+                        i === session.items.length - 1 && !busy
+                          ? FIXES[m.code]
+                          : undefined
+                      }
+                      fixLabel={fill}
+                      labels={x.fixes}
+                      onFix={fix}
+                    />
+                  ) : (
+                    <Message
+                      m={m}
+                      onCv={(focus, ids) => setCv({ focus, ids })}
+                      cvLabel={x.cvOpen}
+                    />
+                  )}
+                  {contactAt.get(i)?.map((input, k) => (
+                    <ContactActions key={k} input={input} x={x} />
+                  ))}
+                </Fragment>
+              ))}
               {busy &&
                 !session.items.some(
                   (m) => m.kind === 'assistant' && m.streaming && m.text,
@@ -1597,6 +1623,69 @@ function Linked({
   }
   out.push(text.slice(last));
   return out;
+}
+
+function ContactActions({ input, x }: { input: string; x: ChatCopy }) {
+  const { options, topic } = contactInput(input);
+  if (!options.length) return null;
+  const btn =
+    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-10 items-center gap-2 border px-3.5 text-sm no-underline transition-colors';
+  const subject = encodeURIComponent(topic || x.contactSubject);
+  return (
+    <div
+      role="group"
+      aria-label={x.contactLabel}
+      className="mob:max-w-full flex max-w-[88%] flex-wrap gap-2 pl-3"
+    >
+      {options.map((o) =>
+        o === 'email' ? (
+          <a
+            key={o}
+            href={`mailto:${CONTACT.email}?subject=${subject}`}
+            className={btn}
+          >
+            <Icon d={I.mail} size={15} />
+            {x.contactEmail}
+          </a>
+        ) : o === 'linkedin' ? (
+          <a
+            key={o}
+            href={CONTACT.linkedin}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={btn}
+          >
+            <Icon d={I.link} size={15} />
+            {x.contactLinkedin}
+          </a>
+        ) : CONTACT.booking ? (
+          <a
+            key={o}
+            href={CONTACT.booking}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-accent text-on-accent mob:h-11 inline-flex h-10 items-center gap-2 px-3.5 text-sm font-semibold no-underline"
+          >
+            <Icon d={I.calendar} size={15} />
+            {x.contactMeeting}
+          </a>
+        ) : (
+          <button
+            key={o}
+            type="button"
+            disabled
+            className={`${btn} cursor-not-allowed opacity-60`}
+          >
+            <Icon d={I.calendar} size={15} />
+            {x.contactMeeting}
+            <span className={`${mono} text-muted text-[10px] uppercase`}>
+              · {x.contactSoon}
+            </span>
+          </button>
+        ),
+      )}
+    </div>
+  );
 }
 
 function Message({

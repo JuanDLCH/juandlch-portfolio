@@ -2,6 +2,7 @@
 // profile is Juan Diego's CV and portfolio, the menu and orders are fake demo
 // data, weather comes from Open-Meteo (no key).
 import type Anthropic from '@anthropic-ai/sdk';
+import { CONTACT, CONTACT_OPTIONS, type ContactOption } from './contact';
 
 type Input = Record<string, unknown>;
 
@@ -336,7 +337,56 @@ const searchProfile: ClientTool = {
   },
 };
 
+// Draws contact buttons under the answer (ChatApp reads the input back).
+const showContactOptions: ClientTool = {
+  def: {
+    name: 'show_contact_options',
+    description:
+      'Show buttons under your answer so the user can contact Juan Diego: email, his LinkedIn profile, or book a Google Meet with him. The buttons are the only way to reach him from here; you cannot send emails or book meetings yourself.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        options: {
+          type: 'array',
+          items: { type: 'string', enum: [...CONTACT_OPTIONS] },
+          description: 'Buttons to show, in order',
+        },
+        topic: {
+          type: 'string',
+          description:
+            'Short email subject in the language of the user, e.g. "Senior AI Engineer role at Acme"',
+        },
+      },
+      required: ['options'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) => {
+    if (
+      !Array.isArray(i.options) ||
+      i.options.length === 0 ||
+      !i.options.every((o) => CONTACT_OPTIONS.includes(o as ContactOption))
+    )
+      return `options must be a non-empty array of: ${CONTACT_OPTIONS.join(', ')}`;
+    if (
+      i.topic !== undefined &&
+      (typeof i.topic !== 'string' || i.topic.length > 80)
+    )
+      return 'topic must be a string of at most 80 characters';
+    return null;
+  },
+  run: async (i) => ({
+    shown: i.options,
+    meeting_booking: CONTACT.booking
+      ? 'available: the meeting button opens his booking page'
+      : 'not available yet: the meeting button shows "coming soon"; do not offer to book, suggest email or LinkedIn to arrange a call',
+    note: 'The buttons appear under your answer. Do not repeat the email address or links in your text.',
+  }),
+  summary: (r) => (r as { shown: string[] }).shown.join(' · '),
+};
+
 export const CLIENT_TOOLS: Record<string, ClientTool> = {
+  show_contact_options: showContactOptions,
   get_profile_section: getProfileSection,
   search_profile: searchProfile,
   search_menu: searchMenu,
