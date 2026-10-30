@@ -81,13 +81,13 @@ const { x, cases } = Astro.props;
             <dl class="m-0 flex flex-col gap-4">
               <div>
                 <dt class="eyebrow text-muted">{x.problem}</dt>
-                <dd class="text-body m-0 mt-1.5 text-base leading-[1.55]">
+                <dd class="text-body m-0 mt-1.5 text-sm leading-[1.55]">
                   {c.problem}
                 </dd>
               </div>
               <div>
                 <dt class="eyebrow text-muted">{x.contribution}</dt>
-                <dd class="m-0 mt-1.5 text-base leading-[1.55]">{c.role}</dd>
+                <dd class="m-0 mt-1.5 text-sm leading-[1.55]">{c.role}</dd>
               </div>
             </dl>
             <div class="mono flex flex-wrap gap-1.5 text-xs">
@@ -102,7 +102,7 @@ const { x, cases } = Astro.props;
       </details>
     ))}
   </div>
-  <p class="text-body m-0 mt-7 text-base leading-[1.6]">
+  <p class="text-body m-0 mt-7 text-sm leading-[1.6]">
     <span class="eyebrow text-muted">{x.alsoLabel}</span> {x.alsoBody}
   </p>
 </section>

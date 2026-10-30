@@ -57,10 +57,10 @@ const certs = [
           class="size-badge flex-none object-contain"
         />
         <div class="flex min-w-0 flex-col gap-1">
-          <div class="text-base leading-tight font-medium tracking-[-0.015em]">
+          <div class="text-sm leading-tight font-medium tracking-[-0.015em]">
             {c.name}
           </div>
-          <div class="text-muted text-sm">{c.meta}</div>
+          <div class="text-muted text-[13px]">{c.meta}</div>
           {c.expires && (
             <div class="mono text-muted text-xs">
               {x.expires} {fmt.format(c.expires)}
