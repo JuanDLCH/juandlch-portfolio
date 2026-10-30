@@ -44,3 +44,6 @@ Thumbs.db
 # local tooling
 .codegraph/
 .claude/settings.local.json
+
+# Stray screenshots at the repo root (assets belong in src/assets/)
+/*.png
