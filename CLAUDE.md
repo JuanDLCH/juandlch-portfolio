@@ -21,9 +21,15 @@ No test suite.
 - **Theming:** colors are CSS variables in `src/styles/global.css` (`:root` = light, `:root[data-theme='dark']` = dark), exposed to Tailwind through `@theme inline` (`bg-panel`, `text-accent`, `border-line2`, …). Use these tokens, not raw hex. `Layout.astro` has an inline script that sets `data-theme` from `localStorage` before paint (default dark); `ThemeToggle` observes that attribute via `useSyncExternalStore`.
 - Shared look helpers (`.dots`, `.eyebrow`, `.jd-card`, `.jd-fill`, animations) are in `global.css`; `Waveform.astro` generates bar heights in the frontmatter and animates with CSS only.
 
+## Images
+
+- AWS icons are official SVGs in `src/assets/aws/` (sourced from the JuanDLCH profile repo; `sns.svg` from the design). `Stack.astro` resolves them via `import.meta.glob` to hashed URLs. Run `pnpm optimize:svg` (SVGO, `svgo.config.mjs`) after adding any SVG.
+- `vite.build.assetsInlineLimit` is 0 on purpose: otherwise small images are inlined as `data:` URIs and `loading="lazy"` does nothing. Below-the-fold images must use `loading="lazy" decoding="async"` with explicit width/height.
+- Raster images (certification badges, photo) go in `src/assets/` and render with Astro's `<Image>`/`<Picture>` (sharp, webp/avif); never in `public/`.
+
 ## Pending placeholders
 
-AWS icons in `public/aws/*.svg` are generated stand-ins (replace with official icons, same filenames). Certification badges are placeholders until PNGs are added to `public/certs/` and wired in `Certifications.astro`. Photo, CV link, `[YEAR]` and the `#voice`/`#chat`/`#case-*` anchors are unfinished in the original design too.
+Certification badges are placeholders until the PNGs are added and wired in `Certifications.astro`. Photo, CV link, `[YEAR]` and the `#voice`/`#chat`/`#case-*` anchors are unfinished in the original design too.
 
 ## Development rules
 
