@@ -32,7 +32,14 @@ export const setLang = (lang: Lang, persist = true) => {
   root.dataset.lang = lang;
   root.lang = lang;
   applyAttrs(lang);
-  if (persist) save('lang', lang);
+  if (!persist) return;
+  save('lang', lang);
+  // A ?lang= in the URL wins on load, so keep it in step with the choice.
+  const url = new URL(location.href);
+  if (url.searchParams.has('lang')) {
+    url.searchParams.set('lang', lang);
+    history.replaceState(history.state, '', url);
+  }
 };
 
 export const setTheme = (theme: Theme, persist = true) => {
