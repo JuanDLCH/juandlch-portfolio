@@ -1,4 +1,3 @@
-import type Anthropic from '@anthropic-ai/sdk';
 import { useStore } from '@nanostores/react';
 import {
   useEffect,
@@ -14,8 +13,15 @@ import {
   MAX_BYTES,
   readAttachment,
 } from '../../lab/attachments';
-import { runTurn } from '../../lab/chat/anthropic';
-import { CASES, MODELS, type ChatCase } from '../../lab/chat/cases';
+import {
+  CASES,
+  PROVIDER,
+  caseModel,
+  caseTools,
+  type ChatCase,
+  type Provider,
+} from '../../lab/chat/cases';
+import { runTurn } from '../../lab/chat/turn';
 import { transcribe } from '../../lab/chat/openai';
 import {
   $busy,
@@ -32,6 +38,7 @@ import {
   type ChatItem,
   type ChatSession,
   type NoticeCode,
+  type UserInput,
 } from '../../lab/store';
 import { setLang, setTheme } from '../../scripts/prefs';
 
@@ -124,16 +131,30 @@ const pick = (v: { en: string; es: string }, es: boolean) => (es ? v.es : v.en);
 // What an error message offers to fix it, shown under it as a button.
 type Fix = keyof ChatCopy['fixes'];
 const FIXES: Partial<Record<NoticeCode, Fix>> = {
-  noKey: 'anthropic',
-  auth: 'anthropicReview',
-  micNoKey: 'openai',
-  transcribe: 'openaiReview',
+  noKey: 'key',
+  auth: 'keyReview',
+  quota: 'billing',
+  micNoKey: 'voiceKey',
+  transcribe: 'voiceKeyReview',
   rate: 'retry',
   overloaded: 'retry',
   network: 'retry',
+  unreadable: 'keyReview',
   api: 'clear',
   file: 'file',
 };
+
+const PROVIDER_NAME: Record<Provider, string> = {
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+};
+const BILLING: Record<Provider, string> = {
+  anthropic: 'https://platform.claude.com/settings/billing',
+  openai: 'https://platform.openai.com/settings/organization/billing/overview',
+};
+// Keys the dialog asks for: the chat provider's, plus OpenAI for voice input.
+const KEY_FIELDS: Provider[] =
+  PROVIDER === 'openai' ? ['openai'] : ['anthropic', 'openai'];
 const initials = (s: string) =>
   s
     .split(/\s+/)
@@ -159,6 +180,7 @@ export default function ChatApp() {
   const draft = drafts[c.id] ?? '';
   const files = attachments[c.id] ?? [];
   const hasInput = draft.trim().length > 0 || files.length > 0;
+  const chatKey = keys[PROVIDER];
 
   const [side, setSide] = useState(false);
   const [modal, setModal] = useState(false);
@@ -272,27 +294,25 @@ export default function ChatApp() {
   };
 
   // Streams one turn from `start` (which already shows the user message).
-  const run = async (
-    start: ChatSession,
-    content: Anthropic.Beta.BetaContentBlockParam[],
-  ) => {
+  const run = async (start: ChatSession, input: UserInput) => {
     setSession(c.id, start);
     $busy.set(true);
     const ctrl = new AbortController();
     setTurn(ctrl);
-    const err = await runTurn(keys.anthropic, c, start, content, {
+    // A provider module that fails to load (offline, or a stale deploy)
+    // must not leave the chat stuck on "Thinking…".
+    const err = await runTurn(PROVIDER, chatKey, c, start, input, {
       update: (s) => setSession(c.id, s),
       signal: ctrl.signal,
       es,
-    });
+    }).catch(() => 'network' as const);
     $busy.set(false);
     setTurn(null);
     if (err) notice(err);
   };
 
   // Runs the failed turn again from where it started: whatever it left in the
-  // log (partial answer, tool calls, paused searches, the error) is dropped
-  // first, so it works however far the turn got.
+  // log (partial answer, tool calls, the error) is dropped first.
   const retry = () => {
     const s = getSession(c.id);
     if ($busy.get() || !s.turn) return;
@@ -302,13 +322,14 @@ export default function ChatApp() {
         items: s.items.slice(0, s.turn.items),
         api: s.api.slice(0, s.turn.api),
       },
-      s.turn.content,
+      s.turn.input,
     );
   };
 
   const fix = (f: Fix) => {
-    if (f === 'anthropic' || f === 'anthropicReview') openKeys('anthropic');
-    else if (f === 'openai' || f === 'openaiReview') openKeys('openai');
+    if (f === 'key' || f === 'keyReview') openKeys(PROVIDER);
+    else if (f === 'voiceKey' || f === 'voiceKeyReview') openKeys('openai');
+    else if (f === 'billing') open(BILLING[PROVIDER], '_blank', 'noopener');
     else if (f === 'retry') retry();
     else if (f === 'clear') setSession(c.id, emptySession());
     else fileRef.current?.click();
@@ -321,7 +342,7 @@ export default function ChatApp() {
     if ((!text && files.length === 0) || $busy.get()) return;
     // No key: the message stays in the composer and the assistant asks for
     // the key, so sending again after adding it just works.
-    if (!keys.anthropic) {
+    if (!chatKey) {
       if (override) setDraft(override);
       notice('noKey');
       return;
@@ -332,37 +353,16 @@ export default function ChatApp() {
       text,
       files: files.map((f) => f.name),
     };
-    const content: Anthropic.Beta.BetaContentBlockParam[] = [
-      ...files.map((f) =>
-        f.mediaType === 'application/pdf'
-          ? ({
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: f.data,
-              },
-            } as const)
-          : ({
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: f.mediaType as 'image/png',
-                data: f.data,
-              },
-            } as const),
-      ),
-      ...(text ? [{ type: 'text' as const, text }] : []),
-    ];
+    const input: UserInput = { text, files };
     setDraft('');
     $attachments.setKey(c.id, []);
     await run(
       {
         ...start,
         items: [...start.items, user],
-        turn: { items: start.items.length + 1, api: start.api.length, content },
+        turn: { items: start.items.length + 1, api: start.api.length, input },
       },
-      content,
+      input,
     );
   };
 
@@ -447,8 +447,12 @@ export default function ChatApp() {
     [],
   );
 
-  const model = MODELS[c.model];
-  const ready = !!keys.anthropic;
+  const model = caseModel(c);
+  const tools = caseTools(c);
+  const ready = !!chatKey;
+  // Copy placeholders: the provider and the case's model.
+  const fill = (t: string) =>
+    t.replaceAll('{p}', PROVIDER_NAME[PROVIDER]).replaceAll('{m}', model.name);
   const toggleTheme = () => setTheme(dark ? 'light' : 'dark');
   const themeLabel = dark ? x.toLight : x.toDark;
 
@@ -530,7 +534,7 @@ export default function ChatApp() {
                 />
                 <span className="truncate">
                   {ready
-                    ? `${model.short} · ${c.tools.length} ${x.toolsWord}`
+                    ? `${model.short} · ${tools.length} ${x.toolsWord}`
                     : x.caseNeedsKey}
                 </span>
               </span>
@@ -565,20 +569,15 @@ export default function ChatApp() {
             onClick={() => openKeys()}
             className={`${mono} border-line2 text-ink hover:border-accent narrow:hidden inline-flex h-9 cursor-pointer items-center gap-3 border bg-transparent px-3 text-[10px] tracking-[0.04em] transition-colors`}
           >
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                aria-hidden="true"
-                className={`size-[7px] ${keys.anthropic ? 'bg-ok' : 'bg-warn'}`}
-              />
-              Anthropic
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                aria-hidden="true"
-                className={`size-[7px] ${keys.openai ? 'bg-ok' : 'bg-line2'}`}
-              />
-              OpenAI
-            </span>
+            {KEY_FIELDS.map((p) => (
+              <span key={p} className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className={`size-[7px] ${keys[p] ? 'bg-ok' : p === PROVIDER ? 'bg-warn' : 'bg-line2'}`}
+                />
+                {PROVIDER_NAME[p]}
+              </span>
+            ))}
             <span className="text-accent">{x.keysBtn}</span>
           </button>
           <button
@@ -620,7 +619,7 @@ export default function ChatApp() {
                     aria-hidden="true"
                     className="bg-warn size-[7px] shrink-0"
                   />
-                  {x.noKeyBanner}
+                  {fill(x.noKeyBanner)}
                 </span>
                 <button
                   type="button"
@@ -671,7 +670,7 @@ export default function ChatApp() {
                           {pick(k.label, es)}
                         </span>
                         <span className={`${mono} text-muted text-[10px]`}>
-                          {MODELS[k.model].short} · {k.tools.length}{' '}
+                          {caseModel(k).short} · {caseTools(k).length}{' '}
                           {x.toolsWord}
                         </span>
                       </button>
@@ -682,9 +681,9 @@ export default function ChatApp() {
               {session.items.map((m, i) =>
                 m.kind === 'notice' ? (
                   <Notice
-                    key={m.id}
+                    key={`notice-${m.id}`}
                     id={m.id}
-                    text={x.errors[m.code]}
+                    text={fill(x.errors[m.code])}
                     // Only the latest message offers its fix; older ones are
                     // past the point where it would help.
                     fix={
@@ -692,7 +691,8 @@ export default function ChatApp() {
                         ? FIXES[m.code]
                         : undefined
                     }
-                    fixLabel={x.fixes}
+                    fixLabel={fill}
+                    labels={x.fixes}
                     onFix={fix}
                   />
                 ) : (
@@ -978,11 +978,11 @@ export default function ChatApp() {
               <div className={`${label} flex justify-between`}>
                 <span>{x.toolsTitle}</span>
                 <span>
-                  {c.tools.length} {x.toolsWord}
+                  {tools.length} {x.toolsWord}
                 </span>
               </div>
               <ul className="border-line2 m-0 flex list-none flex-col border p-0">
-                {c.tools.map((t, i) => (
+                {tools.map((t, i) => (
                   <li
                     key={t.name}
                     className={`mob:min-h-11 flex items-center justify-between gap-2 px-2 py-1.5 ${i ? 'border-line2 border-t' : ''}`}
@@ -1089,16 +1089,18 @@ export default function ChatApp() {
                 {x.providersIntro}
               </p>
               <div className="mt-5 flex flex-col gap-4">
-                {(
-                  [
+                {KEY_FIELDS.map(
+                  (id) =>
                     [
-                      'anthropic',
-                      'Anthropic API key',
-                      x.anthropicHint,
-                      'sk-ant-…',
-                    ],
-                    ['openai', 'OpenAI API key', x.openaiHint, 'sk-…'],
-                  ] as const
+                      id,
+                      `${PROVIDER_NAME[id]} API key`,
+                      id !== 'openai'
+                        ? x.chatKeyHint
+                        : PROVIDER === 'openai'
+                          ? x.chatVoiceKeyHint
+                          : x.openaiHint,
+                      id === 'anthropic' ? 'sk-ant-…' : 'sk-…',
+                    ] as const,
                 ).map(([id, name, hint, ph]) => (
                   <div key={id} className="flex flex-col gap-1.5">
                     <label
@@ -1405,7 +1407,8 @@ export default function ChatApp() {
                 >
                   {video && (
                     <span className={`${mono} text-muted truncate text-[11px]`}>
-                      {MODELS[ic.model].short} · {ic.tools.length} {x.toolsWord}
+                      {caseModel(ic).short} · {caseTools(ic).length}{' '}
+                      {x.toolsWord}
                     </span>
                   )}
                   <div className="flex shrink-0 gap-2">
@@ -1437,6 +1440,34 @@ export default function ChatApp() {
         })()}
     </div>
   );
+}
+
+// Markdown links and bare URLs in an answer become real links, so cited
+// sources can be opened.
+const LINK =
+  /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
+function Linked({ text }: { text: string }) {
+  const out: (string | React.JSX.Element)[] = [];
+  let last = 0;
+  for (const match of text.matchAll(LINK)) {
+    const i = match.index;
+    if (i > last) out.push(text.slice(last, i));
+    const href = match[2] ?? match[3];
+    out.push(
+      <a
+        key={i}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-accent underline underline-offset-2"
+      >
+        {match[1] ?? href}
+      </a>,
+    );
+    last = i + match[0].length;
+  }
+  out.push(text.slice(last));
+  return out;
 }
 
 function Message({ m }: { m: ChatItem }) {
@@ -1490,8 +1521,8 @@ function Message({ m }: { m: ChatItem }) {
   if (m.kind === 'notice') return null;
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col gap-2">
-      <div className="border-accent border-l-2 py-0.5 pl-3 text-sm leading-[1.6] whitespace-pre-wrap">
-        {m.text}
+      <div className="border-accent border-l-2 py-0.5 pl-3 text-sm leading-[1.6] break-words whitespace-pre-wrap">
+        <Linked text={m.text} />
         {m.streaming && (
           <span
             aria-hidden="true"
@@ -1518,12 +1549,14 @@ function Notice({
   text,
   fix,
   fixLabel,
+  labels,
   onFix,
 }: {
   id: number;
   text: string;
   fix?: Fix;
-  fixLabel: ChatCopy['fixes'];
+  fixLabel: (t: string) => string;
+  labels: ChatCopy['fixes'];
   onFix: (f: Fix) => void;
 }) {
   const [n, setN] = useState(() =>
@@ -1559,7 +1592,7 @@ function Notice({
           onClick={() => onFix(fix)}
           className={`jd-rise ${mono} border-accent text-accent hover:bg-accent hover:text-on-accent mob:h-11 ml-3.5 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.06em] uppercase transition-colors`}
         >
-          {fixLabel[fix]}
+          {fixLabel(labels[fix])}
           <span aria-hidden="true">→</span>
         </button>
       )}

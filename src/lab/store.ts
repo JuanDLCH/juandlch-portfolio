@@ -2,8 +2,8 @@
 // while the visitor navigates between pages, so keys and conversations
 // survive "back to the portfolio" and return; a reload starts from scratch.
 // Nothing here is ever written to storage, cookies or the URL.
-import type Anthropic from '@anthropic-ai/sdk';
 import { atom, map } from 'nanostores';
+import type { Attachment } from './attachments';
 import type { ChatCopy } from '../i18n/chat';
 import { CASES } from './chat/cases';
 
@@ -26,17 +26,20 @@ export type NoticeCode = keyof ChatCopy['errors'];
 let noticeSeq = 0;
 export const nextNoticeId = () => ++noticeSeq;
 
+/** What the visitor sent in one message, before any provider formats it. */
+export interface UserInput {
+  text: string;
+  files: Attachment[];
+}
+
 export interface ChatSession {
   items: ChatItem[];
-  /** Conversation exactly as sent to the API (append-only). */
-  api: Anthropic.Beta.BetaMessageParam[];
+  /** Conversation exactly as sent to the API (append-only), in the format of
+   * the provider that ran it: Anthropic messages or OpenAI input items. */
+  api: unknown[];
   usage: { input: number; output: number; cost: number };
   /** The latest turn: where it started, so it can be retried as a whole. */
-  turn?: {
-    items: number;
-    api: number;
-    content: Anthropic.Beta.BetaContentBlockParam[];
-  };
+  turn?: { items: number; api: number; input: UserInput };
 }
 
 export const emptySession = (): ChatSession => ({

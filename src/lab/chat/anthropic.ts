@@ -1,19 +1,15 @@
-// Browser-side chat loop on the visitor's own key (BYOK). The SDK is loaded
-// on the first message so the page itself stays light.
+// Browser-side chat loop on Anthropic with the visitor's own key (BYOK).
+// Loaded through turn.ts on the first message.
 import type Anthropic from '@anthropic-ai/sdk';
-import type { ChatItem, ChatSession } from '../store';
+import type { ChatItem, ChatSession, UserInput } from '../store';
 import { MODELS, type ChatCase } from './cases';
 import { CLIENT_TOOLS } from './tools';
-
-export interface TurnCallbacks {
-  /** Called with a fresh copy of the session whenever something changes. */
-  update: (s: ChatSession) => void;
-  signal: AbortSignal;
-  es: boolean;
-}
-
-export type TurnError =
-  'auth' | 'rate' | 'overloaded' | 'network' | 'api' | 'refusal' | 'truncated';
+import {
+  clone,
+  runClientTool,
+  type TurnCallbacks,
+  type TurnError,
+} from './turn';
 
 let clientFor: { key: string; client: Anthropic } | null = null;
 async function getClient(key: string) {
@@ -30,33 +26,50 @@ async function getClient(key: string) {
   return client;
 }
 
-const clone = (s: ChatSession): ChatSession => ({
-  ...s,
-  items: [...s.items],
-  api: [...s.api],
-  usage: { ...s.usage },
-});
+const userContent = (
+  input: UserInput,
+): Anthropic.Beta.BetaContentBlockParam[] => [
+  ...input.files.map((f) =>
+    f.mediaType === 'application/pdf'
+      ? ({
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: f.data,
+          },
+        } as const)
+      : ({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: f.mediaType as 'image/png',
+            data: f.data,
+          },
+        } as const),
+  ),
+  ...(input.text ? [{ type: 'text' as const, text: input.text }] : []),
+];
 
-/**
- * Runs one user turn to completion: streams text, runs client tools, follows
- * server tools (web search / fetch) and accumulates usage. Returns an error
- * kind when the turn could not finish.
- */
+/** See runTurn in turn.ts. */
 export async function runTurn(
   key: string,
   c: ChatCase,
   start: ChatSession,
-  userContent: Anthropic.Beta.BetaContentBlockParam[],
+  input: UserInput,
   cb: TurnCallbacks,
 ): Promise<TurnError | null> {
   const AnthropicSdk = (await import('@anthropic-ai/sdk')).default;
   const client = await getClient(key);
-  const model = MODELS[c.model];
+  const modelId = c.models.anthropic;
+  const model = MODELS[modelId];
   const s = clone(start);
-  s.api.push({ role: 'user', content: userContent });
+  // The session history is in this provider's format (see ChatSession.api).
+  const api = s.api as Anthropic.Beta.BetaMessageParam[];
+  api.push({ role: 'user', content: userContent(input) });
   const tools: Anthropic.Beta.BetaToolUnion[] = [
     ...(c.clientTools ?? []).map((n) => CLIENT_TOOLS[n].def),
-    ...(c.serverTools ?? []),
+    ...(c.anthropicTools ?? []),
   ];
   const meta = `${model.name} · effort ${c.effort}`;
   let jsonRetries = 0;
@@ -79,15 +92,15 @@ export async function runTurn(
       let assistantIndex = -1;
       const stream = client.beta.messages.stream(
         {
-          model: c.model,
+          model: modelId,
           max_tokens: c.maxTokens,
           system: c.system,
-          messages: s.api,
+          messages: api,
           ...(tools.length ? { tools } : {}),
           output_config: { effort: c.effort },
           // Sonnet 5.5 on the Claude API: let the server re-run a declined
           // request on a suitable model instead of stopping.
-          ...(c.model === 'claude-sonnet-5-5'
+          ...(modelId === 'claude-sonnet-5-5'
             ? {
                 betas: ['server-side-fallback-2026-07-01'],
                 fallbacks: 'default' as const,
@@ -211,7 +224,7 @@ export async function runTurn(
       s.items = s.items.map((i) =>
         i.kind === 'assistant' && i.streaming ? { ...i, streaming: false } : i,
       );
-      s.api.push({ role: 'assistant', content: message.content });
+      api.push({ role: 'assistant', content: message.content });
       cb.update(clone(s));
 
       if (message.stop_reason === 'refusal') return 'refusal';
@@ -224,7 +237,7 @@ export async function runTurn(
       // A tool input cut off at max_tokens can look valid; never run it. Each
       // call still needs a result, or the next message would be rejected.
       if (message.stop_reason === 'max_tokens') {
-        s.api.push({
+        api.push({
           role: 'user',
           content: calls.map((call) => ({
             type: 'tool_result' as const,
@@ -247,30 +260,12 @@ export async function runTurn(
       const results: Anthropic.Beta.BetaToolResultBlockParam[] =
         await Promise.all(
           calls.map(async (call) => {
-            const tool = CLIENT_TOOLS[call.name];
             const t0 = started[call.id] ?? performance.now();
-            const input = (call.input ?? {}) as Record<string, unknown>;
-            const invalid = tool
-              ? tool.validate(input)
-              : `unknown tool: ${call.name}`;
-            let content: string;
-            let summary: string;
-            let failed = false;
-            if (invalid) {
-              failed = true;
-              content = JSON.stringify({ error: invalid });
-              summary = invalid;
-            } else {
-              try {
-                const out = await tool.run(input, cb.signal);
-                content = JSON.stringify(out);
-                summary = tool.summary(out, cb.es);
-              } catch (e) {
-                failed = true;
-                summary = e instanceof Error ? e.message : 'tool failed';
-                content = JSON.stringify({ error: summary });
-              }
-            }
+            const { content, summary, failed } = await runClientTool(
+              call.name,
+              (call.input ?? {}) as Record<string, unknown>,
+              cb,
+            );
             patch(
               (i) => i.kind === 'tool' && i.id === call.id,
               (i) => ({
@@ -296,16 +291,18 @@ export async function runTurn(
             ? { ...i, status: 'error', result: cb.es ? 'detenida' : 'stopped' }
             : i,
         );
-        s.api.push({ role: 'user', content: results });
+        api.push({ role: 'user', content: results });
         cb.update(clone(s));
         return null;
       }
       // All results go back in a single user message.
-      s.api.push({ role: 'user', content: results });
+      api.push({ role: 'user', content: results });
       cb.update(clone(s));
     }
     return null;
   } catch (err) {
+    // The UI only shows the error kind; keep the details for debugging.
+    if (import.meta.env.DEV) console.error(err);
     s.items = s.items.map((i) =>
       i.kind === 'assistant' && i.streaming ? { ...i, streaming: false } : i,
     );
