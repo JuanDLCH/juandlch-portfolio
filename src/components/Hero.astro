@@ -11,8 +11,8 @@ interface Props {
 const { x } = Astro.props;
 const stages = [
   [x.stUser, x.stSpeech],
-  ['STT', '— ms'],
-  [x.stAgent, '— ms'],
+  ['STT', x.stStt],
+  [x.stAgent, x.stReason],
   [x.stTool, 'get_menu()'],
 ];
 ---
@@ -106,8 +106,17 @@ const stages = [
       </p>
       <div class="mt-block flex flex-wrap gap-3">
         <a
+          href="#work"
+          class="jd-fill bg-accent !text-on-accent inline-flex min-h-[44px] items-center gap-2.5 px-6 text-[15px] font-semibold no-underline"
+        >
+          {x.ctaWork}{' '}
+          <span class="jd-arrow" aria-hidden="true">
+            ↓
+          </span>
+        </a>
+        <a
           href="#lab"
-          class="jd-fill bg-accent !text-on-accent inline-flex min-h-[44px] items-center gap-3 px-6 text-[15px] font-semibold no-underline"
+          class="jd-card border-line2 inline-flex min-h-[44px] items-center gap-3 border px-6 text-[15px] font-medium no-underline"
         >
           <svg
             aria-hidden="true"
@@ -124,19 +133,7 @@ const stages = [
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
             <path d="M12 19v3"></path>
           </svg>
-          {x.ctaLab}{' '}
-          <span class="jd-arrow" aria-hidden="true">
-            →
-          </span>
-        </a>
-        <a
-          href="#work"
-          class="jd-card border-line2 inline-flex min-h-[44px] items-center gap-2.5 border px-6 text-[15px] font-medium no-underline"
-        >
-          {x.ctaWork}{' '}
-          <span class="jd-arrow" aria-hidden="true">
-            ↓
-          </span>
+          {x.ctaLab}
         </a>
       </div>
     </div>
