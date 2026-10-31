@@ -729,15 +729,26 @@ export default function VoiceApp() {
               <div className={`${monoLabel} min-h-[1.2em] ${captionWhoTone}`}>
                 {caption.who}
               </div>
-              {/* Three lines, the newest at the bottom; older ones slide up
-                  and fade out (the transcript keeps everything). */}
+              {/* Speech runs as one line that scrolls like a ticker: the
+                  newest words stay at the right and the oldest slide off
+                  and fade on the left (the transcript keeps everything).
+                  The inner span is at least as wide as the box, so a short
+                  line stays centered and a long one overflows leftwards.
+                  How a call ended wraps instead, so it can be read whole. */}
               <p
                 role={failed ? 'alert' : undefined}
-                className={`mob:text-[clamp(15px,4.2vw,18px)] mt-1.5 mb-0 flex h-[4.2em] flex-col justify-end overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,#000_1.1em)] text-[clamp(15px,1.35vw,19px)] leading-[1.4] font-normal tracking-[-0.02em] ${caption.tone}`}
+                className={`mob:text-[clamp(15px,4.2vw,18px)] mt-1.5 mb-0 text-[clamp(15px,1.4vw,20px)] leading-[1.4] font-normal tracking-[-0.02em] ${caption.tone} ${ended ? 'min-h-[2.8em] text-balance' : 'flex h-[1.4em] justify-end overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_14%)]'}`}
               >
                 {/* Screen readers get the whole text, not every letter. */}
                 <span className="sr-only">{caption.text}</span>
-                <span aria-hidden="true">
+                <span
+                  aria-hidden="true"
+                  className={
+                    ended
+                      ? ''
+                      : 'min-w-full shrink-0 text-center whitespace-nowrap'
+                  }
+                >
                   {typedCaption}
                   {(caption.cursor ||
                     typedCaption.length < caption.text.length) && (
