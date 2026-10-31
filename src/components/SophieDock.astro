@@ -237,8 +237,9 @@ const RAYS = Array.from({ length: 28 }, (_, i) => {
       else say();
     }, 1400);
 
+    // Every time the bubble comes back, a new line.
     const onEnter = () => {
-      if (!bubble.hasAttribute('data-open')) say(index >= 0);
+      if (!bubble.hasAttribute('data-open')) say();
     };
     const onLeave = () => later(fold, 2500);
     root.addEventListener('pointerenter', onEnter);
