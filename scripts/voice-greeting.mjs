@@ -12,8 +12,8 @@ const out = new URL('../src/assets/lab/voice/', import.meta.url);
 await mkdir(out, { recursive: true });
 
 const STYLE = {
-  en: 'Warm, friendly and upbeat, like a person greeting a visitor on a call. Natural pace, smiling voice, clear American English.',
-  es: 'Cálida, amable y animada, como alguien que saluda a una visita en una llamada. Ritmo natural, voz sonriente, español latinoamericano neutro.',
+  en: 'Energetic, bright and enthusiastic, with a big smile in the voice, like someone excited to welcome a visitor. Lively pace and expressive intonation, clear American English.',
+  es: 'Enérgica, brillante y entusiasta, con una gran sonrisa en la voz, como alguien feliz de recibir a una visita. Ritmo vivo y entonación expresiva, español latinoamericano neutro.',
 };
 
 for (const lang of ['en', 'es']) {

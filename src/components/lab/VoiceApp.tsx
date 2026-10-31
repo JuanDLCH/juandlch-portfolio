@@ -121,7 +121,11 @@ function Transcript({
           {l.kind}
         </span>
         <span className="text-chip break-words">{l.text}</span>
-        {l.meta && <span className="ml-auto">✓ {l.meta}</span>}
+        {l.meta && (
+          <span className="ml-auto">
+            {l.kind === 'tool' ? `✓ ${l.meta}` : l.meta}
+          </span>
+        )}
       </div>
     ) : (
       <div
@@ -667,7 +671,8 @@ export default function VoiceApp() {
 
       <div className="relative flex min-h-0 flex-1">
         <main className="dots flex min-w-0 flex-1 flex-col">
-          <div className="mob:px-4 mob:pt-3 flex min-h-0 flex-1 flex-col items-center justify-center gap-[clamp(12px,3dvh,28px)] overflow-y-auto px-6 pt-6">
+          {/* Never scrolls: the orb takes the height left by the rest. */}
+          <div className="mob:px-4 flex min-h-0 flex-1 flex-col items-center gap-[clamp(8px,2dvh,20px)] overflow-hidden px-6 pt-[clamp(12px,3dvh,28px)]">
             <div
               className={`${mono} text-muted flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] tracking-[0.08em] uppercase`}
             >
@@ -684,65 +689,76 @@ export default function VoiceApp() {
               <span>{x.scenario}</span>
             </div>
 
-            <SophieOrb
-              mode={mode}
-              level={level}
-              clock={mmss(left)}
-              warn={wrapping}
-              label={`${x.orb} — ${x.phase[mode]}`}
-            />
+            <div className="flex min-h-[120px] w-full flex-1 items-center justify-center">
+              <SophieOrb
+                mode={mode}
+                level={level}
+                clock={mmss(left)}
+                warn={wrapping}
+                label={`${x.orb} — ${x.phase[mode]}`}
+              />
+            </div>
 
             <div
               aria-live="polite"
-              className="w-full max-w-[760px] text-center"
+              className="w-full max-w-[760px] shrink-0 text-center"
             >
               <div className={`${monoLabel} min-h-[1.2em] ${captionWhoTone}`}>
                 {caption.who}
               </div>
+              {/* Three lines at most, the latest at the bottom. */}
               <p
                 role={failed ? 'alert' : undefined}
-                className={`mob:min-h-[3.2em] mob:text-[clamp(15px,4.2vw,18px)] mt-2 mb-0 min-h-[2.6em] text-[clamp(16px,1.45vw,20px)] leading-[1.4] font-normal tracking-[-0.02em] text-balance ${caption.tone}`}
+                className={`mob:text-[clamp(15px,4.2vw,18px)] mt-1.5 mb-0 flex h-[4.2em] flex-col justify-end overflow-hidden text-[clamp(15px,1.35vw,19px)] leading-[1.4] font-normal tracking-[-0.02em] ${caption.tone}`}
               >
-                {tail(caption.text)}
-                {caption.cursor && (
-                  <span
-                    aria-hidden="true"
-                    className="bg-accent jd-blink ml-1 inline-block h-[1em] w-[0.45em] align-[-0.12em]"
-                  />
-                )}
+                <span className="text-balance">
+                  {tail(caption.text)}
+                  {caption.cursor && (
+                    <span
+                      aria-hidden="true"
+                      className="bg-accent jd-blink ml-1 inline-block h-[1em] w-[0.45em] align-[-0.12em]"
+                    />
+                  )}
+                </span>
               </p>
             </div>
 
-            {(contact || ended) && (
-              <div className="flex flex-col items-center gap-2">
-                {!contact && (
-                  <p className="text-body m-0 text-sm">{x.reachOut}</p>
-                )}
-                <ContactActions
-                  input={contact ?? ENDING_CONTACT}
-                  x={CHAT[lang]}
-                  inset={false}
-                />
-              </div>
-            )}
+            {/* Fixed slot, so the orb doesn't jump when buttons appear. */}
+            <div className="flex min-h-9 shrink-0 flex-col items-center justify-center gap-2">
+              {(contact || ended) && (
+                <div className="flex flex-col items-center gap-2">
+                  {!contact && (
+                    <p className="text-body m-0 text-sm">{x.reachOut}</p>
+                  )}
+                  <ContactActions
+                    input={contact ?? ENDING_CONTACT}
+                    x={CHAT[lang]}
+                    inset={false}
+                  />
+                </div>
+              )}
 
-            {phase.at === 'idle' && greetingUrl(lang) && (
-              <button
-                type="button"
-                onClick={greeting === 'playing' ? stopGreeting : playGreeting}
-                className={`${mono} border-line2 text-muted hover:border-accent hover:text-ink inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.08em] uppercase transition-colors`}
-              >
-                <Icon d={greeting === 'playing' ? I.stop : I.play} size={12} />
-                {greeting === 'playing'
-                  ? x.stopGreeting
-                  : greeting === 'blocked'
-                    ? x.hearGreeting
-                    : x.replay}
-              </button>
-            )}
+              {phase.at === 'idle' && greetingUrl(lang) && (
+                <button
+                  type="button"
+                  onClick={greeting === 'playing' ? stopGreeting : playGreeting}
+                  className={`${mono} border-line2 text-muted hover:border-accent hover:text-ink inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.08em] uppercase transition-colors`}
+                >
+                  <Icon
+                    d={greeting === 'playing' ? I.stop : I.play}
+                    size={12}
+                  />
+                  {greeting === 'playing'
+                    ? x.stopGreeting
+                    : greeting === 'blocked'
+                      ? x.hearGreeting
+                      : x.replay}
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="mob:px-4 mob:pt-3 mob:pb-[calc(14px+env(safe-area-inset-bottom))] flex shrink-0 flex-col items-center gap-3 px-6 pt-5 pb-[22px]">
+          <div className="mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 flex-col items-center gap-2.5 px-6 pt-[clamp(8px,2dvh,18px)] pb-[clamp(10px,2.2dvh,20px)]">
             <div className="flex items-center justify-center gap-3">
               <button
                 type="button"

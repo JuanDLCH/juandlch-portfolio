@@ -205,7 +205,7 @@ export default function SophieOrb({
     <div
       role="img"
       aria-label={label}
-      className="relative aspect-square w-[clamp(200px,min(40vw,44dvh),400px)] flex-none"
+      className="relative aspect-square h-full max-h-[400px] max-w-full"
     >
       <svg
         viewBox="0 0 200 200"
