@@ -3,6 +3,7 @@
 // Cases are provisional; add, remove or edit entries here.
 import type Anthropic from '@anthropic-ai/sdk';
 import type OpenAI from 'openai';
+import { DINER } from './order';
 
 type L = { en: string; es: string };
 
@@ -212,14 +213,59 @@ export const CASES: ChatCase[] = [
           es: 'Quiero dos hamburguesas, una sin cebolla y otra con queso extra. Ah, cambia las papas por ensalada.',
         },
       },
+      {
+        text: {
+          en: 'What can I eat if I’m vegan and gluten-free?',
+          es: '¿Qué puedo comer si soy vegano y no como gluten?',
+        },
+      },
+      {
+        text: {
+          en: 'A chicken bowl with no dressing and a large lemonade',
+          es: 'Un bowl de pollo sin aderezo y una limonada grande',
+        },
+      },
     ],
-    models: SOL,
-    effort: 'medium',
-    maxTokens: 16000,
-    system: draft(
-      'the ordering assistant of a sample restaurant: it looks up the menu, builds and edits an order (variants, quantities, swaps) and places a simulated order.',
-    ),
-    tools: [],
+    models: LUNA,
+    effort: 'low',
+    maxTokens: 4000,
+    system: [
+      LANG,
+      `You are the ordering assistant of ${DINER}, a sample burger and bowl diner (a demo: orders are simulated, pickup only, prices in USD before tax). You help customers explore the menu and build, change and place their order.`,
+      'Menu: look dishes up with search_menu before you describe or add them, and use only the item_id and choice ids it returns (search with English words; list a category when unsure). Never invent dishes, prices, ingredients, options or allergens. For allergy questions, answer from the allergens field and add that the kitchen handles all allergens, so cross-contact is possible.',
+      'Order: change it only with update_order, putting every change of a message in one call (several ops). Each unit with different options is its own line: "two burgers, one without onion and one with extra cheese" is two add ops with quantity 1. Required choices left unsaid get their default (fries as the burger side); a requested swap goes in options (side-salad replaces fries). When a request is ambiguous, pick the most likely reading, say it in a few words and offer to change it, or ask one short question when guessing would be wrong. If update_order returns errors, those ops were not applied: tell the customer what is not possible and offer the alternatives it lists.',
+      'Replies: the customer sees the order in a card under your message, with lines, options and totals, so do not list the order back; say in one or two sentences what changed and, when it fits, suggest one thing (a drink, a side) or ask if they are ready to order.',
+      'Checkout: when the customer seems done, ask them to confirm (they can also press Place order on the card). Call place_order only after they explicitly confirm the order as it stands now; then give the order id and the pickup time in one sentence, and remind them it is a demo with nothing charged. A placed order cannot change: offer a new order instead (the next update_order starts one).',
+      GUARDRAILS(
+        `ordering from ${DINER}: its menu, ingredients and allergens, and building and placing an order.`,
+      ),
+      STYLE,
+      LANG,
+    ].join('\n\n'),
+    tools: [
+      {
+        name: 'search_menu',
+        desc: {
+          en: 'Searches the menu: dishes, prices, allergens, options and what’s sold out.',
+          es: 'Busca en el menú: platos, precios, alérgenos, opciones y lo agotado.',
+        },
+      },
+      {
+        name: 'update_order',
+        desc: {
+          en: 'Adds, changes or removes order lines in one call; validates options and recomputes totals.',
+          es: 'Agrega, cambia o quita líneas del pedido en una llamada; valida opciones y recalcula totales.',
+        },
+      },
+      {
+        name: 'place_order',
+        desc: {
+          en: 'Places the order once you confirm it (simulated, nothing is charged).',
+          es: 'Hace el pedido cuando lo confirmas (simulado, no se cobra nada).',
+        },
+      },
+    ],
+    clientTools: ['search_menu', 'update_order', 'place_order'],
   },
   {
     id: 'insurance',

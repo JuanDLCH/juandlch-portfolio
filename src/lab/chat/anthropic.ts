@@ -265,6 +265,7 @@ export async function runTurn(
               call.name,
               (call.input ?? {}) as Record<string, unknown>,
               cb,
+              s,
             );
             patch(
               (i) => i.kind === 'tool' && i.id === call.id,

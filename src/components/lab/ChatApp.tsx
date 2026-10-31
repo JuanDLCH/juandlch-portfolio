@@ -25,6 +25,7 @@ import {
 import { runTurn } from '../../lab/chat/turn';
 import { cvLinkId, cvPdf } from '../../lab/chat/cv';
 import { CONTACT, contactInput } from '../../lab/chat/contact';
+import { dish, optionLabel, type Order } from '../../lab/chat/order';
 import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
@@ -227,6 +228,19 @@ export default function ChatApp({
       turn = [];
     }
   }
+  // The order card goes once, at the end of the last turn that changed the
+  // order, and always shows its current state.
+  let orderAt = -1;
+  if (session.order)
+    for (let i = 0, touched = false; i < session.items.length; i++) {
+      const m = session.items[i];
+      if (m.kind === 'tool' && ORDER_TOOLS.includes(m.name)) touched = true;
+      const next = session.items[i + 1];
+      if (touched && (!next || next.kind === 'user')) {
+        orderAt = i;
+        touched = false;
+      }
+    }
   const chatKey = keys[PROVIDER];
 
   const [side, setSide] = useState(false);
@@ -385,6 +399,7 @@ export default function ChatApp({
         ...s,
         items: s.items.slice(0, s.turn.items),
         api: s.api.slice(0, s.turn.api),
+        order: s.turn.order,
       },
       s.turn.input,
     );
@@ -424,7 +439,12 @@ export default function ChatApp({
       {
         ...start,
         items: [...start.items, user],
-        turn: { items: start.items.length + 1, api: start.api.length, input },
+        turn: {
+          items: start.items.length + 1,
+          api: start.api.length,
+          input,
+          order: start.order,
+        },
       },
       input,
     );
@@ -803,6 +823,15 @@ export default function ChatApp({
                   {contactAt.get(i)?.map((input, k) => (
                     <ContactActions key={k} input={input} x={x} />
                   ))}
+                  {i === orderAt && session.order && (
+                    <OrderCard
+                      order={session.order}
+                      es={es}
+                      x={x}
+                      busy={busy}
+                      onPlace={() => void send(x.order.confirm)}
+                    />
+                  )}
                 </Fragment>
               ))}
               {busy &&
@@ -1867,6 +1896,109 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
   }
   out.push(text.slice(last));
   return out;
+}
+
+const ORDER_TOOLS = ['update_order', 'place_order'];
+const usd = (n: number) => `$${n.toFixed(2)}`;
+
+// The Order assistant's order, as its tools left it. "Place order" sends the
+// confirmation as a user message, so the model still calls place_order.
+function OrderCard({
+  order,
+  es,
+  x,
+  busy,
+  onPlace,
+}: {
+  order: Order;
+  es: boolean;
+  x: ChatCopy;
+  busy: boolean;
+  onPlace: () => void;
+}) {
+  const placed = order.status === 'placed';
+  const pick = (l: { en: string; es: string }) => (es ? l.es : l.en);
+  const row = 'flex items-baseline justify-between gap-4';
+  return (
+    <section
+      aria-label={placed ? x.order.placedTitle : x.order.title}
+      className="bg-panel border-line2 mob:max-w-full ml-3 flex max-w-[min(88%,420px)] flex-col gap-3 border p-4 text-[13px]"
+    >
+      <div className={row}>
+        <span
+          className={`${mono} text-accent text-[11px] tracking-wider uppercase`}
+        >
+          {placed ? x.order.placedTitle : x.order.title}
+        </span>
+        {order.order_id && (
+          <span className={`${mono} text-muted text-[11px]`}>
+            {order.order_id}
+          </span>
+        )}
+      </div>
+      {order.lines.length === 0 ? (
+        <p className="text-muted m-0">{x.order.empty}</p>
+      ) : (
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          {order.lines.map((l) => {
+            const d = dish(l.item_id);
+            return (
+              <li key={l.line_id} className="flex flex-col gap-0.5">
+                <div className={row}>
+                  <span className="text-ink">
+                    <span className={`${mono} text-muted`}>{l.quantity}×</span>{' '}
+                    {d ? pick(d.name) : l.item_id}
+                  </span>
+                  <span className={`${mono} text-ink`}>{usd(l.subtotal)}</span>
+                </div>
+                {(l.options.length > 0 || l.note) && (
+                  <span className="text-muted text-[12px] leading-snug">
+                    {[
+                      ...l.options.map((o) => pick(optionLabel(l.item_id, o))),
+                      ...(l.note ? [`“${l.note}”`] : []),
+                    ].join(' · ')}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {order.lines.length > 0 && (
+        <div className="border-line2 flex flex-col gap-1 border-t pt-2">
+          <div className={`${row} text-muted`}>
+            <span>{x.order.subtotal}</span>
+            <span className={mono}>{usd(order.subtotal)}</span>
+          </div>
+          <div className={`${row} text-muted`}>
+            <span>{x.order.tax}</span>
+            <span className={mono}>{usd(order.tax)}</span>
+          </div>
+          <div className={`${row} text-ink font-semibold`}>
+            <span>{x.order.total}</span>
+            <span className={mono}>{usd(order.total)}</span>
+          </div>
+        </div>
+      )}
+      {placed ? (
+        <p className="text-muted m-0 text-[12px] leading-normal">
+          {x.order.pickup.replace('{m}', String(order.eta_min ?? 20))}.{' '}
+          {x.order.simulated}
+        </p>
+      ) : (
+        order.lines.length > 0 && (
+          <button
+            type="button"
+            onClick={onPlace}
+            disabled={busy}
+            className="bg-accent text-on-accent mob:h-11 inline-flex h-9 items-center justify-center px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {x.order.place} · {usd(order.total)}
+          </button>
+        )
+      )}
+    </section>
+  );
 }
 
 // Contact buttons from show_contact_options. The booking page can't be

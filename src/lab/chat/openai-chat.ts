@@ -312,7 +312,7 @@ export async function runTurn(
             // Reported to the model below.
           }
           const r = args
-            ? await runClientTool(call.name, args, cb)
+            ? await runClientTool(call.name, args, cb, s)
             : {
                 content: JSON.stringify({
                   error: 'arguments are not valid JSON',

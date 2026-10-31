@@ -57,6 +57,7 @@ export async function runClientTool(
   name: string,
   input: Record<string, unknown>,
   cb: TurnCallbacks,
+  s: ChatSession,
 ) {
   const tool = CLIENT_TOOLS[name];
   const invalid = tool ? tool.validate(input) : `unknown tool: ${name}`;
@@ -67,7 +68,7 @@ export async function runClientTool(
       failed: true,
     };
   try {
-    const out = await tool.run(input, cb.signal);
+    const out = await tool.run(input, cb.signal, s);
     return {
       content: JSON.stringify(out),
       summary: tool.summary(out, cb.es),

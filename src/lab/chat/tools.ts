@@ -1,8 +1,19 @@
 // Client-side tools for the chat lab. They run in the visitor's browser; the
 // profile is Juan Diego's CV and portfolio, the menu and orders are fake demo
-// data, weather comes from Open-Meteo (no key).
+// data (order.ts), weather comes from Open-Meteo (no key).
 import type Anthropic from '@anthropic-ai/sdk';
+import type { ChatSession } from '../store';
 import { CONTACT, CONTACT_OPTIONS, type ContactOption } from './contact';
+import {
+  CATEGORIES,
+  DINER,
+  MENU,
+  applyOps,
+  describeDish,
+  describeOrder,
+  emptyOrder,
+  type OrderOp,
+} from './order';
 
 type Input = Record<string, unknown>;
 
@@ -10,75 +21,149 @@ interface ClientTool {
   def: Anthropic.Beta.BetaTool;
   /** Returns an error message when the (model-supplied) input is invalid. */
   validate: (input: Input) => string | null;
-  /** `signal` aborts when the visitor stops the turn. */
-  run: (input: Input, signal: AbortSignal) => Promise<unknown>;
+  /** `signal` aborts when the visitor stops the turn. `session` is the turn's
+   * working copy: tools that keep state (the order) read and write it there. */
+  run: (
+    input: Input,
+    signal: AbortSignal,
+    session: ChatSession,
+  ) => Promise<unknown>;
   /** Short result label for the UI, e.g. "3 results". */
   summary: (result: unknown, es: boolean) => string;
 }
 
 const str = (v: unknown) => typeof v === 'string' && v.trim().length > 0;
 
-const MENU = [
-  {
-    id: 'bowl',
-    name: 'Garden bowl',
-    tags: ['vegetarian', 'vegan', 'gluten-free'],
-    price: 9.5,
-  },
-  {
-    id: 'falafel',
-    name: 'Falafel wrap',
-    tags: ['vegetarian', 'vegan'],
-    price: 8,
-  },
-  { id: 'pizza-veg', name: 'Veggie pizza', tags: ['vegetarian'], price: 11 },
-  { id: 'burger', name: 'Classic burger', tags: ['beef'], price: 12 },
-  {
-    id: 'chicken',
-    name: 'Grilled chicken plate',
-    tags: ['chicken', 'gluten-free'],
-    price: 13,
-  },
-  {
-    id: 'lemonade',
-    name: 'Mint lemonade',
-    tags: ['drink', 'vegan'],
-    price: 3.5,
-  },
-];
-
 const searchMenu: ClientTool = {
   def: {
     name: 'search_menu',
-    description:
-      'Search the restaurant menu. Matches dish names and tags (vegetarian, vegan, gluten-free, beef, chicken, drink). Use an empty query to list everything.',
+    description: `Search the ${DINER} menu. Returns dishes with price, tags (vegetarian, vegan, gluten-free, beef, chicken), allergens, availability and option groups (choice ids to pass to update_order). Empty query and no category list everything.`,
     input_schema: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
-          description: 'Words to match, e.g. "vegetarian" or "pizza"',
+          description:
+            'English words matched against names, descriptions, tags and option names, e.g. "vegan" or "burger". Empty for all.',
         },
+        category: { type: 'string', enum: [...CATEGORIES] },
       },
-      required: ['query'],
     },
     eager_input_streaming: true,
   },
-  validate: (i) =>
-    typeof i.query === 'string' ? null : 'query must be a string',
+  validate: (i) => {
+    if (i.query !== undefined && typeof i.query !== 'string')
+      return 'query must be a string';
+    if (
+      i.category !== undefined &&
+      !CATEGORIES.includes(i.category as (typeof CATEGORIES)[number])
+    )
+      return `category must be one of: ${CATEGORIES.join(', ')}`;
+    return null;
+  },
   run: async (i) => {
-    const words = String(i.query).toLowerCase().split(/\s+/).filter(Boolean);
-    const hits = MENU.filter((d) =>
-      words.every(
-        (w) =>
-          d.name.toLowerCase().includes(w) || d.tags.some((t) => t.includes(w)),
-      ),
+    const q = words(String(i.query ?? ''));
+    const hits = MENU.filter(
+      (d) =>
+        (!i.category || d.category === i.category) &&
+        q.every((w) =>
+          words(
+            [
+              d.id,
+              d.name.en,
+              d.description,
+              ...d.tags,
+              ...d.groups.flatMap((g) => g.choices.map((x) => x.label.en)),
+            ].join(' '),
+          ).some((t) => t.startsWith(w) || w.startsWith(t)),
+        ),
     );
-    return { dishes: hits, currency: 'USD' };
+    return { dishes: hits.map(describeDish), currency: 'USD' };
   },
   summary: (r, es) => {
     const n = (r as { dishes: unknown[] }).dishes.length;
-    return es ? `${n} resultados` : `${n} results`;
+    return es ? `${n} platos` : `${n} dishes`;
+  },
+};
+
+const updateOrder: ClientTool = {
+  def: {
+    name: 'update_order',
+    description:
+      'Change the current order with a list of operations, applied in order. add: a dish by item_id, with quantity (default 1), option choice ids from search_menu (required groups left out get their default) and an optional short note. update: a line by line_id; options picks choices (in one-choice groups like side it replaces the current pick), remove_options drops choices. remove: a line by line_id. If the current order was already placed, this starts a new one. Returns the whole order and errors for the operations that could not be applied (those were skipped).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        ops: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              op: { type: 'string', enum: ['add', 'update', 'remove'] },
+              item_id: { type: 'string', description: 'add only' },
+              line_id: { type: 'string', description: 'update and remove' },
+              quantity: { type: 'integer', minimum: 1, maximum: 20 },
+              options: { type: 'array', items: { type: 'string' } },
+              remove_options: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'update only',
+              },
+              note: { type: 'string' },
+            },
+            required: ['op'],
+          },
+        },
+      },
+      required: ['ops'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) => {
+    if (!Array.isArray(i.ops) || i.ops.length === 0)
+      return 'ops must be a non-empty array';
+    for (const op of i.ops as Input[]) {
+      if (op?.op === 'add' && !str(op.item_id)) return 'add needs an item_id';
+      if ((op?.op === 'update' || op?.op === 'remove') && !str(op.line_id))
+        return `${String(op.op)} needs a line_id`;
+      if (!['add', 'update', 'remove'].includes(op?.op as string))
+        return 'op must be add, update or remove';
+      for (const k of ['options', 'remove_options'])
+        if (
+          op[k] !== undefined &&
+          !(Array.isArray(op[k]) && (op[k] as unknown[]).every(str))
+        )
+          return `${k} must be an array of choice ids`;
+      if (op.note !== undefined && typeof op.note !== 'string')
+        return 'note must be a string';
+    }
+    return null;
+  },
+  run: async (i, _signal, s) => {
+    // After checkout, the next change starts a new order (line ids go on).
+    const current =
+      !s.order || s.order.status === 'placed'
+        ? { ...emptyOrder(), seq: s.order?.seq ?? 0 }
+        : s.order;
+    const { order, errors } = applyOps(current, i.ops as OrderOp[]);
+    s.order = order;
+    return { order: describeOrder(order), errors };
+  },
+  summary: (r, es) => {
+    const { order, errors } = r as {
+      order: { lines: unknown[]; total: number };
+      errors: string[];
+    };
+    const n = order.lines.length;
+    const lines = es
+      ? `${n} ${n === 1 ? 'línea' : 'líneas'}`
+      : `${n} ${n === 1 ? 'line' : 'lines'}`;
+    const err = errors.length
+      ? es
+        ? ` · ${errors.length} sin aplicar`
+        : ` · ${errors.length} not applied`
+      : '';
+    return `${lines} · $${order.total.toFixed(2)}${err}`;
   },
 };
 
@@ -86,58 +171,31 @@ const placeOrder: ClientTool = {
   def: {
     name: 'place_order',
     description:
-      'Place a mock order with dish ids from search_menu. Only call it after the user confirmed the items.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        items: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              quantity: { type: 'integer', minimum: 1 },
-            },
-            required: ['id', 'quantity'],
-          },
-        },
-      },
-      required: ['items'],
-    },
+      'Place the current order for pickup (simulated, nothing is charged). Only call it after the user explicitly confirmed the order as it is now.',
+    input_schema: { type: 'object', properties: {} },
     eager_input_streaming: true,
   },
-  validate: (i) => {
-    if (!Array.isArray(i.items) || i.items.length === 0)
-      return 'items must be a non-empty array';
-    for (const it of i.items as Input[]) {
-      if (!MENU.some((d) => d.id === it?.id))
-        return `unknown dish id: ${String(it?.id)}`;
-      if (!Number.isInteger(it.quantity) || (it.quantity as number) < 1)
-        return 'quantity must be a positive integer';
-    }
-    return null;
-  },
-  run: async (i) => {
-    const items = (i.items as { id: string; quantity: number }[]).map((it) => {
-      const d = MENU.find((m) => m.id === it.id)!;
-      return {
-        name: d.name,
-        quantity: it.quantity,
-        subtotal: d.price * it.quantity,
-      };
-    });
-    const total = items.reduce((s, it) => s + it.subtotal, 0);
-    return {
+  validate: () => null,
+  run: async (_i, _signal, s) => {
+    const o = s.order;
+    if (!o || o.lines.length === 0) return { error: 'The order is empty.' };
+    if (o.status === 'placed')
+      return { error: `Order ${o.order_id} was already placed.` };
+    s.order = {
+      ...o,
+      status: 'placed',
       order_id: `DEMO-${Math.floor(1000 + Math.random() * 9000)}`,
-      items,
-      total,
-      currency: 'USD',
-      note: 'Demo order, nothing was charged.',
+      eta_min: 15 + 5 * Math.min(3, Math.floor(o.lines.length / 2)),
+    };
+    return {
+      order: describeOrder(s.order),
+      note: 'Demo order for pickup, nothing was charged.',
     };
   },
   summary: (r, es) => {
-    const o = r as { order_id: string };
-    return es ? `pedido ${o.order_id}` : `order ${o.order_id}`;
+    const o = r as { error?: string; order?: { order_id: string } };
+    if (o.error) return o.error;
+    return es ? `pedido ${o.order!.order_id}` : `order ${o.order!.order_id}`;
   },
 };
 
@@ -392,6 +450,7 @@ export const CLIENT_TOOLS: Record<string, ClientTool> = {
   get_profile_section: getProfileSection,
   search_profile: searchProfile,
   search_menu: searchMenu,
+  update_order: updateOrder,
   place_order: placeOrder,
   get_weather: getWeather,
   get_time: getTime,
