@@ -66,6 +66,9 @@ import {
   $drafts,
   $keys,
   $sessions,
+  MAX_CHARS,
+  MAX_MESSAGES,
+  MAX_VOICE_S,
   emptySession,
   getSession,
   nextNoticeId,
@@ -188,6 +191,7 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   file: 'file',
   pdfPages: 'file',
   imageSize: 'file',
+  convLimit: 'clear',
   imageUnreadable: 'file',
   pdfSize: 'file',
   pdfUnreadable: 'file',
@@ -338,6 +342,8 @@ export default function ChatApp({
   // Case waiting for confirmation: switching clears the conversation.
   const [switchTo, setSwitchTo] = useState<ChatCase | null>(null);
   const [rec, setRec] = useState<'off' | 'on' | 'busy'>('off');
+  // Seconds recorded so far; the note stops itself at MAX_VOICE_S.
+  const [recSecs, setRecSecs] = useState(0);
   const recRef = useRef<MediaRecorder | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -421,6 +427,19 @@ export default function ChatApp({
     const el = logRef.current;
     if (el && session.items.length) el.scrollTop = el.scrollHeight;
   }, [session.items]);
+
+  // Voice notes: tick the clock and stop at MAX_VOICE_S (stopping sends the
+  // note, as the stop button does).
+  useEffect(() => {
+    if (rec !== 'on') return;
+    const t0 = performance.now();
+    const id = setInterval(() => {
+      const secs = Math.floor((performance.now() - t0) / 1000);
+      setRecSecs(Math.min(secs, MAX_VOICE_S));
+      if (secs >= MAX_VOICE_S) recRef.current?.stop();
+    }, 250);
+    return () => clearInterval(id);
+  }, [rec]);
 
   const openInfo = (kind: 'video' | 'build') => {
     setInfoCase(c.id);
@@ -547,6 +566,21 @@ export default function ChatApp({
     if (c.docs && !getSession(c.id).docs?.length) {
       if (override) setDraft(override);
       notice('docNone');
+      return;
+    }
+    // Limits (MAX_*): the message stays so it can be shortened, or the
+    // conversation cleared.
+    if (text.length > MAX_CHARS) {
+      setDraft(text);
+      notice('tooLong');
+      return;
+    }
+    if (
+      getSession(c.id).items.filter((m) => m.kind === 'user').length >=
+      MAX_MESSAGES
+    ) {
+      if (override) setDraft(override);
+      notice('convLimit');
       return;
     }
     // No key: the message stays in the composer and the assistant asks for
@@ -743,6 +777,7 @@ export default function ChatApp({
       };
       recRef.current = mr;
       mr.start();
+      setRecSecs(0);
       setRec('on');
     } catch {
       notice('mic');
@@ -1243,7 +1278,9 @@ export default function ChatApp({
                       className="jd-blink bg-warn size-2"
                     />
                     <span className={`${label} flex-1 text-[11px]`}>
-                      {rec === 'on' ? x.recording : x.transcribing}
+                      {rec === 'on'
+                        ? `${x.recording} ${clock(recSecs)} / ${clock(MAX_VOICE_S)}`
+                        : x.transcribing}
                     </span>
                     {rec === 'on' && (
                       <>
@@ -1278,6 +1315,7 @@ export default function ChatApp({
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={onKeyDown}
+                      maxLength={MAX_CHARS}
                       placeholder={phone ? x.placeholderShort : x.placeholder}
                       className="text-ink placeholder:text-muted mob:min-h-11 mob:min-w-0 mob:flex-1 mob:self-center mob:px-0 mob:py-2.5 mob:text-base mob:max-h-[8.5em] block [field-sizing:content] max-h-[8em] min-h-[1.5em] w-full resize-none border-0 bg-transparent px-3 pt-2 pb-0.5 text-[13px] leading-normal focus:outline-none"
                     />
@@ -1306,6 +1344,15 @@ export default function ChatApp({
                         </button>
                       </div>
                       <div className="mob:contents flex items-center gap-2.5">
+                        {/* Shown near the limit, so a long paste isn't cut off unnoticed. */}
+                        {draft.length > MAX_CHARS * 0.9 && (
+                          <span
+                            aria-live="polite"
+                            className={`${mono} text-[10px] ${draft.length >= MAX_CHARS ? 'text-warn' : 'text-muted'}`}
+                          >
+                            {draft.length}/{MAX_CHARS}
+                          </span>
+                        )}
                         <span
                           className={`${mono} text-muted narrow:hidden text-[10px]`}
                         >
@@ -2464,6 +2511,10 @@ function Linked({
   out.push(text.slice(last));
   return out;
 }
+
+/** Seconds as m:ss. */
+const clock = (s: number) =>
+  `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 const ORDER_TOOLS = ['update_order', 'place_order'];
 // Bumped when a case switch clears the sessions: Knowledge Base reads that

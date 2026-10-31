@@ -227,6 +227,10 @@ const EN = {
       'I couldn’t transcribe that recording. Check your OpenAI key, or type the message instead.',
     file: 'I can read images (PNG, JPEG, GIF, WebP) and PDFs. That file isn’t one of them.',
     imageSize: 'That image is over 14 MB. Send a lighter one.',
+    tooLong:
+      'That message is over 4,000 characters. Shorten it, or send the text as a PDF.',
+    convLimit:
+      'This conversation reached 100 messages, the most it takes. Clear it to keep going.',
     imageUnreadable:
       'I couldn’t open that image: it may be damaged. Try another copy.',
     pdfPages:
@@ -495,6 +499,10 @@ const ES: typeof EN = {
       'No pude transcribir esa grabación. Revisa tu llave de OpenAI o escribe el mensaje.',
     file: 'Puedo leer imágenes (PNG, JPEG, GIF, WebP) y PDFs. Ese archivo no es uno de ellos.',
     imageSize: 'Esa imagen pesa más de 14 MB. Envía una más liviana.',
+    tooLong:
+      'Ese mensaje tiene más de 4.000 caracteres. Acórtalo, o envía el texto como PDF.',
+    convLimit:
+      'Esta conversación llegó a 100 mensajes, el máximo que admite. Bórrala para seguir.',
     imageUnreadable:
       'No pude abrir esa imagen: puede estar dañada. Prueba con otra copia.',
     pdfPages:
