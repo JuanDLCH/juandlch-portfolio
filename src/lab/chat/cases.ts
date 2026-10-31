@@ -55,7 +55,14 @@ export interface ChatCase {
    * `maxPages`, PDFs and images within `maxMB`) replaces the attach button
    * and suggestions; files are read in the browser (kb.ts) and the model
    * reads them only through the document tools. */
-  docs?: { maxFiles: number; maxPages: number; maxMB: number };
+  docs?: {
+    maxFiles: number;
+    maxPages: number;
+    maxMB: number;
+    /** Effort once the Knowledge Base has more than one document: questions
+     * across documents (comparisons, cross-references) plan more reads. */
+    effortMany: Effort;
+  };
   /** Recorded walkthrough with its WebVTT captions (URLs under public/ or a
    * CDN). Cases without one show a placeholder in the Watch demo dialog. */
   video?: { src: string; captions: string };
@@ -96,6 +103,10 @@ const LUNA = { anthropic: 'claude-haiku-5-5', openai: 'gpt-6-luna' } as const;
 
 /** The case's model on the active provider. */
 export const caseModel = (c: ChatCase) => MODELS[c.models[PROVIDER]];
+/** Effort for the next turn: the case's, or `docs.effortMany` when the
+ * Knowledge Base holds more than one document. */
+export const caseEffort = (c: ChatCase, docs = 0): Effort =>
+  c.docs && docs > 1 ? c.docs.effortMany : c.effort;
 /** Tools the case has on the active provider. */
 export const caseTools = (c: ChatCase) =>
   c.tools.filter((t) => !t.provider || t.provider === PROVIDER);
@@ -484,6 +495,6 @@ export const CASES: ChatCase[] = [
       'read_pages',
       'view_page',
     ],
-    docs: { maxFiles: 5, maxPages: 20, maxMB: 20 },
+    docs: { maxFiles: 5, maxPages: 20, maxMB: 20, effortMany: 'high' },
   },
 ];

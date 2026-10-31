@@ -18,6 +18,7 @@ import {
 import {
   CASES,
   PROVIDER,
+  caseEffort,
   caseModel,
   caseTools,
   type ChatCase,
@@ -318,6 +319,10 @@ export default function ChatApp({
   } | null>(null);
   // Document agent: PDFs being read when attached; sending waits for them.
   const [reading, setReading] = useState(0);
+  // The Knowledge Base box starts open and folds into one line once the
+  // conversation starts, so it doesn't take room all session; the visitor
+  // can open or fold it again (null: follow that default).
+  const [kbPick, setKbOpen] = useState<boolean | null>(null);
   const readingRef = useRef(0);
   // Order assistant: the full menu dialog, in the conversation's language.
   const [menuLang, setMenuLang] = useState<Lang | null>(null);
@@ -438,6 +443,7 @@ export default function ChatApp({
   const clearChat = () => {
     const { docs, docSeq } = getSession(c.id);
     setSession(c.id, { ...emptySession(), docs, docSeq });
+    setKbOpen(null);
   };
   // A case starts from scratch: switching away from a started conversation
   // asks first, then clears it (and anything left in the new case).
@@ -731,6 +737,8 @@ export default function ChatApp({
   );
 
   const model = caseModel(c);
+  const started = session.items.some((m) => m.kind === 'user');
+  const effort = caseEffort(c, session.docs?.length);
   const tools = caseTools(c);
   const ready = !!chatKey;
   // Copy placeholders: the provider and the case's model.
@@ -1145,6 +1153,9 @@ export default function ChatApp({
               )}
               {c.docs && (
                 <KnowledgeBase
+                  open={kbPick ?? !started}
+                  canFold={started}
+                  onToggle={() => setKbOpen(!(kbPick ?? !started))}
                   docs={session.docs ?? []}
                   max={c.docs.maxFiles}
                   reading={reading}
@@ -1264,7 +1275,7 @@ export default function ChatApp({
                         <span
                           className={`${mono} text-muted narrow:hidden text-[10px]`}
                         >
-                          {model.name} · {c.effort}
+                          {model.name} · {effort}
                         </span>
                         {busy ? (
                           <button
@@ -1400,7 +1411,7 @@ export default function ChatApp({
                 <dl className="border-line bg-line m-0 grid grid-cols-3 gap-px border">
                   {[
                     [x.model, model.short],
-                    [x.effort, c.effort],
+                    [x.effort, effort],
                     [x.maxTokens, c.maxTokens.toLocaleString()],
                   ].map(([k, v]) => (
                     <div key={k} className="bg-bg px-2 py-1.5">
@@ -2725,6 +2736,9 @@ function PolicyDetails({ lang, holder }: { lang: Lang; holder: string }) {
 // slots above the composer. A filled slot opens the document; an empty one
 // opens the file picker (PDFs and images).
 function KnowledgeBase({
+  open,
+  canFold,
+  onToggle,
   docs,
   max,
   reading,
@@ -2735,6 +2749,10 @@ function KnowledgeBase({
   onOpen,
   onRemove,
 }: {
+  open: boolean;
+  /** Only once the conversation started: before, it stays open. */
+  canFold: boolean;
+  onToggle: () => void;
   docs: Doc[];
   max: number;
   reading: number;
@@ -2748,20 +2766,75 @@ function KnowledgeBase({
   const empty = Math.max(0, max - docs.length - reading);
   const slot =
     'mob:h-[68px] relative flex h-[76px] min-w-0 flex-col items-center justify-center gap-1 border';
+  const title = (
+    <h3
+      className={`${mono} text-accent m-0 shrink-0 text-[11px] font-normal tracking-[0.08em] uppercase`}
+    >
+      {x.kb}{' '}
+      <span className="text-muted">
+        {docs.length}/{max}
+      </span>
+    </h3>
+  );
+  const toggle = canFold && (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={open ? 'jd-kb-slots' : undefined}
+      className="text-muted hover:text-ink mob:min-h-9 inline-flex shrink-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px]"
+    >
+      {open ? x.hide : x.show}
+      <span aria-hidden="true" className={open ? 'rotate-180' : undefined}>
+        ▾
+      </span>
+    </button>
+  );
+  // Folded: one line with the documents, each still opens in the viewer.
+  if (!open)
+    return (
+      <section
+        aria-label={x.kb}
+        className="border-line2 bg-panel mb-2 flex items-center gap-3 border px-3 py-1.5"
+      >
+        {title}
+        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+          {docs.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => onOpen(d)}
+              title={`${x.openDoc} ${d.name}`}
+              className={`${mono} border-line2 text-chip hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 max-w-[180px] shrink-0 cursor-pointer items-center gap-1.5 border bg-transparent px-2 text-[10px] transition-colors`}
+            >
+              <Icon d={I.file} size={12} />
+              <span className="truncate">{d.name}</span>
+            </button>
+          ))}
+          {reading > 0 && (
+            <span
+              role="status"
+              className="text-muted inline-flex shrink-0 items-center gap-1.5 text-[10px]"
+            >
+              <span
+                aria-hidden="true"
+                className="jd-blink bg-accent size-1.5"
+              />
+              {x.reading}
+            </span>
+          )}
+        </div>
+        {toggle}
+      </section>
+    );
   return (
     <section
       aria-label={x.kb}
       className="border-line2 bg-panel mb-2 border px-3 pt-2.5 pb-3"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h3
-          className={`${mono} text-accent m-0 text-[11px] font-normal tracking-[0.08em] uppercase`}
-        >
-          {x.kb}{' '}
-          <span className="text-muted">
-            {docs.length}/{max}
-          </span>
-        </h3>
+        {title}
+        {toggle}
         {docs.length === 0 && reading === 0 && (
           <button
             type="button"
@@ -2776,7 +2849,10 @@ function KnowledgeBase({
       <p className="text-muted m-0 mt-0.5 text-[11px] leading-snug">
         {x.kbHint}
       </p>
-      <ul className="m-0 mt-2 grid list-none grid-cols-5 gap-2 p-0">
+      <ul
+        id="jd-kb-slots"
+        className="m-0 mt-2 grid list-none grid-cols-5 gap-2 p-0"
+      >
         {docs.map((d) => (
           <li key={d.id} className={`${slot} border-line2 bg-bg`}>
             <button

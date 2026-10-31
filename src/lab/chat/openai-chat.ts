@@ -4,7 +4,7 @@
 // every request, reasoning included (encrypted).
 import type OpenAI from 'openai';
 import type { ChatItem, ChatSession, UserInput } from '../store';
-import { MODELS, type ChatCase } from './cases';
+import { MODELS, caseEffort, type ChatCase } from './cases';
 import { CLIENT_TOOLS } from './tools';
 import {
   PAGES_DROPPED,
@@ -141,7 +141,8 @@ export async function runTurn(
     ...(c.clientTools ?? []).map(functionTool),
     ...(c.openaiTools ?? []),
   ];
-  const meta = `${model.name} · effort ${c.effort}`;
+  const effort = caseEffort(c, start.docs?.length);
+  const meta = `${model.name} · effort ${effort}`;
 
   const push = (item: ChatItem) => {
     s.items.push(item);
@@ -186,7 +187,7 @@ export async function runTurn(
           instructions: c.system,
           input: api,
           ...(tools.length ? { tools } : {}),
-          reasoning: { effort: c.effort },
+          reasoning: { effort },
           max_output_tokens: c.maxTokens,
           store: false,
           include: ['reasoning.encrypted_content'],
