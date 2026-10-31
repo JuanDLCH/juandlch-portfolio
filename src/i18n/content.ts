@@ -32,7 +32,7 @@ const EN = {
   heroC: ' — inside real software.',
   heroSub:
     'Software engineer first. I design and ship agents, realtime voice and document pipelines for companies, from the first discovery call to the AWS infrastructure they run on.',
-  ctaLab: 'Try the live demos',
+  ctaLab: 'Try my live demos',
   ctaWork: 'Selected work',
   agentSpeaking: 'Agent speaking',
   turnLabel: 'voice.turn 04 · illustrative',
@@ -146,7 +146,7 @@ const ES: typeof EN = {
   heroC: ' — dentro de software real.',
   heroSub:
     'Ingeniero de software ante todo. Diseño y llevo a producción agentes, voz en tiempo real y procesamiento de documentos para empresas, desde la primera reunión de descubrimiento hasta la infraestructura en AWS donde corren.',
-  ctaLab: 'Prueba las demos en vivo',
+  ctaLab: 'Prueba mis demos en vivo',
   ctaWork: 'Trabajo seleccionado',
   agentSpeaking: 'Agente hablando',
   turnLabel: 'voice.turn 04 · ilustrativo',
