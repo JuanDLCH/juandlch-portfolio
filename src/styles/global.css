@@ -292,6 +292,46 @@
     transform: scaleY(0.1);
   }
 }
+/* Voice Lab orb (SophieOrb.tsx). */
+@keyframes jd-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+@keyframes jd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes jd-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
+  }
+}
+.jd-ring,
+.jd-spin,
+.jd-breathe {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.jd-ring {
+  animation: jd-ring 2.2s ease-out infinite;
+}
+.jd-spin {
+  animation: jd-spin 2.4s linear infinite;
+}
+.jd-breathe {
+  animation: jd-breathe 3.6s ease-in-out infinite;
+}
 .jd-cvbtn {
   position: relative;
   overflow: hidden;
@@ -323,7 +363,10 @@
   .jd-blink,
   .jd-cvbtn,
   .jd-cvbtn::after,
-  .jd-cvbtn .jd-eyes {
+  .jd-cvbtn .jd-eyes,
+  .jd-ring,
+  .jd-spin,
+  .jd-breathe {
     animation: none !important;
   }
   .jd-card:hover,

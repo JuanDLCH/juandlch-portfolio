@@ -25,10 +25,13 @@ export type Activity = 'listening' | 'user' | 'thinking' | 'speaking';
 
 export interface CallHandlers {
   activity: (a: Activity) => void;
-  /** Caption of what the visitor said (replaced as it's transcribed). */
-  user: (text: string) => void;
-  /** Caption of Sophie's current answer (replaced as it streams). */
-  agent: (text: string) => void;
+  /** What the visitor said in turn `id` so far (replaced as it's
+   * transcribed; '' when they start talking). */
+  user: (id: string, text: string) => void;
+  /** Sophie's answer `id` so far (replaced as it streams). */
+  agent: (id: string, text: string) => void;
+  /** The visitor talked over Sophie and she stopped. */
+  bargeIn: () => void;
   /** show_contact_options was called; its raw JSON arguments. */
   contact: (args: string) => void;
   /** The connection went away (the server hung up, or the network). */
@@ -134,9 +137,10 @@ export async function connect(opts: {
     else send({ type: 'response.create' });
   };
 
-  let userText = '';
+  const userText = new Map<string, string>();
   let agentId = '';
   let agentText = '';
+  let speaking = false;
   dc.addEventListener('message', (e) => {
     let ev: Record<string, unknown> & { type?: string };
     try {
@@ -145,22 +149,31 @@ export async function connect(opts: {
       return;
     }
     switch (ev.type) {
-      case 'input_audio_buffer.speech_started':
-        userText = '';
-        on.user('');
+      case 'input_audio_buffer.speech_started': {
+        if (speaking) on.bargeIn();
+        const id = String(ev.item_id ?? '');
+        userText.set(id, '');
+        on.user(id, '');
         on.activity('user');
         break;
+      }
       case 'input_audio_buffer.speech_stopped':
         on.activity('thinking');
         break;
-      case 'conversation.item.input_audio_transcription.delta':
-        userText += String(ev.delta ?? '');
-        on.user(userText);
+      case 'conversation.item.input_audio_transcription.delta': {
+        const id = String(ev.item_id ?? '');
+        const text = (userText.get(id) ?? '') + String(ev.delta ?? '');
+        userText.set(id, text);
+        on.user(id, text);
         break;
-      case 'conversation.item.input_audio_transcription.completed':
-        userText = String(ev.transcript ?? userText).trim();
-        on.user(userText);
+      }
+      case 'conversation.item.input_audio_transcription.completed': {
+        const id = String(ev.item_id ?? '');
+        const text = String(ev.transcript ?? userText.get(id) ?? '').trim();
+        userText.set(id, text);
+        on.user(id, text);
         break;
+      }
       case 'response.created':
         responding = true;
         on.activity('thinking');
@@ -171,13 +184,15 @@ export async function connect(opts: {
           agentText = '';
         }
         agentText += String(ev.delta ?? '');
-        on.agent(agentText);
+        on.agent(agentId, agentText);
         break;
       case 'output_audio_buffer.started':
+        speaking = true;
         on.activity('speaking');
         break;
       case 'output_audio_buffer.stopped':
       case 'output_audio_buffer.cleared':
+        speaking = false;
         on.activity('listening');
         break;
       case 'response.function_call_arguments.done':

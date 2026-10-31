@@ -1,11 +1,15 @@
-// Voice Lab: talk to Sophie, a GPT Realtime agent grounded in the CV. Open
-// to everyone (it runs on my key), so the Worker (worker/) creates every call,
-// checks Turnstile and the daily quota and cuts it after 3 minutes; this
-// island only runs the WebRTC side (src/lab/voice/rtc.ts). On entry a
-// recorded greeting introduces Sophie; the live agent doesn't repeat it.
+// Voice Lab: talk to Sophie, a GPT Realtime agent grounded in the CV. Layout
+// from the Voice board of the design canvas: the orb (with Sophie's eyes),
+// a live caption and the controls on the stage, and the transcript with live
+// metrics in a side panel (a sheet on narrow screens). Open to everyone (it
+// runs on my key), so the Worker (worker/) creates every call, checks
+// Turnstile and the daily quota and cuts it after 3 minutes; this island only
+// runs the WebRTC side (src/lab/voice/rtc.ts). On entry a recorded greeting
+// introduces Sophie; the live agent doesn't repeat it.
 import { useEffect, useRef, useState } from 'react';
 import { CHAT } from '../../i18n/chat';
-import { VOICE } from '../../i18n/voice';
+import { VOICE, type VoiceCopy } from '../../i18n/voice';
+import { contactInput } from '../../lab/chat/contact';
 import { WRAP_UP_S } from '../../lab/voice/prompt';
 import {
   VoiceError,
@@ -16,13 +20,12 @@ import {
 } from '../../lab/voice/rtc';
 import { getToken } from '../../lab/voice/turnstile';
 import { setLang, setTheme } from '../../scripts/prefs';
-import SophieFace, { type FaceMode } from './SophieFace';
+import SophieOrb, { type OrbMode } from './SophieOrb';
 import {
   ContactActions,
   I,
   Icon,
   iconBtn,
-  label,
   mono,
   useHtml,
   useHydrated,
@@ -43,6 +46,17 @@ type Phase =
   | { at: 'live' }
   | { at: 'ended'; why: 'time' | 'user' | 'dropped' | StartError };
 
+/** A transcript line: a turn of speech or an event (tool call, barge-in). */
+type Speech = {
+  kind: 'user' | 'agent';
+  id: string;
+  text: string;
+  cut?: boolean;
+};
+type Line =
+  | Speech
+  | { kind: 'tool' | 'barge-in'; id: string; text: string; meta?: string };
+
 const ENDING_CONTACT = JSON.stringify({
   options: ['meeting', 'email', 'linkedin'],
 });
@@ -56,8 +70,59 @@ const rms = (a: AnalyserNode | null, buf: Float32Array<ArrayBuffer>) => {
   return Math.sqrt(sum / buf.length);
 };
 
-const clock = (s: number) =>
-  `${Math.floor(s / 60)}:${String(Math.max(0, s % 60)).padStart(2, '0')}`;
+const mmss = (s: number) =>
+  `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+const monoLabel = `${mono} text-[10px] tracking-[0.08em] uppercase`;
+
+function Transcript({
+  lines,
+  x,
+  big = false,
+}: {
+  lines: Line[];
+  x: VoiceCopy;
+  big?: boolean;
+}) {
+  const shown = lines.filter((l) => l.text);
+  if (!shown.length)
+    return (
+      <p className="text-muted m-0 text-sm leading-[1.55]">
+        {x.emptyTranscript}
+      </p>
+    );
+  return shown.map((l) =>
+    l.kind === 'tool' || l.kind === 'barge-in' ? (
+      <div
+        key={l.id}
+        className={`${mono} border-line2 text-muted flex flex-wrap items-center gap-x-2.5 gap-y-1.5 border border-dashed px-2.5 py-[7px] text-[11px]`}
+      >
+        <span className={l.kind === 'tool' ? 'text-accent' : 'text-warn'}>
+          {l.kind}
+        </span>
+        <span className="text-chip break-words">{l.text}</span>
+        {l.meta && <span className="ml-auto">✓ {l.meta}</span>}
+      </div>
+    ) : (
+      <div
+        key={l.id}
+        className={`flex flex-col gap-1 border-l-2 pl-3 ${l.kind === 'agent' ? 'border-accent' : 'border-line2'}`}
+      >
+        <span
+          className={`${monoLabel} ${l.kind === 'agent' ? 'text-accent' : 'text-muted'}`}
+        >
+          {l.kind === 'agent' ? x.agent : x.you}
+        </span>
+        <span
+          className={`${big ? 'text-[15px]' : 'text-sm'} leading-normal ${l.kind === 'agent' ? 'text-ink' : 'text-body'}`}
+        >
+          {l.text}
+          {'cut' in l && l.cut && ' —'}
+        </span>
+      </div>
+    ),
+  );
+}
 
 export default function VoiceApp() {
   const { es, dark } = useHtml();
@@ -72,15 +137,20 @@ export default function VoiceApp() {
   const [greeting, setGreeting] = useState<'off' | 'playing' | 'blocked'>(
     'off',
   );
-  const [userText, setUserText] = useState('');
-  const [agentText, setAgentText] = useState('');
+  // Share of the greeting heard, to reveal its caption word by word.
+  const [heard, setHeard] = useState(0);
+  const [lines, setLines] = useState<Line[]>([]);
   const [contact, setContact] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
-  const [left, setLeft] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const [limit, setLimit] = useState(180);
+  const [metrics, setMetrics] = useState({ connect: 0, turn: 0, bargeIns: 0 });
+  const [sheet, setSheet] = useState(false);
 
   const greetRef = useRef<HTMLAudioElement>(null);
   const remoteRef = useRef<HTMLAudioElement>(null);
   const captchaRef = useRef<HTMLDivElement>(null);
+  const logRef = useRef<HTMLDivElement>(null);
   const callRef = useRef<Call | null>(null);
   const audioCtx = useRef<AudioContext | null>(null);
   const meters = useRef<{
@@ -89,21 +159,23 @@ export default function VoiceApp() {
   }>({ mic: null, agent: null });
   const buf = useRef(new Float32Array(512));
   const activityRef = useRef(activity);
-  useEffect(() => {
-    activityRef.current = activity;
-  });
+  // When the visitor stopped talking, to time Sophie's answer.
+  const stoppedAt = useRef(0);
 
   const live = phase.at === 'live';
-  const mode: FaceMode =
-    phase.at === 'live'
-      ? activity
-      : phase.at === 'connecting'
-        ? 'connecting'
-        : phase.at === 'ended'
-          ? 'ended'
-          : greeting === 'playing'
-            ? 'greeting'
-            : 'idle';
+  const ended = phase.at === 'ended' ? phase.why : null;
+  const failed = !!ended && ended in x.errors;
+  const mode: OrbMode = live
+    ? muted
+      ? 'muted'
+      : activity
+    : phase.at === 'connecting'
+      ? 'connecting'
+      : ended
+        ? 'ended'
+        : greeting === 'playing'
+          ? 'greeting'
+          : 'idle';
   const level = () =>
     rms(
       activityRef.current === 'user'
@@ -111,6 +183,8 @@ export default function VoiceApp() {
         : meters.current.agent,
       buf.current,
     );
+  const left = limit - elapsed;
+  const wrapping = live && left <= WRAP_UP_S;
 
   // Greeting: plays on arrival when the browser allows it (coming from the
   // landing, the click counts); otherwise a button offers it.
@@ -123,6 +197,7 @@ export default function VoiceApp() {
     }
     if (el.getAttribute('src') !== src) el.src = src;
     el.currentTime = 0;
+    setHeard(0);
     el.play().then(
       () => setGreeting('playing'),
       () => setGreeting('blocked'),
@@ -157,13 +232,73 @@ export default function VoiceApp() {
     setPhase({ at: 'ended', why });
   };
 
+  // Transcript: upsert a turn by id, keeping the order turns started in.
+  const upsert = (kind: 'user' | 'agent', id: string, text: string) =>
+    setLines((ls) => {
+      const key = `${kind}:${id}`;
+      const i = ls.findIndex((l) => l.id === key);
+      if (i < 0) return [...ls, { kind, id: key, text }];
+      const next = [...ls];
+      next[i] = { ...next[i], text };
+      return next;
+    });
+
+  const onActivity = (a: Activity) => {
+    const prev = activityRef.current;
+    if (a === 'thinking' && prev === 'user')
+      stoppedAt.current = performance.now();
+    if (a === 'speaking' && stoppedAt.current) {
+      const turn = Math.round(performance.now() - stoppedAt.current);
+      stoppedAt.current = 0;
+      setMetrics((m) => ({ ...m, turn }));
+    }
+    activityRef.current = a;
+    setActivity(a);
+  };
+
+  const onBargeIn = () => {
+    setLines((ls) => {
+      const next = [...ls];
+      for (let i = next.length - 1; i >= 0; i--) {
+        const l = next[i];
+        if (l.kind === 'agent') {
+          next[i] = { ...l, cut: true };
+          break;
+        }
+      }
+      return [
+        ...next,
+        { kind: 'barge-in', id: `b${next.length}`, text: x.bargeIn },
+      ];
+    });
+    setMetrics((m) => ({ ...m, bargeIns: m.bargeIns + 1 }));
+  };
+
+  const onContact = (args: string) => {
+    setContact(args);
+    const { options } = contactInput(args);
+    setLines((ls) => [
+      ...ls,
+      {
+        kind: 'tool',
+        id: `t${ls.length}`,
+        text: `show_contact_options({ ${options.join(', ')} })`,
+        meta: x.toolShown,
+      },
+    ]);
+  };
+
   const start = async () => {
     stopGreeting();
     setPhase({ at: 'connecting' });
-    setUserText('');
-    setAgentText('');
+    setLines([]);
     setContact(null);
     setMuted(false);
+    setElapsed(0);
+    setMetrics({ connect: 0, turn: 0, bargeIns: 0 });
+    activityRef.current = 'listening';
+    setActivity('listening');
+    const t0 = performance.now();
     // Created inside the click, so the browser lets it run.
     const ctx = new AudioContext();
     audioCtx.current = ctx;
@@ -192,12 +327,13 @@ export default function VoiceApp() {
         mic,
         audio: remoteRef.current!,
         on: {
-          activity: setActivity,
-          user: setUserText,
-          agent: setAgentText,
-          contact: setContact,
+          activity: onActivity,
+          user: (id, text) => upsert('user', id, text),
+          agent: (id, text) => upsert('agent', id, text),
+          bargeIn: onBargeIn,
+          contact: onContact,
           dropped: () => hangUp('dropped'),
-          // Sophie's voice, once its track arrives: feeds the face.
+          // Sophie's voice, once its track arrives: feeds the orb.
           remote: (stream) => {
             ctx.createMediaStreamSource(stream).connect(agentMeter);
             meters.current = { mic: micMeter, agent: agentMeter };
@@ -205,8 +341,11 @@ export default function VoiceApp() {
         },
       });
       callRef.current = call;
-      setActivity('listening');
-      setLeft(call.seconds);
+      setLimit(call.seconds);
+      setMetrics((m) => ({
+        ...m,
+        connect: Math.round(performance.now() - t0),
+      }));
       setPhase({ at: 'live' });
     } catch (err) {
       for (const t of mic.getTracks()) t.stop();
@@ -219,22 +358,22 @@ export default function VoiceApp() {
     }
   };
 
-  // Countdown; Sophie is asked to wrap up near the end, and the call closes
-  // at zero (the server cuts it a few seconds later anyway).
+  // Session clock; Sophie is asked to wrap up near the end, and the call
+  // closes at the limit (the server cuts it a few seconds later anyway).
   useEffect(() => {
     if (!live) return;
     const call = callRef.current;
     if (!call) return;
-    const endsAt = performance.now() + call.seconds * 1000;
+    const t0 = performance.now();
     let warned = false;
     const id = setInterval(() => {
-      const s = Math.ceil((endsAt - performance.now()) / 1000);
-      setLeft(Math.max(0, s));
-      if (!warned && s <= WRAP_UP_S) {
+      const s = Math.floor((performance.now() - t0) / 1000);
+      setElapsed(Math.min(s, call.seconds));
+      if (!warned && call.seconds - s <= WRAP_UP_S) {
         warned = true;
         call.wrapUp();
       }
-      if (s <= 0) hangUp('time');
+      if (s >= call.seconds) hangUp('time');
     }, 250);
     return () => clearInterval(id);
   }, [live]);
@@ -252,289 +391,399 @@ export default function VoiceApp() {
     };
   }, []);
 
+  // Keep the newest line in view.
+  useEffect(() => {
+    const el = logRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines]);
+
+  // The transcript sheet closes with Escape.
+  useEffect(() => {
+    if (!sheet) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSheet(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sheet]);
+
   const toggleMute = () => {
     callRef.current?.mute(!muted);
     setMuted(!muted);
   };
 
-  const status =
-    phase.at === 'live'
-      ? x.status[activity]
-      : phase.at === 'connecting'
-        ? x.status.connecting
-        : phase.at === 'ended'
-          ? x.status.ended
-          : greeting === 'playing'
-            ? x.status.greeting
-            : x.status.idle;
-  const ended = phase.at === 'ended' ? phase.why : null;
-  const failed = ended && ended in x.errors;
-  const endedText = !ended
-    ? ''
-    : ended in x.errors
-      ? x.errors[ended as StartError]
-      : x.ended[ended as 'time' | 'user' | 'dropped'];
-
-  const langGroup = (
-    <div
-      role="group"
-      aria-label={CHAT[lang].langGroup}
-      className="border-line2 flex border"
-    >
-      {(['en', 'es'] as const).map((l, i) => {
-        const on = l === lang;
-        return (
-          <button
-            key={l}
-            type="button"
-            aria-pressed={on}
-            onClick={() => setLang(l)}
-            className={`${mono} mob:size-11 h-9 w-9 cursor-pointer border-0 p-0 text-[11px] ${i ? 'border-line2 border-l' : ''} ${on ? 'bg-ink text-bg' : 'text-ink bg-transparent'}`}
-          >
-            {l.toUpperCase()}
-          </button>
-        );
-      })}
-    </div>
+  // Caption: the greeting before the call, the turn in progress during it
+  // (or the last one, dimmed), and how it ended after.
+  const speech = lines.filter(
+    (l): l is Speech => (l.kind === 'user' || l.kind === 'agent') && !!l.text,
   );
+  const last = speech[speech.length - 1];
+  const streaming =
+    live &&
+    !!last &&
+    ((activity === 'user' && last.kind === 'user') ||
+      (activity === 'speaking' && last.kind === 'agent'));
+  let caption: { who: string; text: string; tone: string; cursor: boolean };
+  if (phase.at === 'idle' && greeting !== 'off') {
+    const words = x.greeting.split(' ');
+    const n = greeting === 'playing' ? Math.ceil(heard * words.length) : 0;
+    caption = {
+      who: x.agent,
+      text: n ? words.slice(0, n).join(' ') : x.greeting,
+      tone: n || greeting === 'blocked' ? 'text-ink' : 'text-muted',
+      cursor: greeting === 'playing',
+    };
+  } else if (ended) {
+    caption = {
+      who: '',
+      text: failed
+        ? x.errors[ended as StartError]
+        : x.ended[ended as 'time' | 'user' | 'dropped'],
+      tone: failed ? 'text-warn' : 'text-body',
+      cursor: false,
+    };
+  } else if (live && last) {
+    caption = {
+      who: last.kind === 'agent' ? x.agent : x.you,
+      text: last.text + (last.cut ? ' —' : ''),
+      tone: streaming
+        ? last.kind === 'agent'
+          ? 'text-ink'
+          : 'text-body'
+        : 'text-muted',
+      cursor: streaming,
+    };
+  } else if (live || phase.at === 'connecting') {
+    caption = {
+      who: '',
+      text: live ? x.phase.listening : x.phase.connecting,
+      tone: 'text-muted',
+      cursor: false,
+    };
+  } else {
+    caption = {
+      who: '',
+      text: x.idleCaption,
+      tone: 'text-muted',
+      cursor: false,
+    };
+  }
+  const captionWhoTone =
+    caption.who === x.agent && caption.tone !== 'text-muted'
+      ? 'text-accent'
+      : 'text-muted';
+
+  const phaseTone =
+    mode === 'muted'
+      ? 'text-warn'
+      : mode === 'speaking' || mode === 'thinking' || mode === 'greeting'
+        ? 'text-accent'
+        : mode === 'listening' || mode === 'user'
+          ? 'text-ok'
+          : 'text-muted';
+  const phaseDot =
+    mode === 'muted'
+      ? 'bg-warn'
+      : phaseTone === 'text-accent'
+        ? 'bg-accent'
+        : phaseTone === 'text-ok'
+          ? 'bg-ok'
+          : 'bg-muted';
+  const hint = !live
+    ? x.hintIdle
+    : muted
+      ? x.hintMuted
+      : wrapping
+        ? x.hintWrap
+        : x.hintLive;
+  const turnCount = `${speech.length} ${x.turns}`;
+  const metricCells = [
+    { k: x.metrics[0], v: metrics.connect ? `${metrics.connect} ms` : '— ms' },
+    { k: x.metrics[1], v: metrics.turn ? `${metrics.turn} ms` : '— ms' },
+    { k: x.metrics[2], v: live || ended ? String(metrics.bargeIns) : '—' },
+    { k: x.metrics[3], v: mmss(elapsed) },
+  ];
   const themeLabel = dark ? CHAT[lang].toLight : CHAT[lang].toDark;
 
-  const primary =
-    'bg-accent text-on-accent inline-flex min-h-12 cursor-pointer items-center justify-center gap-2.5 border-0 px-6 text-[15px] font-semibold transition-[filter] hover:brightness-110 disabled:cursor-wait disabled:opacity-70';
-  const secondary =
-    'border-line2 text-ink hover:border-accent inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 border bg-transparent px-4 text-sm no-underline transition-colors';
-
   return (
-    <div className="bg-bg text-ink flex h-dvh flex-col overflow-hidden">
-      <header className="border-line mob:px-2.5 flex h-14 shrink-0 items-center justify-between gap-3 border-b px-4">
+    <div className="bg-bg text-ink relative flex h-dvh flex-col overflow-hidden">
+      <header className="border-line mob:h-14 mob:gap-2 mob:px-2.5 flex h-16 shrink-0 items-center justify-between gap-3 border-b px-4">
         <div className="flex min-w-0 items-center gap-3.5">
           <a
             href="/#lab"
-            aria-label={x.homeLabel}
-            className={`${mono} border-line2 hover:border-accent mob:size-11 mob:justify-center mob:p-0 mob:text-base inline-flex h-9 shrink-0 items-center gap-2 border px-3 text-[11px] tracking-[0.06em] uppercase no-underline transition-colors`}
+            aria-label={x.backLabel}
+            className={`${mono} border-line2 hover:border-accent inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 border px-3.5 text-xs tracking-[0.06em] uppercase no-underline transition-colors`}
           >
             <span aria-hidden="true">←</span>
-            <span className="mob:hidden">{x.home}</span>
+            <span className="mob:hidden">{x.back}</span>
           </a>
-          <span
-            aria-hidden="true"
-            className="bg-line2 narrow:hidden h-6 w-px"
-          />
-          <div className="flex min-w-0 items-baseline gap-2.5">
-            <h1 className="m-0 truncate text-base font-medium tracking-[-0.02em]">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h1 className="mob:text-base m-0 text-lg font-medium tracking-[-0.02em] whitespace-nowrap">
               {x.title}
             </h1>
-            <span className={`${label} narrow:hidden text-[11px]`}>
-              {x.stack}
+            <span className={`${monoLabel} text-muted truncate`}>
+              {x.subtitle}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {langGroup}
+          <div
+            role="group"
+            aria-label={CHAT[lang].langGroup}
+            className="border-line2 flex border"
+          >
+            {(['en', 'es'] as const).map((l, i) => {
+              const on = l === lang;
+              return (
+                <button
+                  key={l}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setLang(l)}
+                  className={`${mono} h-[42px] w-11 cursor-pointer border-0 p-0 text-[11px] ${i ? 'border-line2 border-l' : ''} ${on ? 'bg-ink text-bg' : 'text-ink bg-transparent'}`}
+                >
+                  {l.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
           <button
             type="button"
             onClick={() => setTheme(dark ? 'light' : 'dark')}
             aria-label={themeLabel}
             title={themeLabel}
-            className={`${iconBtn} mob:size-11 size-9`}
+            className={`${iconBtn} size-11`}
           >
             <Icon d={dark ? I.sun : I.moon} />
           </button>
         </div>
       </header>
 
-      <main className="dots flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 py-[clamp(12px,3svh,32px)]">
-        <div className="flex w-full max-w-[640px] flex-1 flex-col items-center gap-[clamp(10px,2.4svh,22px)] text-center">
-          <div>
+      <div className="relative flex min-h-0 flex-1">
+        <main className="dots flex min-w-0 flex-1 flex-col">
+          <div className="mob:px-4 mob:pt-3 flex min-h-0 flex-1 flex-col items-center justify-center gap-[clamp(12px,3dvh,28px)] overflow-y-auto px-6 pt-6">
             <div
-              className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
-            >
-              {x.tag}
-            </div>
-            <h2 className="text-h2 mt-2 mb-0 leading-[1.05] font-medium tracking-[-0.04em]">
-              {x.heading}
-            </h2>
-            {phase.at === 'idle' && (
-              <p className="text-body mx-auto mt-2 mb-0 max-w-[520px] text-sm leading-[1.55]">
-                {x.sub}
-              </p>
-            )}
-          </div>
-
-          <section
-            aria-label={x.agent}
-            className="bg-panel border-line2 relative flex w-full flex-col items-center gap-3 border px-4 pt-3 pb-[clamp(14px,3svh,28px)]"
-          >
-            <div
-              className={`${mono} flex w-full items-center justify-between text-[10px] tracking-[0.08em] uppercase`}
+              className={`${mono} text-muted flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] tracking-[0.08em] uppercase`}
             >
               <span
                 role="status"
-                className={`flex items-center gap-2 ${live || greeting === 'playing' ? 'text-accent' : 'text-muted'}`}
+                className="border-line2 inline-flex items-center gap-2 border px-2.5 py-1.5"
               >
                 <span
                   aria-hidden="true"
-                  className={`size-1.5 ${live ? 'bg-ok jd-blink' : phase.at === 'connecting' ? 'bg-warn jd-blink' : live || greeting === 'playing' ? 'bg-accent' : 'bg-line2'}`}
+                  className={`size-[7px] ${phaseDot} ${live && !muted ? 'jd-blink' : ''}`}
                 />
-                {status}
-                {live && muted && ` · ${x.muted}`}
+                <span className={phaseTone}>{x.phase[mode]}</span>
               </span>
-              {live && (
-                <span
-                  className={left <= WRAP_UP_S ? 'text-warn' : 'text-muted'}
-                  aria-label={`${x.timeLeft}: ${clock(left)}`}
-                >
-                  {clock(left)}
-                </span>
-              )}
+              <span>{x.scenario}</span>
             </div>
 
-            <SophieFace mode={mode} level={level} />
+            <SophieOrb
+              mode={mode}
+              level={level}
+              clock={mmss(elapsed)}
+              warn={wrapping}
+              label={`${x.orb} — ${x.phase[mode]}`}
+            />
 
-            {/* Captions: what you said and what Sophie is saying. */}
             <div
               aria-live="polite"
-              className="flex min-h-[4.5em] w-full max-w-[520px] flex-col gap-1.5 text-[15px] leading-normal"
+              className="w-full max-w-[760px] text-center"
             >
-              {phase.at === 'idle' && greeting !== 'off' && (
-                <p className="text-ink m-0">{x.greeting}</p>
-              )}
-              {phase.at === 'idle' && greeting === 'off' && (
-                <div className="flex flex-col gap-1.5">
-                  <span className={label}>{x.tryAsking}</span>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {x.ideas.map((q) => (
-                      <span
-                        key={q}
-                        className="border-line2 text-body border px-2.5 py-1 text-[13px]"
-                      >
-                        {q}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(live || ended === 'time' || ended === 'user') && userText && (
-                <p className="text-muted m-0 text-sm">
+              <div className={`${monoLabel} min-h-[1.2em] ${captionWhoTone}`}>
+                {caption.who}
+              </div>
+              <p
+                role={failed ? 'alert' : undefined}
+                className={`mob:min-h-[3.2em] mob:text-[clamp(17px,4.8vw,22px)] mt-2 mb-0 min-h-[2.6em] text-[clamp(18px,2vw,26px)] leading-[1.3] font-normal tracking-[-0.02em] text-balance ${caption.tone}`}
+              >
+                {caption.text}
+                {caption.cursor && (
                   <span
-                    className={`${mono} mr-2 text-[10px] tracking-[0.08em] uppercase`}
-                  >
-                    {x.you}
-                  </span>
-                  {userText}
-                </p>
-              )}
-              {(live || ended === 'time' || ended === 'user') && agentText && (
-                <p className="text-ink m-0">
-                  <span
-                    className={`${mono} text-accent mr-2 text-[10px] tracking-[0.08em] uppercase`}
-                  >
-                    {x.agent}
-                  </span>
-                  {agentText}
-                </p>
-              )}
-              {ended && (
-                <p
-                  role={failed ? 'alert' : undefined}
-                  className={`m-0 text-sm ${failed ? 'text-warn' : 'text-body'}`}
-                >
-                  {endedText}
-                </p>
-              )}
+                    aria-hidden="true"
+                    className="bg-accent jd-blink ml-1 inline-block h-[1em] w-[0.45em] align-[-0.12em]"
+                  />
+                )}
+              </p>
             </div>
 
-            {contact && (live || ended) && (
-              <div className="flex justify-center">
-                <ContactActions input={contact} x={CHAT[lang]} inset={false} />
+            {(contact || ended) && (
+              <div className="flex flex-col items-center gap-2">
+                {!contact && (
+                  <p className="text-body m-0 text-sm">{x.reachOut}</p>
+                )}
+                <ContactActions
+                  input={contact ?? ENDING_CONTACT}
+                  x={CHAT[lang]}
+                  inset={false}
+                />
               </div>
             )}
-          </section>
 
-          <div className="flex w-full flex-wrap items-center justify-center gap-2.5">
-            {live ? (
-              <>
-                <button
-                  type="button"
-                  onClick={toggleMute}
-                  aria-pressed={muted}
-                  aria-label={muted ? x.unmute : x.mute}
-                  title={muted ? x.unmute : x.mute}
-                  className={`${iconBtn} size-12 ${muted ? 'border-warn text-warn' : ''}`}
-                >
-                  <Icon
-                    d={muted ? `${I.mic}<path d="M3 3l18 18"/>` : I.mic}
-                    size={20}
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => hangUp('user')}
-                  className={primary}
-                >
-                  <Icon d={I.stop} size={16} />
-                  {x.end}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => void start()}
-                  disabled={phase.at === 'connecting'}
-                  className={`${primary} ${phase.at === 'idle' ? 'jd-cvbtn' : ''}`}
-                >
-                  <Icon d={I.mic} size={18} />
-                  {phase.at === 'connecting'
+            {phase.at === 'idle' && greetingUrl(lang) && (
+              <button
+                type="button"
+                onClick={greeting === 'playing' ? stopGreeting : playGreeting}
+                className={`${mono} border-line2 text-muted hover:border-accent hover:text-ink inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.08em] uppercase transition-colors`}
+              >
+                <Icon d={greeting === 'playing' ? I.stop : I.play} size={12} />
+                {greeting === 'playing'
+                  ? x.stopGreeting
+                  : greeting === 'blocked'
+                    ? x.hearGreeting
+                    : x.replay}
+              </button>
+            )}
+          </div>
+
+          <div className="mob:px-4 mob:pt-3 mob:pb-[calc(14px+env(safe-area-inset-bottom))] flex shrink-0 flex-col items-center gap-3 px-6 pt-5 pb-[22px]">
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={toggleMute}
+                disabled={!live}
+                aria-pressed={muted}
+                aria-label={muted ? x.unmute : x.mute}
+                title={muted ? x.unmute : x.mute}
+                className={`grid size-[60px] place-items-center border p-0 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${muted ? 'border-warn bg-warn text-bg' : 'border-line2 text-ink hover:border-accent cursor-pointer bg-transparent'}`}
+              >
+                <Icon
+                  d={muted ? `${I.mic}<path d="M3 3l18 18"/>` : I.mic}
+                  size={22}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={live ? () => hangUp('user') : () => void start()}
+                disabled={phase.at === 'connecting'}
+                className={`inline-flex h-[60px] min-w-[200px] cursor-pointer items-center justify-center gap-2.5 border px-6 text-base font-semibold transition-[filter,border-color] disabled:cursor-wait disabled:opacity-70 ${live ? 'border-line2 text-ink hover:border-accent bg-transparent' : 'border-accent bg-accent text-on-accent hover:brightness-110'}`}
+              >
+                <Icon d={live ? I.stop : I.mic} size={live ? 16 : 18} />
+                {live
+                  ? x.end
+                  : phase.at === 'connecting'
                     ? x.connecting
                     : ended
                       ? x.again
                       : x.start}
-                </button>
-                {phase.at === 'idle' && greetingUrl(lang) && (
-                  <button
-                    type="button"
-                    onClick={
-                      greeting === 'playing' ? stopGreeting : playGreeting
-                    }
-                    className={secondary}
-                  >
-                    <Icon
-                      d={greeting === 'playing' ? I.stop : I.play}
-                      size={15}
-                    />
-                    {greeting === 'blocked' ? x.hearGreeting : x.replay}
-                  </button>
-                )}
-                {ended && (
-                  <a href="/lab/cv" className={secondary}>
-                    <Icon d={I.file} size={15} />
-                    {x.textChat}
-                  </a>
-                )}
-              </>
-            )}
-          </div>
-
-          {ended && !contact && (
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-body m-0 text-sm">{x.reachOut}</p>
-              <ContactActions
-                input={ENDING_CONTACT}
-                x={CHAT[lang]}
-                inset={false}
-              />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSheet(true)}
+                aria-label={x.transcriptBtn}
+                title={x.transcriptBtn}
+                className={`${iconBtn} narrow:grid hidden size-[60px]`}
+              >
+                <Icon d='<path d="M4 6h16M4 11h16M4 16h10"/>' size={20} />
+              </button>
             </div>
-          )}
+            <p
+              className={`${mono} m-0 max-w-[560px] text-center text-[10px] leading-[1.6] tracking-[0.04em] ${wrapping ? 'text-warn' : 'text-muted'}`}
+            >
+              {hint}
+            </p>
+            {failed && (
+              <a
+                href="/lab/cv"
+                className={`${mono} text-accent text-[11px] tracking-[0.06em] uppercase`}
+              >
+                {x.textChat} →
+              </a>
+            )}
+            {/* Turnstile shows here only if Cloudflare needs an interaction. */}
+            <div ref={captchaRef} />
+          </div>
+        </main>
 
-          {/* Turnstile shows here only if Cloudflare needs an interaction. */}
-          <div ref={captchaRef} />
+        <aside
+          aria-label={x.transcript}
+          className="border-line bg-panel narrow:hidden flex min-h-0 w-[380px] flex-none flex-col border-l"
+        >
+          <div
+            className={`${mono} border-line text-muted flex h-12 flex-none items-center justify-between border-b px-[18px] text-[11px] tracking-[0.08em] uppercase`}
+          >
+            <span>{x.transcript}</span>
+            <span>{turnCount}</span>
+          </div>
+          <div
+            ref={logRef}
+            role="log"
+            aria-live="polite"
+            className="flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-[18px] py-4"
+          >
+            <Transcript lines={lines} x={x} />
+          </div>
+          <div className="border-line flex-none border-t px-[18px] pt-3.5 pb-4">
+            <div className={`${monoLabel} text-muted flex justify-between`}>
+              <span>{x.latency}</span>
+              <span>{x.lastTurn}</span>
+            </div>
+            <div className="bg-line border-line mt-2.5 grid grid-cols-4 gap-px border">
+              {metricCells.map((m) => (
+                <div key={m.k} className="bg-bg min-w-0 px-1.5 py-2">
+                  <div
+                    className={`${mono} text-muted truncate text-[9px] tracking-[0.02em]`}
+                  >
+                    {m.k}
+                  </div>
+                  <div className={`${mono} mt-1 text-[13px] whitespace-nowrap`}>
+                    {m.v}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className={`${mono} text-chip mt-3 flex gap-1 text-[9px]`}>
+              {x.pipeline.map((p) => (
+                <span
+                  key={p}
+                  className="border-line2 min-w-0 truncate border px-1.5 py-1"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          </div>
+        </aside>
 
-          <p className={`${label} mt-auto mb-0 tracking-[0.02em] normal-case`}>
-            {x.fine}
-          </p>
-        </div>
-      </main>
+        {sheet && (
+          <div className="narrow:flex absolute inset-0 z-20 hidden flex-col justify-end">
+            <button
+              type="button"
+              onClick={() => setSheet(false)}
+              aria-label={x.close}
+              className="bg-scrim flex-auto cursor-pointer border-0 p-0"
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={x.transcript}
+              className="bg-panel border-line2 flex max-h-[78%] flex-none flex-col border-t"
+            >
+              <div aria-hidden="true" className="flex justify-center pt-2">
+                <span className="bg-line2 h-1 w-10" />
+              </div>
+              <div
+                className={`${mono} border-line text-muted flex h-12 items-center justify-between border-b px-4 text-[11px] tracking-[0.08em] uppercase`}
+              >
+                <span>
+                  {x.transcript} · {turnCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSheet(false)}
+                  aria-label={x.close}
+                  className={`${iconBtn} size-11 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto p-4">
+                <Transcript lines={lines} x={x} big />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Both are captioned on screen: the greeting's text and the live
           transcript. */}
@@ -542,6 +791,10 @@ export default function VoiceApp() {
       <audio
         ref={greetRef}
         preload="auto"
+        onTimeUpdate={(e) => {
+          const el = e.currentTarget;
+          if (el.duration) setHeard(el.currentTime / el.duration);
+        }}
         onEnded={() => setGreeting('off')}
         className="hidden"
       />
