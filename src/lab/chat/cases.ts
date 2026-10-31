@@ -47,10 +47,11 @@ export interface ChatCase {
   clientTools?: string[];
   /** `false` hides the attach button: the case takes only text and voice. */
   attachments?: boolean;
-  /** Read PDFs page by page: refuse ones over `maxMB` or `maxPages`, send
-   * only the first page (as an image) with the message, and let a tool
-   * (check_document) hand the model the rest once it is worth reading. */
-  pdf?: { maxPages: number; maxMB: number };
+  /** Read PDFs page by page: refuse ones over `maxPages` (size is capped
+   * for every case, see attachments.ts), send only the first page (as an
+   * image) with the message, and let a tool (check_document) hand the model
+   * the rest once it is worth reading. */
+  pdf?: { maxPages: number };
   /** Document agent: a Knowledge Base box of `maxFiles` slots (PDFs within
    * `maxPages`, PDFs and images within `maxMB`) replaces the attach button
    * and suggestions; files are read in the browser (kb.ts) and the model
@@ -436,7 +437,7 @@ export const CASES: ChatCase[] = [
       'attach_invoice',
       'get_claim_status',
     ],
-    pdf: { maxPages: 5, maxMB: 10 },
+    pdf: { maxPages: 5 },
   },
   {
     id: 'documents',
@@ -507,6 +508,6 @@ export const CASES: ChatCase[] = [
       'read_pages',
       'view_page',
     ],
-    docs: { maxFiles: 5, maxPages: 20, maxMB: 20, effortMany: 'high' },
+    docs: { maxFiles: 5, maxPages: 20, maxMB: 14, effortMany: 'high' },
   },
 ];

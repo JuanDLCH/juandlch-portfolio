@@ -12,6 +12,8 @@ import {
   $attachments,
   IMAGE_TYPES,
   MAX_BYTES,
+  MAX_PDF_PAGES,
+  shrinkImage,
   readAttachment,
   type Attachment,
 } from '../../lab/attachments';
@@ -185,6 +187,8 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   api: 'clear',
   file: 'file',
   pdfPages: 'file',
+  imageSize: 'file',
+  imageUnreadable: 'file',
   pdfSize: 'file',
   pdfUnreadable: 'file',
   docFile: 'file',
@@ -595,28 +599,41 @@ export default function ChatApp({
   };
 
   // A picked file as the composer keeps it, or the notice that rejects it.
-  // Cases that read PDFs page by page (c.pdf) get them as page images, and
-  // refuse big or long ones before any token is spent.
+  // Every case: images and PDFs up to MAX_MB, images shrunk to a JPEG, PDFs
+  // up to MAX_PDF_PAGES, all refused before any token is spent. Cases that
+  // read PDFs page by page (c.pdf) get them as page images.
   const attach = async (f: File): Promise<Attachment | NoticeCode> => {
     const pdf = f.type === 'application/pdf';
-    if ((!IMAGE_TYPES.includes(f.type) && !pdf) || f.size > MAX_BYTES)
-      return 'file';
-    if (!pdf || !c.pdf) return readAttachment(f);
-    if (f.size > c.pdf.maxMB * 1024 * 1024) return 'pdfSize';
+    if (!IMAGE_TYPES.includes(f.type) && !pdf) return 'file';
+    if (f.size > MAX_BYTES) return pdf ? 'pdfSize' : 'imageSize';
+    if (!pdf) {
+      try {
+        const img = await shrinkImage(f);
+        return { name: f.name, mediaType: 'image/jpeg', data: img.data };
+      } catch {
+        return 'imageUnreadable';
+      }
+    }
     try {
-      const { pdfPages } = await import('../../lab/pdf');
-      const pages = await pdfPages(f, c.pdf.maxPages);
-      return { ...(await readAttachment(f)), pages };
+      const { loadPdf, pdfPages } = await import('../../lab/pdf');
+      if (c.pdf) {
+        const pages = await pdfPages(f, c.pdf.maxPages);
+        return { ...(await readAttachment(f)), pages };
+      }
+      // Sent whole: only its page count is checked.
+      (await loadPdf(await f.arrayBuffer(), MAX_PDF_PAGES)).destroy();
+      return await readAttachment(f);
     } catch (e) {
       return (e as { code?: NoticeCode }).code ?? 'pdfUnreadable';
     }
   };
+  // One file per message: a new pick replaces the one in the composer.
   const addFiles = async (list: File[]) => {
-    for (const f of list) {
-      const a = await attach(f);
-      if (typeof a === 'string') notice(a);
-      else $attachments.setKey(c.id, [...($attachments.get()[c.id] ?? []), a]);
-    }
+    const f = list[0];
+    if (!f) return;
+    const a = await attach(f);
+    if (typeof a === 'string') notice(a);
+    else $attachments.setKey(c.id, [a]);
   };
 
   // Document agent: files go straight to the Knowledge Base (not to the
@@ -1136,7 +1153,7 @@ export default function ChatApp({
               <input
                 ref={fileRef}
                 type="file"
-                multiple
+                multiple={!!c.docs}
                 accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}

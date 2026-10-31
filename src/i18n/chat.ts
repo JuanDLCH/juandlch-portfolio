@@ -225,10 +225,13 @@ const EN = {
     mic: 'I couldn’t use your microphone. Check the browser’s permission for this site.',
     transcribe:
       'I couldn’t transcribe that recording. Check your OpenAI key, or type the message instead.',
-    file: 'I can read images (PNG, JPEG, GIF, WebP) and PDFs up to 20 MB. That file isn’t one of them.',
+    file: 'I can read images (PNG, JPEG, GIF, WebP) and PDFs. That file isn’t one of them.',
+    imageSize: 'That image is over 14 MB. Send a lighter one.',
+    imageUnreadable:
+      'I couldn’t open that image: it may be damaged. Try another copy.',
     pdfPages:
-      'That PDF has more than 5 pages. Send just the invoice or quote, up to 5 pages.',
-    pdfSize: 'That PDF is over 10 MB. Send a lighter copy of the invoice.',
+      'That PDF has more than 5 pages. Send a shorter one, or just the pages that matter.',
+    pdfSize: 'That PDF is over 14 MB. Send a lighter copy.',
     pdfUnreadable:
       'I couldn’t open that PDF: it may be damaged or password protected. Try another copy.',
     docFile:
@@ -237,7 +240,7 @@ const EN = {
       'The Knowledge Base holds up to 5 documents. Remove one to add another.',
     docPages:
       'That PDF is over 20 pages. Add a shorter one, or just the part you want to ask about.',
-    docSize: 'That file is over 20 MB. Add a lighter copy.',
+    docSize: 'That file is over 14 MB. Add a lighter copy.',
     docNone:
       'Add documents to the Knowledge Base first (PDFs or images, up to 5), and then I can answer about them.',
     docUnreadable:
@@ -490,11 +493,13 @@ const ES: typeof EN = {
     mic: 'No pude usar tu micrófono. Revisa el permiso del navegador para este sitio.',
     transcribe:
       'No pude transcribir esa grabación. Revisa tu llave de OpenAI o escribe el mensaje.',
-    file: 'Puedo leer imágenes (PNG, JPEG, GIF, WebP) y PDFs de hasta 20 MB. Ese archivo no es uno de ellos.',
+    file: 'Puedo leer imágenes (PNG, JPEG, GIF, WebP) y PDFs. Ese archivo no es uno de ellos.',
+    imageSize: 'Esa imagen pesa más de 14 MB. Envía una más liviana.',
+    imageUnreadable:
+      'No pude abrir esa imagen: puede estar dañada. Prueba con otra copia.',
     pdfPages:
-      'Ese PDF tiene más de 5 páginas. Envía solo la factura o cotización, de hasta 5 páginas.',
-    pdfSize:
-      'Ese PDF pesa más de 10 MB. Envía una copia más liviana de la factura.',
+      'Ese PDF tiene más de 5 páginas. Envía uno más corto, o solo las páginas que importan.',
+    pdfSize: 'Ese PDF pesa más de 14 MB. Envía una copia más liviana.',
     pdfUnreadable:
       'No pude abrir ese PDF: puede estar dañado o protegido con contraseña. Prueba con otra copia.',
     docFile:
@@ -503,7 +508,7 @@ const ES: typeof EN = {
       'La Knowledge Base admite hasta 5 documentos. Quita uno para agregar otro.',
     docPages:
       'Ese PDF tiene más de 20 páginas. Agrega uno más corto, o solo la parte sobre la que quieres preguntar.',
-    docSize: 'Ese archivo pesa más de 20 MB. Agrega una copia más liviana.',
+    docSize: 'Ese archivo pesa más de 14 MB. Agrega una copia más liviana.',
     docNone:
       'Primero agrega documentos a la Knowledge Base (PDFs o imágenes, hasta 5) y luego te respondo sobre ellos.',
     docUnreadable:
