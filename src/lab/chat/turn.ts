@@ -72,7 +72,8 @@ export async function runClientTool(
     return {
       content: JSON.stringify(out),
       summary: tool.summary(out, cb.es),
-      failed: false,
+      // A tool that answers with an error failed too: its card isn't drawn.
+      failed: typeof (out as { error?: unknown } | null)?.error === 'string',
     };
   } catch (e) {
     const summary = e instanceof Error ? e.message : 'tool failed';
