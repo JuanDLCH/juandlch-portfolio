@@ -39,10 +39,9 @@ const preview =
     <a
       href="/lab/voice"
       data-astro-prefetch="viewport"
-      class="jd-card group bg-panel border-line2 hover:border-accent relative flex flex-col border no-underline transition-colors"
+      class="jd-card group bg-panel border-accent relative flex flex-col border no-underline shadow-[0_24px_60px_-32px_var(--accent)]"
     >
-      <CornerMarks only={['tl']} size="14px" />
-      <CornerMarks only={['br']} size="14px" />
+      <CornerMarks offset="-6px" size="18px" />
       <div aria-hidden="true" class:list={[preview, 'gap-2.5']}>
         <div class="mono flex items-center justify-between gap-3 text-[10px] tracking-[0.08em] uppercase">
           <span class="text-accent flex items-center gap-2">
