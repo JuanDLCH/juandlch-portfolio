@@ -1,0 +1,222 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+3 0 obj
+<< /Length 3931 >>
+stream
+BT /F2 16.0 Tf 72.00 704.00 Td (SOFTWARE DEVELOPMENT SERVICES AGREEMENT) Tj ET
+BT /F1 10.0 Tf 72.00 683.92 Td (Agreement No. SDA-2026-0417) Tj ET
+BT /F1 10.5 Tf 72.00 659.62 Td (This Software Development Services Agreement \(the "Agreement"\) is entered into on March 2, 2026) Tj ET
+BT /F1 10.5 Tf 72.00 645.13 Td (\(the "Effective Date"\) by and between Brightline Analytics, Inc., a Delaware corporation with offices) Tj ET
+BT /F1 10.5 Tf 72.00 630.64 Td (at 410 Harbor Street, Suite 12, Wilmington, DE 19801 \(the "Client"\), and Cedar & Pine Software) Tj ET
+BT /F1 10.5 Tf 72.00 616.15 Td (S.A.S., a Colombian company with offices at Carrera 43A No. 7-50, Medellin, Colombia \(the) Tj ET
+BT /F1 10.5 Tf 72.00 601.66 Td ("Provider"\). The Client and the Provider are each a "Party" and together the "Parties".) Tj ET
+BT /F1 9.5 Tf 72.00 581.17 Td (This is a fictional sample document created for a software demo. The companies, people, addresses and) Tj ET
+BT /F1 9.5 Tf 72.00 568.06 Td (figures are made up.) Tj ET
+BT /F2 12.0 Tf 72.00 539.45 Td (1. Purpose and Scope) Tj ET
+BT /F1 10.5 Tf 72.00 521.39 Td (1.1 The Provider will design, build, test and deliver a customer support web application with a) Tj ET
+BT /F1 10.5 Tf 72.00 506.90 Td (retrieval-based assistant \(the "Platform"\), as described in the Statement of Work attached as Annex) Tj ET
+BT /F1 10.5 Tf 72.00 492.41 Td (A \(the "SOW"\).) Tj ET
+BT /F1 10.5 Tf 72.00 470.92 Td (1.2 Any work not described in the SOW, including new integrations, additional languages or mobile) Tj ET
+BT /F1 10.5 Tf 72.00 456.43 Td (applications, is out of scope and requires a written Change Order signed by both Parties under) Tj ET
+BT /F1 10.5 Tf 72.00 441.94 Td (Section 6.) Tj ET
+BT /F2 12.0 Tf 72.00 412.95 Td (2. Term) Tj ET
+BT /F1 10.5 Tf 72.00 394.89 Td (2.1 This Agreement starts on the Effective Date and remains in force for twelve \(12\) months, unless) Tj ET
+BT /F1 10.5 Tf 72.00 380.40 Td (terminated earlier under Section 11.) Tj ET
+BT /F1 10.5 Tf 72.00 358.91 Td (2.2 After the initial term, the Agreement renews automatically for successive periods of six \(6\)) Tj ET
+BT /F1 10.5 Tf 72.00 344.42 Td (months unless either Party gives written notice of non-renewal at least thirty \(30\) days before the) Tj ET
+BT /F1 10.5 Tf 72.00 329.93 Td (end of the current period.) Tj ET
+BT /F2 12.0 Tf 72.00 300.94 Td (3. Provider Obligations) Tj ET
+BT /F1 10.5 Tf 72.00 282.88 Td (The Provider shall:) Tj ET
+BT /F1 10.5 Tf 86.00 261.39 Td (\(a\) assign a dedicated team of at least one technical lead, two software engineers and one QA) Tj ET
+BT /F1 10.5 Tf 86.00 246.90 Td (engineer, and not replace the technical lead without the Client's prior written consent, which shall) Tj ET
+BT /F1 10.5 Tf 86.00 232.41 Td (not be unreasonably withheld;) Tj ET
+BT /F1 10.5 Tf 86.00 213.92 Td (\(b\) deliver each milestone listed in Section 5 by its due date, together with source code,) Tj ET
+BT /F1 10.5 Tf 86.00 199.43 Td (deployment instructions and test reports;) Tj ET
+BT /F1 10.5 Tf 86.00 180.94 Td (\(c\) follow the Client's security policies in Annex B, including encryption of personal data in transit) Tj ET
+BT /F1 10.5 Tf 86.00 166.45 Td (and at rest, and report any security incident affecting Client data within twenty-four \(24\) hours of) Tj ET
+BT /F1 10.5 Tf 86.00 151.96 Td (becoming aware of it;) Tj ET
+BT /F1 10.5 Tf 86.00 133.47 Td (\(d\) hold a progress meeting with the Client every two weeks and send a written status report) Tj ET
+BT /F1 10.5 Tf 86.00 118.98 Td (within two \(2\) business days after each meeting;) Tj ET
+BT /F1 10.5 Tf 86.00 100.49 Td (\(e\) fix any defect reported during the warranty period described in Section 9 within the response) Tj ET
+BT /F1 10.5 Tf 86.00 86.00 Td (and resolution times set out in that Section.) Tj ET
+BT /F1 8.5 Tf 284.26 40 Td (Page 1 of 4) Tj ET
+BT /F1 8.5 Tf 72 40 Td (SAMPLE - fictional document for a demo) Tj ET
+
+endstream
+endobj
+4 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+5 0 obj
+<< /Length 3858 >>
+stream
+BT /F2 12.0 Tf 72.00 702.00 Td (4. Client Obligations) Tj ET
+BT /F1 10.5 Tf 72.00 683.94 Td (The Client shall:) Tj ET
+BT /F1 10.5 Tf 86.00 662.45 Td (\(a\) appoint a product owner with authority to make decisions on scope and acceptance, available) Tj ET
+BT /F1 10.5 Tf 86.00 647.96 Td (for at least five \(5\) hours per week;) Tj ET
+BT /F1 10.5 Tf 86.00 629.47 Td (\(b\) provide access to the systems, test data and documentation the Provider reasonably needs,) Tj ET
+BT /F1 10.5 Tf 86.00 614.98 Td (within five \(5\) business days of each written request;) Tj ET
+BT /F1 10.5 Tf 86.00 596.49 Td (\(c\) review each delivered milestone and either accept it or send a written list of non-conformities) Tj ET
+BT /F1 10.5 Tf 86.00 582.00 Td (within ten \(10\) business days after delivery \(the "Review Period"\). A milestone not rejected in) Tj ET
+BT /F1 10.5 Tf 86.00 567.51 Td (writing within the Review Period is deemed accepted;) Tj ET
+BT /F1 10.5 Tf 86.00 549.02 Td (\(d\) pay the invoices issued under Section 7 on time.) Tj ET
+BT /F1 10.5 Tf 72.00 527.53 Td (4.2 If the Client is late in providing access, information or decisions under this Section, the due dates) Tj ET
+BT /F1 10.5 Tf 72.00 513.04 Td (of the affected milestones are extended by the same number of days as the delay, and the Provider) Tj ET
+BT /F1 10.5 Tf 72.00 498.55 Td (is not liable for the resulting late delivery.) Tj ET
+BT /F2 12.0 Tf 72.00 469.56 Td (5. Milestones and Deadlines) Tj ET
+BT /F1 10.5 Tf 72.00 451.50 Td (The Provider shall deliver the following milestones:) Tj ET
+BT /F1 10.5 Tf 86.00 430.01 Td (- Milestone 1 - Discovery and architecture document: April 3, 2026. Fee: USD 18,000.) Tj ET
+BT /F1 10.5 Tf 86.00 411.52 Td (- Milestone 2 - Working prototype with document ingestion and search: May 29, 2026. Fee: USD) Tj ET
+BT /F1 10.5 Tf 86.00 397.03 Td (32,000.) Tj ET
+BT /F1 10.5 Tf 86.00 378.54 Td (- Milestone 3 - Assistant with citations, admin console and integrations: July 24, 2026. Fee: USD) Tj ET
+BT /F1 10.5 Tf 86.00 364.05 Td (46,000.) Tj ET
+BT /F1 10.5 Tf 86.00 345.56 Td (- Milestone 4 - Production launch, load testing and handover: September 4, 2026. Fee: USD) Tj ET
+BT /F1 10.5 Tf 86.00 331.07 Td (24,000.) Tj ET
+BT /F1 10.5 Tf 72.00 309.58 Td (5.2 The total fixed fee for the milestones is USD 120,000 \(one hundred twenty thousand US dollars\),) Tj ET
+BT /F1 10.5 Tf 72.00 295.09 Td (excluding taxes.) Tj ET
+BT /F2 12.0 Tf 72.00 266.10 Td (6. Change Orders) Tj ET
+BT /F1 10.5 Tf 72.00 248.04 Td (6.1 Either Party may request a change to the scope, schedule or fees. The Provider will answer) Tj ET
+BT /F1 10.5 Tf 72.00 233.55 Td (each request within five \(5\) business days with an estimate of the impact on cost and due dates. No) Tj ET
+BT /F1 10.5 Tf 72.00 219.06 Td (change is binding until both Parties sign a Change Order.) Tj ET
+BT /F1 10.5 Tf 72.00 197.57 Td (6.2 Work under an approved Change Order is billed at the rates in Annex C \(USD 65 per hour for) Tj ET
+BT /F1 10.5 Tf 72.00 183.08 Td (engineers and USD 85 per hour for the technical lead\), unless the Change Order sets a fixed price.) Tj ET
+BT /F2 12.0 Tf 72.00 154.09 Td (7. Fees, Invoicing and Payment) Tj ET
+BT /F1 10.5 Tf 72.00 136.03 Td (7.1 The Provider will invoice each milestone fee upon its acceptance under Section 4\(c\). Monthly) Tj ET
+BT /F1 10.5 Tf 72.00 121.54 Td (hosting costs for the staging environment, if any, are invoiced at cost at the end of each month.) Tj ET
+BT /F1 10.5 Tf 72.00 100.05 Td (7.2 The Client shall pay each undisputed invoice within thirty \(30\) days of receiving it, by bank) Tj ET
+BT /F1 10.5 Tf 72.00 85.56 Td (transfer to the account stated on the invoice. Amounts not paid when due bear late interest of one) Tj ET
+BT /F1 8.5 Tf 284.26 40 Td (Page 2 of 4) Tj ET
+BT /F1 8.5 Tf 72 40 Td (SAMPLE - fictional document for a demo) Tj ET
+
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 5 0 R >>
+endobj
+7 0 obj
+<< /Length 4184 >>
+stream
+BT /F1 10.5 Tf 72.00 709.50 Td (percent \(1%\) per month, calculated daily, until paid.) Tj ET
+BT /F1 10.5 Tf 72.00 688.01 Td (7.3 If any undisputed amount remains unpaid for more than forty-five \(45\) days after its due date, the) Tj ET
+BT /F1 10.5 Tf 72.00 673.52 Td (Provider may suspend the services after giving ten \(10\) days' written notice, and the due dates of) Tj ET
+BT /F1 10.5 Tf 72.00 659.03 Td (pending milestones are extended by the duration of the suspension.) Tj ET
+BT /F1 10.5 Tf 72.00 637.54 Td (7.4 If the Client disputes an invoice in good faith, it shall notify the Provider in writing within ten \(10\)) Tj ET
+BT /F1 10.5 Tf 72.00 623.05 Td (days of receiving it, explaining the reasons, and pay the undisputed part on time.) Tj ET
+BT /F2 12.0 Tf 72.00 594.06 Td (8. Late Delivery and Service Credits) Tj ET
+BT /F1 10.5 Tf 72.00 576.00 Td (8.1 If the Provider fails to deliver a milestone by its due date for reasons attributable to the Provider,) Tj ET
+BT /F1 10.5 Tf 72.00 561.51 Td (the Client is entitled to a service credit equal to one percent \(1%\) of the fee of the late milestone for) Tj ET
+BT /F1 10.5 Tf 72.00 547.02 Td (each business day of delay.) Tj ET
+BT /F1 10.5 Tf 72.00 525.53 Td (8.2 Service credits for a single milestone are capped at ten percent \(10%\) of that milestone's fee,) Tj ET
+BT /F1 10.5 Tf 72.00 511.04 Td (and total service credits under this Agreement are capped at ten percent \(10%\) of the total fixed fee.) Tj ET
+BT /F1 10.5 Tf 72.00 496.55 Td (Service credits are deducted from the next invoice.) Tj ET
+BT /F1 10.5 Tf 72.00 475.06 Td (8.3 If a milestone is more than thirty \(30\) days late for reasons attributable to the Provider, the Client) Tj ET
+BT /F1 10.5 Tf 72.00 460.57 Td (may, in addition to the service credits, terminate this Agreement for cause under Section 11.2 by) Tj ET
+BT /F1 10.5 Tf 72.00 446.08 Td (written notice.) Tj ET
+BT /F1 10.5 Tf 72.00 424.59 Td (8.4 Service credits are the Client's sole financial remedy for late delivery, except in the case of) Tj ET
+BT /F1 10.5 Tf 72.00 410.10 Td (termination for cause.) Tj ET
+BT /F2 12.0 Tf 72.00 381.11 Td (9. Warranty and Support) Tj ET
+BT /F1 10.5 Tf 72.00 363.05 Td (9.1 The Provider warrants that the Platform will conform materially to the SOW for ninety \(90\) days) Tj ET
+BT /F1 10.5 Tf 72.00 348.56 Td (after the production launch \(the "Warranty Period"\). During the Warranty Period the Provider will fix) Tj ET
+BT /F1 10.5 Tf 72.00 334.07 Td (reported defects at no additional cost, within the following times:) Tj ET
+BT /F1 10.5 Tf 86.00 312.58 Td (- Critical \(the Platform is down or data is at risk\): response within 4 hours, resolution or) Tj ET
+BT /F1 10.5 Tf 86.00 298.09 Td (workaround within 1 business day.) Tj ET
+BT /F1 10.5 Tf 86.00 279.60 Td (- Major \(a core feature does not work and there is no workaround\): response within 1 business) Tj ET
+BT /F1 10.5 Tf 86.00 265.11 Td (day, resolution within 5 business days.) Tj ET
+BT /F1 10.5 Tf 86.00 246.62 Td (- Minor \(other defects\): response within 3 business days, resolution in the next scheduled) Tj ET
+BT /F1 10.5 Tf 86.00 232.13 Td (release.) Tj ET
+BT /F1 10.5 Tf 72.00 210.64 Td (9.2 The warranty does not cover defects caused by changes made by the Client or third parties, or) Tj ET
+BT /F1 10.5 Tf 72.00 196.15 Td (by systems not provided by the Provider.) Tj ET
+BT /F2 12.0 Tf 72.00 167.16 Td (10. Confidentiality and Intellectual Property) Tj ET
+BT /F1 10.5 Tf 72.00 149.10 Td (10.1 Each Party shall keep the other Party's confidential information secret, use it only to perform) Tj ET
+BT /F1 10.5 Tf 72.00 134.61 Td (this Agreement and disclose it only to employees and contractors who need to know it and are) Tj ET
+BT /F1 10.5 Tf 72.00 120.12 Td (bound by equivalent obligations. These obligations last for three \(3\) years after the end of this) Tj ET
+BT /F1 10.5 Tf 72.00 105.63 Td (Agreement.) Tj ET
+BT /F1 10.5 Tf 72.00 84.14 Td (10.2 Upon full payment of each milestone fee, the Client owns all rights to the deliverables of that) Tj ET
+BT /F1 8.5 Tf 284.26 40 Td (Page 3 of 4) Tj ET
+BT /F1 8.5 Tf 72 40 Td (SAMPLE - fictional document for a demo) Tj ET
+
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 7 0 R >>
+endobj
+9 0 obj
+<< /Length 3796 >>
+stream
+BT /F1 10.5 Tf 72.00 709.50 Td (milestone, including source code and documentation. The Provider keeps the rights to its) Tj ET
+BT /F1 10.5 Tf 72.00 695.01 Td (pre-existing tools and libraries and grants the Client a perpetual, royalty-free license to use them as) Tj ET
+BT /F1 10.5 Tf 72.00 680.52 Td (part of the Platform.) Tj ET
+BT /F2 12.0 Tf 72.00 651.53 Td (11. Termination) Tj ET
+BT /F1 10.5 Tf 72.00 633.47 Td (11.1 Termination for convenience. The Client may terminate this Agreement at any time by giving) Tj ET
+BT /F1 10.5 Tf 72.00 618.98 Td (the Provider thirty \(30\) days' written notice. In that case the Client shall pay the fees for accepted) Tj ET
+BT /F1 10.5 Tf 72.00 604.49 Td (milestones, plus the work performed on the milestone in progress, pro rata, up to the termination) Tj ET
+BT /F1 10.5 Tf 72.00 590.00 Td (date.) Tj ET
+BT /F1 10.5 Tf 72.00 568.51 Td (11.2 Termination for cause. Either Party may terminate this Agreement immediately by written notice) Tj ET
+BT /F1 10.5 Tf 72.00 554.02 Td (if the other Party materially breaches it and does not cure the breach within fifteen \(15\) days after) Tj ET
+BT /F1 10.5 Tf 72.00 539.53 Td (receiving written notice describing it, or if the other Party becomes insolvent.) Tj ET
+BT /F1 10.5 Tf 72.00 518.04 Td (11.3 Upon termination, the Provider shall deliver within ten \(10\) business days all work in progress,) Tj ET
+BT /F1 10.5 Tf 72.00 503.55 Td (source code and Client data, and then delete the Client data from its systems, confirming the) Tj ET
+BT /F1 10.5 Tf 72.00 489.06 Td (deletion in writing.) Tj ET
+BT /F2 12.0 Tf 72.00 460.07 Td (12. Liability) Tj ET
+BT /F1 10.5 Tf 72.00 442.01 Td (12.1 Except for breaches of confidentiality, infringement of intellectual property, or gross negligence) Tj ET
+BT /F1 10.5 Tf 72.00 427.52 Td (or willful misconduct, each Party's total liability under this Agreement is limited to the total fees paid) Tj ET
+BT /F1 10.5 Tf 72.00 413.03 Td (or payable in the twelve \(12\) months before the event giving rise to the claim. Neither Party is liable) Tj ET
+BT /F1 10.5 Tf 72.00 398.54 Td (for indirect or consequential damages, including lost profits.) Tj ET
+BT /F2 12.0 Tf 72.00 369.55 Td (13. General) Tj ET
+BT /F1 10.5 Tf 72.00 351.49 Td (13.1 Notices must be in writing and sent by email with confirmation of receipt to) Tj ET
+BT /F1 10.5 Tf 72.00 337.00 Td (legal@brightline-analytics.example \(Client\) and contracts@cedarpine.example \(Provider\).) Tj ET
+BT /F1 10.5 Tf 72.00 315.51 Td (13.2 This Agreement is governed by the laws of the State of New York. The Parties will first try to) Tj ET
+BT /F1 10.5 Tf 72.00 301.02 Td (resolve any dispute through good-faith negotiation for thirty \(30\) days; if unresolved, the dispute will) Tj ET
+BT /F1 10.5 Tf 72.00 286.53 Td (be settled by arbitration under the rules of the International Centre for Dispute Resolution, in English,) Tj ET
+BT /F1 10.5 Tf 72.00 272.04 Td (with seat in New York.) Tj ET
+BT /F1 10.5 Tf 72.00 250.55 Td (13.3 This Agreement, together with its Annexes, is the entire agreement between the Parties and) Tj ET
+BT /F1 10.5 Tf 72.00 236.06 Td (replaces any prior proposals. It may only be amended in writing signed by both Parties.) Tj ET
+BT /F2 10.5 Tf 72.00 200.57 Td (Signed on behalf of the Parties:) Tj ET
+BT /F2 10.5 Tf 72.00 168.08 Td (Brightline Analytics, Inc.) Tj ET
+BT /F1 10.5 Tf 72.00 153.59 Td (Name: Dana R. Whitfield    Title: Chief Operating Officer    Date: March 2, 2026) Tj ET
+BT /F2 10.5 Tf 72.00 125.10 Td (Cedar & Pine Software S.A.S.) Tj ET
+BT /F1 10.5 Tf 72.00 110.61 Td (Name: Mateo Arango Restrepo    Title: Legal Representative    Date: March 2, 2026) Tj ET
+BT /F1 8.5 Tf 284.26 40 Td (Page 4 of 4) Tj ET
+BT /F1 8.5 Tf 72 40 Td (SAMPLE - fictional document for a demo) Tj ET
+
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 11 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 9 0 R >>
+endobj
+11 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R] /Count 4 >>
+endobj
+12 0 obj
+<< /Title (Software Development Services Agreement - sample) /Producer (portfolio demo) >>
+endobj
+13 0 obj
+<< /Type /Catalog /Pages 11 0 R >>
+endobj
+xref
+0 14
+0000000000 65535 f 
+0000000015 00000 n 
+0000000112 00000 n 
+0000000214 00000 n 
+0000004197 00000 n 
+0000004334 00000 n 
+0000008244 00000 n 
+0000008381 00000 n 
+0000012617 00000 n 
+0000012754 00000 n 
+0000016602 00000 n 
+0000016740 00000 n 
+0000016817 00000 n 
+0000016924 00000 n 
+trailer
+<< /Size 14 /Root 13 0 R /Info 12 0 R >>
+startxref
+16975
+%%EOF

@@ -6,6 +6,7 @@ import { atom, map } from 'nanostores';
 import type { Attachment } from './attachments';
 import type { ChatCopy } from '../i18n/chat';
 import { CASES } from './chat/cases';
+import type { Doc } from './chat/docs';
 import type { Claims } from './chat/insurance';
 import type { Order } from './chat/order';
 
@@ -61,6 +62,8 @@ export interface ChatSession {
   /** Auto insurance assistant: filed claims and the latest photo check (see
    * chat/insurance.ts). */
   claims?: Claims;
+  /** Document agent: the PDFs sent so far, indexed (see chat/docs.ts). */
+  docs?: Doc[];
 }
 
 export const emptySession = (): ChatSession => ({

@@ -5,6 +5,7 @@
 import type OpenAI from 'openai';
 import type { ChatItem, ChatSession, UserInput } from '../store';
 import { MODELS, type ChatCase } from './cases';
+import { docNote } from './docs';
 import { CLIENT_TOOLS } from './tools';
 import {
   PAGES_DROPPED,
@@ -40,18 +41,20 @@ const userMessage = (input: UserInput): Item => ({
   role: 'user',
   content: [
     ...input.files.flatMap((f): OpenAI.Responses.ResponseInputContent[] =>
-      f.pages
-        ? [
-            { type: 'input_text' as const, text: pdfNote(f) },
-            {
-              type: 'input_image' as const,
-              image_url: `data:image/jpeg;base64,${f.pages[0]}`,
-              detail: 'auto' as const,
-            },
-          ]
-        : f.mediaType === 'application/pdf'
-          ? [{ type: 'input_file', filename: f.name, file_data: dataUrl(f) }]
-          : [{ type: 'input_image', image_url: dataUrl(f), detail: 'auto' }],
+      f.doc
+        ? [{ type: 'input_text', text: docNote(f.docId ?? '', f.name, f.doc) }]
+        : f.pages
+          ? [
+              { type: 'input_text' as const, text: pdfNote(f) },
+              {
+                type: 'input_image' as const,
+                image_url: `data:image/jpeg;base64,${f.pages[0]}`,
+                detail: 'auto' as const,
+              },
+            ]
+          : f.mediaType === 'application/pdf'
+            ? [{ type: 'input_file', filename: f.name, file_data: dataUrl(f) }]
+            : [{ type: 'input_image', image_url: dataUrl(f), detail: 'auto' }],
     ),
     ...(input.text ? [{ type: 'input_text' as const, text: input.text }] : []),
   ],

@@ -1,5 +1,6 @@
 // Files attached to the next message, kept in memory like the rest of the lab.
 import { map } from 'nanostores';
+import type { DocIndex } from './chat/docs';
 
 export interface Attachment {
   name: string;
@@ -9,6 +10,11 @@ export interface Attachment {
   /** PDFs of cases that read them page by page (ChatCase.pdf): each page as
    * a JPEG, base64. Only the first goes with the message. */
   pages?: string[];
+  /** PDFs of the document agent (ChatCase.docs): their text as passages.
+   * The file itself never goes to the model. */
+  doc?: DocIndex;
+  /** Its id in the conversation (d1, d2…), given when it's sent. */
+  docId?: string;
 }
 
 export const IMAGE_TYPES = [

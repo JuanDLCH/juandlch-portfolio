@@ -67,6 +67,25 @@ const EN = {
     openMenu: 'See the menu',
     menuNote: 'Tell the assistant what you’d like to order.',
   },
+  docs: {
+    tag: 'Cited source',
+    note: 'The passages the answer cites are highlighted.',
+    docs: 'Cited documents',
+    prev: 'Previous page',
+    next: 'Next page',
+    pageOf: 'Page {n} of {total}',
+    cited: 'Cited pages',
+    failed: 'This PDF couldn’t be displayed.',
+    download: 'Download PDF',
+    open: 'Open the cited passage in the document',
+    strip: 'Documents',
+    openDoc: 'Open',
+    sample: 'Try a sample contract',
+    sampleFile: 'sample-service-contract.pdf',
+    reading: 'Reading PDF…',
+    attachHint: 'PDFs, up to 20 pages',
+    pages: 'p.',
+  },
   insurance: {
     policy: 'Your policy',
     viewPolicy: 'See the policy',
@@ -204,6 +223,13 @@ const EN = {
     pdfSize: 'That PDF is over 10 MB. Send a lighter copy of the invoice.',
     pdfUnreadable:
       'I couldn’t open that PDF: it may be damaged or password protected. Try another copy.',
+    docFile:
+      'In this case I read PDFs only, so I can show you where each answer comes from. That file isn’t a PDF.',
+    docLimit:
+      'This conversation already has 5 documents, the most I take. Clear the conversation to start with other ones.',
+    docPages:
+      'That PDF is over 20 pages. Send a shorter one, or just the part you want to ask about.',
+    docSize: 'That PDF is over 20 MB. Send a lighter copy.',
   },
   fixes: {
     key: 'Add {p} key',
@@ -290,6 +316,25 @@ const ES: typeof EN = {
     want: 'Quiero pedir: {d}',
     openMenu: 'Ver el menú',
     menuNote: 'Dile al asistente qué quieres pedir.',
+  },
+  docs: {
+    tag: 'Fuente citada',
+    note: 'Los pasajes que cita la respuesta están resaltados.',
+    docs: 'Documentos citados',
+    prev: 'Página anterior',
+    next: 'Página siguiente',
+    pageOf: 'Página {n} de {total}',
+    cited: 'Páginas citadas',
+    failed: 'No se pudo mostrar este PDF.',
+    download: 'Descargar PDF',
+    open: 'Abrir el pasaje citado en el documento',
+    strip: 'Documentos',
+    openDoc: 'Abrir',
+    sample: 'Prueba con un contrato de ejemplo',
+    sampleFile: 'contrato-servicios-ejemplo.pdf',
+    reading: 'Leyendo el PDF…',
+    attachHint: 'PDFs de hasta 20 páginas',
+    pages: 'pág.',
   },
   insurance: {
     policy: 'Tu póliza',
@@ -431,6 +476,13 @@ const ES: typeof EN = {
       'Ese PDF pesa más de 10 MB. Envía una copia más liviana de la factura.',
     pdfUnreadable:
       'No pude abrir ese PDF: puede estar dañado o protegido con contraseña. Prueba con otra copia.',
+    docFile:
+      'En este caso solo leo PDFs, para poder mostrarte de dónde sale cada respuesta. Ese archivo no es un PDF.',
+    docLimit:
+      'Esta conversación ya tiene 5 documentos, el máximo que acepto. Borra la conversación para empezar con otros.',
+    docPages:
+      'Ese PDF tiene más de 20 páginas. Envía uno más corto, o solo la parte sobre la que quieres preguntar.',
+    docSize: 'Ese PDF pesa más de 20 MB. Envía una copia más liviana.',
   },
   fixes: {
     key: 'Agregar llave de {p}',

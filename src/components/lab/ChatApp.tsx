@@ -49,6 +49,9 @@ import {
   type Claim,
 } from '../../lab/chat/insurance';
 import CvViewer from './CvViewer';
+import DocViewer from './DocViewer';
+import { docLinkId, pageId } from '../../lab/chat/docs';
+import contractUrl from '../../assets/lab/documents/sample-contract.pdf?url';
 import insuredCarUrl from '../../assets/lab/insurance/sample-insured-car.jpg?url';
 import otherCarUrl from '../../assets/lab/insurance/sample-other-car.jpg?url';
 import invoiceUrl from '../../assets/lab/insurance/sample-invoice.pdf?url';
@@ -181,6 +184,10 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   pdfPages: 'file',
   pdfSize: 'file',
   pdfUnreadable: 'file',
+  docFile: 'file',
+  docLimit: 'clear',
+  docPages: 'file',
+  docSize: 'file',
 };
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -300,6 +307,15 @@ export default function ChatApp({
   // CV viewer opened from a citation: the answer's cited items and the one
   // clicked.
   const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
+  // Document viewer, likewise: the answer's cited passages and the one
+  // clicked (or a document's first page, from its chip).
+  const [docView, setDocView] = useState<{
+    ids: string[];
+    focus: string;
+  } | null>(null);
+  // Document agent: PDFs being read when attached; sending waits for them.
+  const [reading, setReading] = useState(0);
+  const readingRef = useRef(0);
   // Order assistant: the full menu dialog, in the conversation's language.
   const [menuLang, setMenuLang] = useState<Lang | null>(null);
   // Auto insurance assistant: the policy dialog, likewise.
@@ -323,19 +339,22 @@ export default function ChatApp({
         ? info
         : cv
           ? 'cv'
-          : menuLang
-            ? 'menu'
-            : policyLang
-              ? 'policy'
-              : switchTo
-                ? 'switch'
-                : null;
+          : docView
+            ? 'doc'
+            : menuLang
+              ? 'menu'
+              : policyLang
+                ? 'policy'
+                : switchTo
+                  ? 'switch'
+                  : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
     setIntro(false);
     setInfo(null);
     setCv(null);
+    setDocView(null);
     setMenuLang(null);
     setPolicyLang(null);
     setSwitchTo(null);
@@ -493,7 +512,8 @@ export default function ChatApp({
     const text = (override ?? draft).trim();
     // Read the store, not the render's `busy`: a transcription finishing
     // after a turn ended calls this from an older closure.
-    if ((!text && files.length === 0) || $busy.get()) return;
+    if ((!text && files.length === 0) || $busy.get() || readingRef.current)
+      return;
     // No key: the message stays in the composer and the assistant asks for
     // the key, so sending again after adding it just works.
     if (!chatKey) {
@@ -502,6 +522,21 @@ export default function ChatApp({
       return;
     }
     const start = getSession(c.id);
+    // Documents join the conversation as d1, d2…; the model gets a note
+    // with the id instead of the file.
+    let docs = start.docs ?? [];
+    const sent = files.map((f) => {
+      if (!f.doc) return f;
+      const id = `d${docs.length + 1}`;
+      // Same file name twice: the second gets a number, so their sources
+      // can be told apart.
+      const taken = (n: string) => docs.some((d) => d.name === n);
+      let name = f.name;
+      for (let k = 2; taken(name); k++)
+        name = f.name.replace(/(\.pdf)?$/i, ` ${k}$1`);
+      docs = [...docs, { id, name, data: f.data, ...f.doc }];
+      return { ...f, name, docId: id };
+    });
     const user: ChatItem = {
       kind: 'user',
       text,
@@ -512,13 +547,14 @@ export default function ChatApp({
         src: `data:${f.mediaType};base64,${f.data}`,
       })),
     };
-    const input: UserInput = { text, files };
+    const input: UserInput = { text, files: sent };
     setDraft('');
     $attachments.setKey(c.id, []);
     await run(
       {
         ...start,
         items: [...start.items, user],
+        ...(c.docs && { docs }),
         turn: {
           items: start.items.length + 1,
           api: start.api.length,
@@ -544,6 +580,22 @@ export default function ChatApp({
   // refuse big or long ones before any token is spent.
   const attach = async (f: File): Promise<Attachment | NoticeCode> => {
     const pdf = f.type === 'application/pdf';
+    // Document agent: PDFs only, read into passages right away.
+    if (c.docs) {
+      if (!pdf) return 'docFile';
+      if (f.size > c.docs.maxMB * 1024 * 1024) return 'docSize';
+      try {
+        const { indexPdf } = await import('../../lab/pdf');
+        const [a, doc] = await Promise.all([
+          readAttachment(f),
+          indexPdf(f, c.docs.maxPages),
+        ]);
+        return { ...a, doc };
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        return code === 'pdfPages' ? 'docPages' : 'pdfUnreadable';
+      }
+    }
     if ((!IMAGE_TYPES.includes(f.type) && !pdf) || f.size > MAX_BYTES)
       return 'file';
     if (!pdf || !c.pdf) return readAttachment(f);
@@ -558,10 +610,33 @@ export default function ChatApp({
   };
   const addFiles = async (list: File[]) => {
     for (const f of list) {
-      const a = await attach(f);
+      // At most c.docs.maxFiles documents per conversation, counting the
+      // ones waiting in the composer.
+      const held =
+        (getSession(c.id).docs?.length ?? 0) +
+        ($attachments.get()[c.id]?.length ?? 0) +
+        readingRef.current;
+      if (c.docs && held >= c.docs.maxFiles) {
+        notice('docLimit');
+        return;
+      }
+      const reads = !!c.docs && f.type === 'application/pdf';
+      if (reads) setReading((readingRef.current += 1));
+      const a = await attach(f).finally(() => {
+        if (reads) setReading((readingRef.current -= 1));
+      });
       if (typeof a === 'string') notice(a);
       else $attachments.setKey(c.id, [...($attachments.get()[c.id] ?? []), a]);
     }
+  };
+
+  // Document agent: the sample contract goes to the composer like an upload.
+  const addSample = async () => {
+    const blob = await fetch(contractUrl).then((r) => r.blob());
+    await addFiles([
+      new File([blob], x.docs.sampleFile, { type: 'application/pdf' }),
+    ]);
+    composerRef.current?.focus();
   };
 
   // Insurance examples: the sample file goes to the composer like an upload.
@@ -921,6 +996,8 @@ export default function ChatApp({
                       m={m}
                       onCv={(focus, ids) => setCv({ focus, ids })}
                       cvLabel={x.cvOpen}
+                      onDoc={(focus, ids) => setDocView({ focus, ids })}
+                      docLabel={x.docs.open}
                     />
                   )}
                   {contactAt.get(i)?.map((input, k) => (
@@ -1014,7 +1091,11 @@ export default function ChatApp({
                 ref={fileRef}
                 type="file"
                 multiple
-                accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"
+                accept={
+                  c.docs
+                    ? 'application/pdf'
+                    : 'image/png,image/jpeg,image/gif,image/webp,application/pdf'
+                }
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}
               />
@@ -1024,29 +1105,71 @@ export default function ChatApp({
                   aria-label={x.suggestions}
                   className="mob:flex-nowrap mob:overflow-x-auto mob:-mx-2.5 mob:px-2.5 mb-2 flex flex-wrap gap-1.5"
                 >
+                  {c.docs && files.length === 0 && reading === 0 && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void addSample()}
+                      className="border-accent bg-panel text-accent hover:text-ink mob:h-9 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Icon d={I.file} size={13} />
+                      {x.docs.sample}
+                    </button>
+                  )}
                   {c.suggestions.map((sg) => {
                     const text = pick(sg.text, es);
+                    // Document agent: with a document in the composer, an
+                    // attach suggestion is sent about it.
+                    const ready = !!c.docs && files.length > 0;
                     return (
                       <button
                         key={text}
                         type="button"
-                        disabled={busy}
+                        disabled={busy || reading > 0}
                         onClick={() => {
-                          if (!sg.attach) return void send(text);
+                          if (!sg.attach || ready) return void send(text);
                           setDraft(text);
                           fileRef.current?.click();
                         }}
                         className="border-line2 bg-panel text-body hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {sg.attach && <Icon d={I.clip} size={13} />}
-                        {sg.attach ? x.attachSuggestion : text}
+                        {sg.attach && !ready && <Icon d={I.clip} size={13} />}
+                        {sg.attach && !c.docs ? x.attachSuggestion : text}
                       </button>
                     );
                   })}
                 </div>
               )}
+              {c.docs && (session.docs?.length ?? 0) > 0 && (
+                <div
+                  role="group"
+                  aria-label={x.docs.strip}
+                  className="mob:flex-nowrap mob:overflow-x-auto mob:-mx-2.5 mob:px-2.5 mb-2 flex flex-wrap items-center gap-1.5"
+                >
+                  <span className={`${label} shrink-0 text-[10px]`}>
+                    {x.docs.strip} {session.docs!.length}/{c.docs.maxFiles}
+                  </span>
+                  {session.docs!.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      title={`${x.docs.openDoc} ${d.name}`}
+                      onClick={() =>
+                        setDocView({ ids: [], focus: pageId(d, 1) })
+                      }
+                      className={`${mono} border-line2 bg-panel text-chip hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 max-w-[240px] shrink-0 cursor-pointer items-center gap-1.5 border px-2 text-[11px] transition-colors`}
+                    >
+                      <Icon d={I.file} size={13} />
+                      <span className="truncate">{d.name}</span>
+                      <span className="text-muted">
+                        {d.pages.length} {x.docs.pages}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="border-line2 bg-panel border">
-                {files.length > 0 && (
+                {(files.length > 0 || reading > 0) && (
                   <div className="flex flex-wrap gap-1.5 px-3 pt-3">
                     {files.map((f, i) => (
                       <span
@@ -1063,6 +1186,11 @@ export default function ChatApp({
                           <Icon d={I.file} size={13} />
                         )}
                         {f.name}
+                        {f.doc && (
+                          <span className="text-muted">
+                            {f.doc.pages.length} {x.docs.pages}
+                          </span>
+                        )}
                         <button
                           type="button"
                           aria-label={`${x.removeFile} ${f.name}`}
@@ -1078,6 +1206,18 @@ export default function ChatApp({
                         </button>
                       </span>
                     ))}
+                    {reading > 0 && (
+                      <span
+                        role="status"
+                        className={`${mono} border-line2 text-muted inline-flex items-center gap-2 border px-2 py-1 text-[11px]`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="jd-blink bg-accent size-1.5"
+                        />
+                        {x.docs.reading}
+                      </span>
+                    )}
                   </div>
                 )}
                 {rec !== 'off' ? (
@@ -1132,7 +1272,7 @@ export default function ChatApp({
                             type="button"
                             onClick={() => fileRef.current?.click()}
                             aria-label={x.attach}
-                            title={x.attachHint}
+                            title={c.docs ? x.docs.attachHint : x.attachHint}
                             className={`${iconBtn} text-muted desk:size-8 size-11 border-transparent`}
                           >
                             <Icon d={I.clip} />
@@ -1767,6 +1907,69 @@ export default function ChatApp({
         </div>
       )}
 
+      {docView && session.docs?.length ? (
+        <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={x.close}
+            onClick={() => setDocView(null)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jd-doc-title"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex h-[calc(100dvh-34px)] w-full max-w-[820px] flex-col border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 mob:pt-5 flex min-h-0 flex-1 flex-col px-7 pt-6 pb-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
+                <div
+                  className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                >
+                  {docView.ids.length ? x.docs.tag : x.docs.strip}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDocView(null)}
+                  aria-label={x.close}
+                  className={`${iconBtn} -mt-1.5 size-9 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-1.5 flex min-h-0 flex-1 flex-col">
+                <DocViewer
+                  key={docView.focus}
+                  docs={session.docs}
+                  ids={docView.ids}
+                  focus={docView.focus}
+                  x={x.docs}
+                />
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end gap-2 border-t px-7 py-3">
+              <button
+                type="button"
+                onClick={() => setDocView(null)}
+                className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {x.close}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {cv && (
         <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
           <button
@@ -2157,22 +2360,37 @@ export default function ChatApp({
 }
 
 // Markdown links and bare URLs in an answer become real links, so cited
-// sources can be opened. CV citations open the CV viewer on the cited items.
+// sources can be opened. CV citations open the CV viewer on the cited items,
+// document citations the document viewer on the cited passages.
 const LINK =
   /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 type OnCv = (focus: string, ids: string[]) => void;
-/** CV items cited anywhere in the text, so the viewer highlights them all. */
-const citedCv = (text: string) =>
-  [...text.matchAll(LINK)].flatMap((m) => {
-    const id = cvLinkId(m[2] ?? m[3]);
-    return id ? [id] : [];
-  });
+/** Ids cited anywhere in the text, so the viewer highlights them all. */
+const cited = (text: string, linkId: (href: string) => string | null) => [
+  ...new Set(
+    [...text.matchAll(LINK)].flatMap((m) => {
+      const id = linkId(m[2] ?? m[3]);
+      return id ? [id] : [];
+    }),
+  ),
+];
 interface LinkCtx {
   onCv: OnCv;
   cvLabel: string;
   cvIds: string[];
+  onDoc: OnCv;
+  docLabel: string;
+  docIds: string[];
 }
-function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
+function Linked({
+  text,
+  onCv,
+  cvLabel,
+  cvIds,
+  onDoc,
+  docLabel,
+  docIds,
+}: { text: string } & LinkCtx) {
   const matches = [...text.matchAll(LINK)];
   const out: (string | React.JSX.Element)[] = [];
   let last = 0;
@@ -2181,13 +2399,14 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
     if (i > last) out.push(text.slice(last, i));
     const href = match[2] ?? match[3];
     const cvId = cvLinkId(href);
+    const docId = cvId ? null : docLinkId(href);
     out.push(
       <a
         key={i}
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        title={cvId ? cvLabel : undefined}
+        title={cvId ? cvLabel : docId ? docLabel : undefined}
         onClick={
           cvId
             ? (e) => {
@@ -2196,7 +2415,13 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
                 e.preventDefault();
                 onCv(cvId, cvIds);
               }
-            : undefined
+            : docId
+              ? (e) => {
+                  // The document only lives in this tab: always the viewer.
+                  e.preventDefault();
+                  onDoc(docId, docIds);
+                }
+              : undefined
         }
         className="text-accent underline underline-offset-2"
       >
@@ -2985,10 +3210,14 @@ function Message({
   m,
   onCv,
   cvLabel,
+  onDoc,
+  docLabel,
 }: {
   m: ChatItem;
   onCv: OnCv;
   cvLabel: string;
+  onDoc: OnCv;
+  docLabel: string;
 }) {
   if (m.kind === 'user') {
     return (
@@ -3027,7 +3256,14 @@ function Message({
 
   if (m.kind === 'notice') return null;
   const { body, sources } = splitSources(m.text);
-  const ctx = { onCv, cvLabel, cvIds: citedCv(m.text) };
+  const ctx = {
+    onCv,
+    cvLabel,
+    cvIds: cited(m.text, cvLinkId),
+    onDoc,
+    docLabel,
+    docIds: cited(m.text, docLinkId),
+  };
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1">
       <div className="border-accent flex flex-col gap-1.5 border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] break-words">
