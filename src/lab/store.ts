@@ -6,6 +6,7 @@ import { atom, map } from 'nanostores';
 import type { Attachment } from './attachments';
 import type { ChatCopy } from '../i18n/chat';
 import { CASES } from './chat/cases';
+import type { Claims } from './chat/insurance';
 import type { Order } from './chat/order';
 
 export type ChatItem =
@@ -40,9 +41,18 @@ export interface ChatSession {
   api: unknown[];
   usage: { input: number; output: number; cost: number };
   /** The latest turn: where it started, so it can be retried as a whole. */
-  turn?: { items: number; api: number; input: UserInput; order?: Order };
+  turn?: {
+    items: number;
+    api: number;
+    input: UserInput;
+    order?: Order;
+    claims?: Claims;
+  };
   /** Order assistant: the order its tools build (see chat/order.ts). */
   order?: Order;
+  /** Auto insurance assistant: filed claims and the latest photo check (see
+   * chat/insurance.ts). */
+  claims?: Claims;
 }
 
 export const emptySession = (): ChatSession => ({

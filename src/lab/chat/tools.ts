@@ -1,7 +1,8 @@
 // Client-side tools for the chat lab. They run in the visitor's browser; the
 // profile is Juan Diego's CV and portfolio, the menu and orders are fake demo
-// data (order.ts), weather comes from Open-Meteo (no key).
+// data (order.ts, insurance.ts), weather comes from Open-Meteo (no key).
 import type Anthropic from '@anthropic-ai/sdk';
+import { IMAGE_TYPES } from '../attachments';
 import type { ChatSession } from '../store';
 import { CONTACT, CONTACT_OPTIONS, type ContactOption } from './contact';
 import {
@@ -19,6 +20,18 @@ import {
   type Lang,
   type OrderOp,
 } from './order';
+import {
+  BODY_TYPES,
+  INCIDENT_IDS,
+  INSURER,
+  checkCoverage,
+  checkPhoto,
+  describeClaim,
+  describePolicy,
+  fileClaim,
+  type BodyType,
+  type Incident,
+} from './insurance';
 
 type Input = Record<string, unknown>;
 
@@ -278,6 +291,262 @@ const placeOrder: ClientTool = {
   },
 };
 
+// Auto insurance tools: the policy, coverage, photo and claim rules live in
+// insurance.ts; the claims and the latest photo check live in the session.
+const isIncident = (v: unknown) => INCIDENT_IDS.includes(v as Incident);
+const INCIDENT_PROP = {
+  type: 'string',
+  enum: [...INCIDENT_IDS],
+  description:
+    'What happened. parking: hit while parking or parked; falling_object: a branch, rock or other object fell on the car; damage_to_others: damage the customer caused to other people or cars; breakdown: the car stopped working.',
+} as const;
+
+const getPolicy: ClientTool = {
+  def: {
+    name: 'get_policy',
+    description: `The customer's ${INSURER} account: holder, policy number and status, start date (it has no end date), premium, the insured vehicle (year, make, model, body, color, plate), listed drivers, coverages with limits and deductibles (USD), exclusions, and today's date. The customer sees it as a card under your reply.`,
+    input_schema: {
+      type: 'object',
+      properties: { lang: LANG_PROP },
+      required: ['lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: () => null,
+  run: async (i) => describePolicy(langOf(i.lang)),
+  summary: (r) => (r as { policy_number: string }).policy_number,
+};
+
+const checkCoverageTool: ClientTool = {
+  def: {
+    name: 'check_coverage',
+    description:
+      "Whether the customer's policy covers an incident: the coverage that pays, its limit and deductible, or the exclusion that applies. Also says if a claim can be filed in the chat (claimable) and if it needs a photo, and gives today's date.",
+    input_schema: {
+      type: 'object',
+      properties: { incident_type: INCIDENT_PROP, lang: LANG_PROP },
+      required: ['incident_type', 'lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    isIncident(i.incident_type)
+      ? null
+      : `incident_type must be one of: ${INCIDENT_IDS.join(', ')}`,
+  run: async (i) => checkCoverage(i.incident_type as Incident, langOf(i.lang)),
+  summary: (r, es) => {
+    const c = r as { incident: string; covered: boolean };
+    return `${c.incident} · ${c.covered ? (es ? 'cubierto' : 'covered') : es ? 'no cubierto' : 'not covered'}`;
+  },
+};
+
+const requestPhoto: ClientTool = {
+  def: {
+    name: 'request_photo',
+    description:
+      'Ask the customer for a photo of the damaged car: it draws an upload button under your reply. Call it once per request, then wait for the photo.',
+    input_schema: {
+      type: 'object',
+      properties: { lang: LANG_PROP },
+      required: ['lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: () => null,
+  run: async () => ({
+    note: 'The customer sees an upload button. Ask for one photo that shows the whole car and the damage, then wait for it.',
+  }),
+  summary: (_r, es) => (es ? 'botón de foto' : 'photo button'),
+};
+
+const checkPhotoTool: ClientTool = {
+  def: {
+    name: 'check_photo',
+    description:
+      'Check the photo the customer sent in their latest message against the insured car. Describe honestly what you see in it (never what the policy says): the code decides whether it matches. Returns match, mismatch (another car) or unclear (no car, no visible damage, or hard to tell), with the reasons. Claims need a match, except for theft.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        vehicle_visible: { type: 'boolean' },
+        color: {
+          type: 'string',
+          description: 'Main body color as seen, e.g. "dark grey".',
+        },
+        body_type: { type: 'string', enum: [...BODY_TYPES] },
+        make: {
+          type: 'string',
+          description:
+            'Only if a badge or design makes it clear; else leave out.',
+        },
+        damage_visible: { type: 'boolean' },
+        damage_areas: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'In the customer’s language (they show on the claim card), e.g. "rear bumper".',
+        },
+        lang: LANG_PROP,
+      },
+      required: [
+        'vehicle_visible',
+        'color',
+        'body_type',
+        'damage_visible',
+        'damage_areas',
+        'lang',
+      ],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) => {
+    if (typeof i.vehicle_visible !== 'boolean')
+      return 'vehicle_visible must be a boolean';
+    if (typeof i.damage_visible !== 'boolean')
+      return 'damage_visible must be a boolean';
+    if (typeof i.color !== 'string') return 'color must be a string';
+    if (!BODY_TYPES.includes(i.body_type as BodyType))
+      return `body_type must be one of: ${BODY_TYPES.join(', ')}`;
+    if (i.make !== undefined && typeof i.make !== 'string')
+      return 'make must be a string';
+    if (!Array.isArray(i.damage_areas) || !i.damage_areas.every(str))
+      return 'damage_areas must be an array of strings';
+    return null;
+  },
+  run: async (i, _signal, s) => {
+    // Only a photo sent in this turn counts: the check is about that photo.
+    const photo = s.turn?.input.files.some((f) =>
+      IMAGE_TYPES.includes(f.mediaType),
+    );
+    if (!photo)
+      return {
+        error:
+          'The latest message has no photo. Call request_photo and wait for one.',
+      };
+    const check = checkPhoto({
+      vehicle_visible: i.vehicle_visible as boolean,
+      color: i.color as string,
+      body_type: i.body_type as BodyType,
+      ...(str(i.make) ? { make: i.make as string } : {}),
+      damage_visible: i.damage_visible as boolean,
+      damage_areas: (i.damage_areas as string[]).slice(0, 8),
+    });
+    s.claims = { list: s.claims?.list ?? [], photo: check };
+    return { status: check.status, reasons: check.reasons };
+  },
+  summary: (r, es) => {
+    const c = r as { status?: string; error?: string };
+    if (c.error) return es ? 'sin foto' : 'no photo';
+    const label = {
+      match: es ? 'coincide' : 'matches',
+      mismatch: es ? 'otro vehículo' : 'other vehicle',
+      unclear: es ? 'no es claro' : 'unclear',
+    };
+    return label[c.status as keyof typeof label];
+  },
+};
+
+const fileClaimTool: ClientTool = {
+  def: {
+    name: 'file_claim',
+    description:
+      'File a claim for damage to the insured car (simulated). Only call it after the photo matched (check_photo, not needed for theft), you know what happened and when, and the customer confirmed the details. Returns the claim number and details, or the errors that block it (ask for what is missing).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        incident_type: INCIDENT_PROP,
+        date: {
+          type: 'string',
+          description:
+            'When it happened, YYYY-MM-DD. Work it out from today (check_coverage gives it) for "yesterday" and the like; ask if unsure.',
+        },
+        description: {
+          type: 'string',
+          description:
+            'What happened, in the customer’s words, 1 to 3 sentences.',
+        },
+        location: { type: 'string' },
+        lang: LANG_PROP,
+      },
+      required: ['incident_type', 'date', 'description', 'lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) => {
+    if (!isIncident(i.incident_type))
+      return `incident_type must be one of: ${INCIDENT_IDS.join(', ')}`;
+    if (typeof i.date !== 'string') return 'date must be a string';
+    if (typeof i.description !== 'string')
+      return 'description must be a string';
+    if (i.location !== undefined && typeof i.location !== 'string')
+      return 'location must be a string';
+    return null;
+  },
+  run: async (i, _signal, s) => {
+    const claims = s.claims ?? { list: [] };
+    const r = fileClaim(claims, {
+      incident: i.incident_type as Incident,
+      date: i.date as string,
+      description: i.description as string,
+      ...(typeof i.location === 'string' ? { location: i.location } : {}),
+      lang: langOf(i.lang),
+    });
+    if ('errors' in r) return { errors: r.errors };
+    // The photo was used: a new claim needs a new one.
+    s.claims = { list: [...claims.list, r.claim] };
+    return {
+      claim: describeClaim(r.claim),
+      note: 'The customer sees the claim as a card under your reply. Simulated: no adjuster will call.',
+    };
+  },
+  summary: (r, es) => {
+    const c = r as { claim?: { claim_id: string }; errors?: string[] };
+    if (c.claim) return c.claim.claim_id;
+    const n = c.errors?.length ?? 0;
+    return es ? `${n} pendientes` : `${n} missing`;
+  },
+};
+
+const getClaimStatus: ClientTool = {
+  def: {
+    name: 'get_claim_status',
+    description:
+      'Status of a claim filed in this conversation: the one with claim_id, or the latest. The customer sees it as a card under your reply.',
+    input_schema: {
+      type: 'object',
+      properties: { claim_id: { type: 'string' }, lang: LANG_PROP },
+      required: ['lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    i.claim_id === undefined || typeof i.claim_id === 'string'
+      ? null
+      : 'claim_id must be a string',
+  run: async (i, _signal, s) => {
+    const list = s.claims?.list ?? [];
+    if (list.length === 0)
+      return { error: 'No claims were filed in this conversation.' };
+    const id = str(i.claim_id) ? String(i.claim_id).trim().toUpperCase() : '';
+    const c = id ? list.find((k) => k.claim_id === id) : list.at(-1);
+    if (!c)
+      return {
+        error: `No claim ${id}. Claims: ${list.map((k) => k.claim_id).join(', ')}.`,
+      };
+    // The card renders in the language of the question.
+    const claim = { ...c, lang: langOf(i.lang, c.lang) };
+    s.claims = {
+      ...s.claims!,
+      list: list.map((k) => (k === c ? claim : k)),
+    };
+    return { claim: describeClaim(claim) };
+  },
+  summary: (r, es) => {
+    const c = r as { claim?: { claim_id: string }; error?: string };
+    if (!c.claim) return c.error!;
+    return `${c.claim.claim_id} · ${es ? 'en trámite' : 'in review'}`;
+  },
+};
+
 const getWeather: ClientTool = {
   def: {
     name: 'get_weather',
@@ -532,6 +801,12 @@ export const CLIENT_TOOLS: Record<string, ClientTool> = {
   update_order: updateOrder,
   show_menu: showMenu,
   place_order: placeOrder,
+  get_policy: getPolicy,
+  check_coverage: checkCoverageTool,
+  request_photo: requestPhoto,
+  check_photo: checkPhotoTool,
+  file_claim: fileClaimTool,
+  get_claim_status: getClaimStatus,
   get_weather: getWeather,
   get_time: getTime,
 };

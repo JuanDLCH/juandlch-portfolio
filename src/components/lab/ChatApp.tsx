@@ -38,6 +38,13 @@ import {
   type Lang,
   type Order,
 } from '../../lab/chat/order';
+import {
+  COVERAGE,
+  INCIDENT_LABEL,
+  POLICY,
+  describePolicy,
+  type Claim,
+} from '../../lab/chat/insurance';
 import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
@@ -225,13 +232,17 @@ export default function ChatApp({
   const hasInput = draft.trim().length > 0 || files.length > 0;
   // Contact buttons go at the end of the turn they were shown in, below the
   // answer, wherever in the turn the tool was called.
-  // Same for the Order assistant's menu cards.
-  const endOfTurn = (name: string) => {
+  // Same for the Order assistant's menu cards and the insurance cards.
+  // `pick` reads what the card needs from the call (its input by default).
+  const endOfTurn = (
+    names: string[],
+    pick: (m: { input: string; result: string }) => string = (m) => m.input,
+  ) => {
     const at = new Map<number, string[]>();
     for (let i = 0, turn: string[] = []; i < session.items.length; i++) {
       const m = session.items[i];
-      if (m.kind === 'tool' && m.name === name && m.status === 'done')
-        turn.push(m.input);
+      if (m.kind === 'tool' && names.includes(m.name) && m.status === 'done')
+        turn.push(pick(m));
       const next = session.items[i + 1];
       if (turn.length && (!next || next.kind === 'user')) {
         at.set(i, turn);
@@ -240,8 +251,18 @@ export default function ChatApp({
     }
     return at;
   };
-  const contactAt = endOfTurn('show_contact_options');
-  const menuAt = endOfTurn('show_menu');
+  const contactAt = endOfTurn(['show_contact_options']);
+  const menuAt = endOfTurn(['show_menu']);
+  const policyAt = endOfTurn(['get_policy']);
+  const photoAt = endOfTurn(['request_photo']);
+  // A claim card per claim the turn filed or looked up, found by the number
+  // in the call's result label.
+  const claimAt = endOfTurn(
+    ['file_claim', 'get_claim_status'],
+    (m) => m.result.match(/CLM-\d{4}-\d{5}/)?.[0] ?? '',
+  );
+  const claim = (id: string) =>
+    session.claims?.list.find((k) => k.claim_id === id);
   // The order card goes once, at the end of the last turn that changed the
   // order, and always shows its current state.
   let orderAt = -1;
@@ -431,6 +452,7 @@ export default function ChatApp({
         items: s.items.slice(0, s.turn.items),
         api: s.api.slice(0, s.turn.api),
         order: s.turn.order,
+        claims: s.turn.claims,
       },
       s.turn.input,
     );
@@ -475,6 +497,7 @@ export default function ChatApp({
           api: start.api.length,
           input,
           order: start.order,
+          claims: start.claims,
         },
       },
       input,
@@ -865,6 +888,31 @@ export default function ChatApp({
                       onOpen={setMenuLang}
                     />
                   ))}
+                  {policyAt
+                    .get(i)
+                    ?.slice(-1)
+                    .map((input, k) => (
+                      <PolicyCard key={k} input={input} />
+                    ))}
+                  {photoAt
+                    .get(i)
+                    ?.slice(-1)
+                    .map((input, k) => (
+                      <PhotoRequest
+                        key={k}
+                        input={input}
+                        // Done once a later message carries a file.
+                        sent={session.items
+                          .slice(i + 1)
+                          .some((n) => n.kind === 'user' && n.files.length > 0)}
+                        busy={busy}
+                        onUpload={() => fileRef.current?.click()}
+                      />
+                    ))}
+                  {[...new Set(claimAt.get(i))].map((id) => {
+                    const cl = claim(id);
+                    return cl && <ClaimCard key={id} claim={cl} />;
+                  })}
                   {i === orderAt && session.order && (
                     <OrderCard
                       order={session.order}
@@ -2258,6 +2306,154 @@ function MenuCard({
       </span>
       <MenuList dishes={m.dishes} lang={m.lang} onPick={onPick} />
       <p className="text-muted m-0 text-[11px]">{x.order.tapHint}</p>
+    </section>
+  );
+}
+
+// Auto insurance cards. Each renders in the language its tool was called
+// with (the conversation's), like the order cards.
+const langArg = (input: string): Lang => {
+  try {
+    return (JSON.parse(input) as { lang?: unknown }).lang === 'es'
+      ? 'es'
+      : 'en';
+  } catch {
+    return 'en';
+  }
+};
+const cardTitle = `${mono} text-accent text-[11px] tracking-wider uppercase`;
+const cardBox =
+  'bg-panel border-line2 mob:max-w-full ml-3 flex max-w-[min(88%,440px)] flex-col gap-3 border p-4 text-[13px]';
+const cardRow = 'flex items-baseline justify-between gap-4';
+
+// get_policy: the account's policy, car and coverages.
+function PolicyCard({ input }: { input: string }) {
+  const lang = langArg(input);
+  const x = CHAT[lang].insurance;
+  const p = describePolicy(lang);
+  const v = POLICY.vehicle;
+  return (
+    <section aria-label={x.policy} className={cardBox}>
+      <div className={cardRow}>
+        <span className={cardTitle}>{x.policy}</span>
+        <span className={`${mono} text-muted text-[11px]`}>
+          {p.policy_number}
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-ink font-semibold">
+          {v.year} {v.make} {v.model} · {p.vehicle.color_label}
+        </span>
+        <span className="text-muted text-[12px]">
+          {p.holder} · {x.plate} {v.plate}
+        </span>
+        <span className="text-muted text-[12px]">
+          {x.start} {p.start} · {x.noEnd} ·{' '}
+          {x.premium.replace('{n}', `$${POLICY.premium_month}`)}
+        </span>
+      </div>
+      <div className="border-line2 flex flex-col gap-1.5 border-t pt-2">
+        <span className={`${mono} text-muted text-[11px] uppercase`}>
+          {x.coverages}
+        </span>
+        <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+          {p.coverages.map((c) => (
+            <li key={c.id} className="flex flex-col gap-0.5">
+              <div className={cardRow}>
+                <span className="text-ink">{c.name}</span>
+                <span className={`${mono} text-ink shrink-0 text-[12px]`}>
+                  {c.deductible === null
+                    ? ''
+                    : c.deductible === 0
+                      ? x.noDeductible
+                      : `${x.deductible} $${c.deductible}`}
+                </span>
+              </div>
+              <span className="text-muted text-[12px] leading-snug">
+                {c.limit}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+// request_photo: a button that opens the file picker (the camera on phones),
+// shown as sent once the next message carries a file.
+function PhotoRequest({
+  input,
+  sent,
+  busy,
+  onUpload,
+}: {
+  input: string;
+  sent: boolean;
+  busy: boolean;
+  onUpload: () => void;
+}) {
+  const x = CHAT[langArg(input)].insurance;
+  return (
+    <div className="mob:pr-3 flex flex-col items-start gap-1.5 pl-3">
+      <button
+        type="button"
+        onClick={onUpload}
+        disabled={busy || sent}
+        className="bg-accent text-on-accent mob:h-11 inline-flex h-9 cursor-pointer items-center gap-2 border-0 px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <Icon d={I.clip} size={14} />
+        {sent ? x.photoSent : x.upload}
+      </button>
+      {!sent && (
+        <span className="text-muted text-[12px] leading-snug">
+          {x.photoHint}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// file_claim and get_claim_status: the claim with its number. The status is
+// always "in review": the demo stops there.
+function ClaimCard({ claim }: { claim: Claim }) {
+  const x = CHAT[claim.lang].insurance;
+  const rows: [string, string][] = [
+    [x.incident, INCIDENT_LABEL[claim.incident][claim.lang]],
+    [x.date, claim.date],
+    [x.deductible, claim.deductible ? `$${claim.deductible}` : x.noDeductible],
+    [x.filed, claim.filed],
+  ];
+  return (
+    <section aria-label={`${x.claim} ${claim.claim_id}`} className={cardBox}>
+      <div className={cardRow}>
+        <span className={cardTitle}>{x.claim}</span>
+        <span
+          className={`${mono} border-warn text-warn border px-1.5 py-0.5 text-[10px] uppercase`}
+        >
+          {x.inReview}
+        </span>
+      </div>
+      <span className={`${mono} text-ink text-[15px] font-semibold`}>
+        {claim.claim_id}
+      </span>
+      <dl className="m-0 flex flex-col gap-1">
+        {rows.map(([k, v]) => (
+          <div key={k} className={cardRow}>
+            <dt className="text-muted">{k}</dt>
+            <dd className="text-ink m-0 text-right">{v}</dd>
+          </div>
+        ))}
+        {claim.damage_areas.length > 0 && (
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-muted">{x.damage}</dt>
+            <dd className="text-ink m-0">{claim.damage_areas.join(' · ')}</dd>
+          </div>
+        )}
+      </dl>
+      <p className="text-muted m-0 text-[11px] leading-normal">
+        {COVERAGE[claim.coverage].label[claim.lang]} · {x.claimNote}
+      </p>
     </section>
   );
 }
