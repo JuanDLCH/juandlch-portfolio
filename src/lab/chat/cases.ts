@@ -44,6 +44,8 @@ export interface ChatCase {
   openaiTools?: OpenAI.Responses.Tool[];
   /** Names of client tools from tools.ts that this case enables. */
   clientTools?: string[];
+  /** `false` hides the attach button: the case takes only text and voice. */
+  attachments?: boolean;
   /** Recorded walkthrough with its WebVTT captions (URLs under public/ or a
    * CDN). Cases without one show a placeholder in the Watch demo dialog. */
   video?: { src: string; captions: string };
@@ -276,6 +278,7 @@ export const CASES: ChatCase[] = [
       },
     ],
     clientTools: ['search_menu', 'show_menu', 'update_order', 'place_order'],
+    attachments: false,
   },
   {
     id: 'insurance',

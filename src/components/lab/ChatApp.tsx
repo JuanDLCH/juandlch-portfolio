@@ -490,7 +490,7 @@ export default function ChatApp({
   };
 
   const onFiles = async (list: FileList | null) => {
-    if (!list) return;
+    if (!list || c.attachments === false) return;
     const next = [...files];
     for (const f of Array.from(list)) {
       if (
@@ -1004,15 +1004,17 @@ export default function ChatApp({
                     />
                     <div className="mob:contents flex items-center justify-between gap-2 px-1 pb-1">
                       <div className="mob:contents flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => fileRef.current?.click()}
-                          aria-label={x.attach}
-                          title={x.attachHint}
-                          className={`${iconBtn} text-muted desk:size-8 size-11 border-transparent`}
-                        >
-                          <Icon d={I.clip} />
-                        </button>
+                        {c.attachments !== false && (
+                          <button
+                            type="button"
+                            onClick={() => fileRef.current?.click()}
+                            aria-label={x.attach}
+                            title={x.attachHint}
+                            className={`${iconBtn} text-muted desk:size-8 size-11 border-transparent`}
+                          >
+                            <Icon d={I.clip} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => void onMic()}
