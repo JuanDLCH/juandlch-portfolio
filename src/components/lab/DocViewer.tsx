@@ -1,6 +1,7 @@
-// A document of the conversation rendered with pdf.js, with the passages an
-// answer cites highlighted over the page. Shown in the chat's document
-// dialog when a document citation (or a document chip) is clicked.
+// A Knowledge Base document: PDFs rendered with pdf.js, with the passages an
+// answer cites highlighted over the page; images shown whole, outlined when
+// cited. Shown in the chat's document dialog when a document citation (or a
+// Knowledge Base slot) is clicked.
 import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { parseRef, type Doc } from '../../lab/chat/docs';
@@ -24,7 +25,8 @@ export default function DocViewer({
   const start = parseRef(focus);
   const [docId, setDocId] = useState(start?.doc ?? docs[0]?.id);
   const [page, setPage] = useState(start?.page ?? 1);
-  const doc = docs.find((d) => d.id === docId) ?? docs[0];
+  // Undefined once removed from the Knowledge Base.
+  const doc = docs.find((d) => d.id === docId);
   const refs = ids.flatMap((id) => {
     const r = parseRef(id);
     return r && r.doc === doc?.id ? [{ id, ...r }] : [];
@@ -51,8 +53,9 @@ export default function DocViewer({
     h: number;
     boxes: (Box & { id: string })[];
   } | null>(null);
-  const pdf = loaded?.id === doc?.id ? loaded.pdf : null;
-  const failed = loaded?.id === doc?.id && !loaded.pdf;
+  const mine = loaded && doc && loaded.id === doc.id ? loaded : null;
+  const pdf = mine?.pdf ?? null;
+  const failed = !!mine && !mine.pdf;
   const viewKey = `${doc?.id}-${page}`;
   const view = drawn?.key === viewKey ? drawn : null;
 
@@ -69,7 +72,7 @@ export default function DocViewer({
 
   // One pdf.js document per open document, released on switch or close.
   useEffect(() => {
-    if (!doc) return;
+    if (!doc || doc.kind === 'image') return;
     let gone = false;
     let release = () => {};
     void (async () => {
@@ -166,7 +169,19 @@ export default function DocViewer({
       ?.scrollIntoView({ block: 'center' });
   }, [view]);
 
-  if (!doc) return null;
+  if (!doc)
+    return (
+      <div>
+        <h2
+          id="jd-doc-title"
+          className="m-0 text-[clamp(18px,3.6svh,22px)] font-medium tracking-[-0.03em]"
+        >
+          {x.kbTag}
+        </h2>
+        <p className="text-muted m-0 mt-2 text-[13px]">{x.removed}</p>
+      </div>
+    );
+  const image = doc.kind === 'image';
   const pages = doc.pages.length;
   const go = (n: number) => setPage(Math.min(Math.max(n, 1), pages));
   const nav =
@@ -175,9 +190,7 @@ export default function DocViewer({
   // The file only lives in memory: build it when it's asked for.
   const download = () => {
     const bytes = Uint8Array.from(atob(doc.data), (ch) => ch.charCodeAt(0));
-    const url = URL.createObjectURL(
-      new Blob([bytes], { type: 'application/pdf' }),
-    );
+    const url = URL.createObjectURL(new Blob([bytes], { type: doc.type }));
     const a = document.createElement('a');
     a.href = url;
     a.download = doc.name;
@@ -222,42 +235,48 @@ export default function DocViewer({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => go(page - 1)}
-          disabled={page <= 1}
-          aria-label={x.prev}
-          className={nav}
-        >
-          ‹
-        </button>
-        <span className="text-muted min-w-[88px] text-center font-mono text-[11px]">
-          {x.pageOf.replace('{n}', `${page}`).replace('{total}', `${pages}`)}
-        </span>
-        <button
-          type="button"
-          onClick={() => go(page + 1)}
-          disabled={page >= pages}
-          aria-label={x.next}
-          className={nav}
-        >
-          ›
-        </button>
-        {citedPages.length > 0 && (
-          <span className="flex flex-wrap items-center gap-1.5 pl-1">
-            <span className="text-muted text-[11px]">{x.cited}</span>
-            {citedPages.map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={n === page}
-                onClick={() => go(n)}
-                className={`${nav} ${n === page ? 'border-accent text-accent' : ''}`}
-              >
-                {n}
-              </button>
-            ))}
-          </span>
+        {!image && (
+          <>
+            <button
+              type="button"
+              onClick={() => go(page - 1)}
+              disabled={page <= 1}
+              aria-label={x.prev}
+              className={nav}
+            >
+              ‹
+            </button>
+            <span className="text-muted min-w-[88px] text-center font-mono text-[11px]">
+              {x.pageOf
+                .replace('{n}', `${page}`)
+                .replace('{total}', `${pages}`)}
+            </span>
+            <button
+              type="button"
+              onClick={() => go(page + 1)}
+              disabled={page >= pages}
+              aria-label={x.next}
+              className={nav}
+            >
+              ›
+            </button>
+            {citedPages.length > 0 && (
+              <span className="flex flex-wrap items-center gap-1.5 pl-1">
+                <span className="text-muted text-[11px]">{x.cited}</span>
+                {citedPages.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={n === page}
+                    onClick={() => go(n)}
+                    className={`${nav} ${n === page ? 'border-accent text-accent' : ''}`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </span>
+            )}
+          </>
         )}
         <button
           type="button"
@@ -269,7 +288,22 @@ export default function DocViewer({
       </div>
       <div className="bg-bg border-line2 min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border">
         <div ref={wrapRef} className="relative w-full">
-          {failed ? (
+          {image ? (
+            <>
+              <img
+                src={`data:${doc.type};base64,${doc.data}`}
+                alt={doc.name}
+                className="block h-auto w-full"
+              />
+              {refs.length > 0 && (
+                <span
+                  aria-hidden="true"
+                  data-focus=""
+                  className="border-accent bg-accent/10 pointer-events-none absolute inset-0 border-[3px]"
+                />
+              )}
+            </>
+          ) : failed ? (
             <p className="text-muted m-0 p-6 text-[13px]">{x.failed}</p>
           ) : (
             <>

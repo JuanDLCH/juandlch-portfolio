@@ -1022,11 +1022,11 @@ const showContactOptions: ClientTool = {
   summary: (r) => (r as { shown: string[] }).shown.join(' · '),
 };
 
-// Document agent tools: they read the conversation's documents
-// (ChatSession.docs), indexed in the browser when they were attached.
+// Document agent tools: they read the Knowledge Base (ChatSession.docs),
+// PDFs indexed in the browser when added and images.
 const NO_DOCS = {
   error:
-    'No documents in this conversation yet. Ask the user to attach a PDF (up to 5, 20 pages each).',
+    'The Knowledge Base is empty. Ask the user to add documents to it first (up to 5 PDFs or images).',
 };
 const docsOf = (s: ChatSession) => s.docs ?? [];
 /** Fails without documents, and labels failed calls instead of summing up a
@@ -1079,21 +1079,36 @@ const listDocuments: ClientTool = {
   def: {
     name: 'list_documents',
     description:
-      "List the documents the user attached in this conversation: id, file name, pages, detected language, pages without a text layer (scans, read them with view_page) and each page's first line as an outline. Call it before working with the documents.",
+      "List the documents in the user's Knowledge Base: id, file name and kind. For PDFs: pages, detected language, pages without a text layer (scans, look at them with view_page) and each page's first heading as an outline. Images have no text to search: look at them with view_page. Call it before working with the documents.",
     input_schema: { type: 'object', properties: {} },
   },
   validate: () => null,
   run: async (_i, _signal, s) => {
     const docs = docsOf(s);
     return {
-      documents: docs.map((d) => ({
-        id: d.id,
-        name: d.name,
-        pages: d.pages.length,
-        language: docLanguage(d),
-        pages_without_text: d.pages.flatMap((p, k) => (p.text ? [] : [k + 1])),
-        outline: d.pages.map((p, k) => `p. ${k + 1}: ${p.head || '(no text)'}`),
-      })),
+      documents: docs.map((d) =>
+        d.kind === 'image'
+          ? {
+              id: d.id,
+              name: d.name,
+              kind: 'image',
+              size: `${d.pages[0].w}x${d.pages[0].h}`,
+              note: 'Not searchable by text: look at it with view_page (page 1).',
+            }
+          : {
+              id: d.id,
+              name: d.name,
+              kind: 'pdf',
+              pages: d.pages.length,
+              language: docLanguage(d),
+              pages_without_text: d.pages.flatMap((p, k) =>
+                p.text ? [] : [k + 1],
+              ),
+              outline: d.pages.map(
+                (p, k) => `p. ${k + 1}: ${p.head || '(no text)'}`,
+              ),
+            },
+      ),
     };
   },
   summary: (r, es) => {
@@ -1106,7 +1121,7 @@ const searchDocuments: ClientTool = {
   def: {
     name: 'search_documents',
     description:
-      'Keyword search (BM25) over the passages of the attached documents. Words must appear in the text, so write the query in the language of the document, with the terms it would use (e.g. "termination notice days" for an English contract), and try synonyms or other wording if nothing relevant comes back. Returns up to 8 passages, best first, each with its id, page, text and source (label and url to cite).',
+      'Keyword search (BM25) over the text passages of the PDFs in the Knowledge Base (images are not searched: look at them with view_page). Words must appear in the text, so write the query in the language of the document, with the terms it would use (e.g. "termination notice days" for an English contract), and try synonyms or other wording if nothing relevant comes back. Returns up to 8 passages, best first, each with its id, page, text and source (label and url to cite).',
     input_schema: {
       type: 'object',
       properties: {
@@ -1128,8 +1143,12 @@ const searchDocuments: ClientTool = {
     const scope = i.doc ? docs.filter((d) => d.id === i.doc) : docs;
     if (!scope.length) return { error: `Unknown document "${String(i.doc)}".` };
     const hits = searchDocs(scope, String(i.query));
+    const images = scope.filter((d) => d.kind === 'image');
     return {
       passages: hits.map((h) => ({ doc: h.d.id, ...passage(h.d, h.c) })),
+      ...(images.length && {
+        images_not_searched: images.map((d) => `${d.id} "${d.name}"`),
+      }),
       ...(hits.length
         ? {}
         : {
@@ -1172,6 +1191,8 @@ const readPages: ClientTool = {
     const r = pageRange(s, i, READ_PAGES);
     if ('error' in r) return r;
     const { d, from } = r;
+    if (d.kind === 'image')
+      return { error: `${d.id} is an image: look at it with view_page.` };
     let to = r.to;
     let chars = 0;
     const pages = [];
@@ -1217,7 +1238,7 @@ const viewPage: ClientTool = {
   def: {
     name: 'view_page',
     description:
-      'See one page of a document as an image: for pages without a text layer (scans), or when a table, chart, signature or layout matters and the text is not enough. Cite the page with the source it returns. The image is only available during this turn.',
+      'Look at an image of the Knowledge Base (page 1), or at one page of a PDF as an image: for images, pages without a text layer (scans), or when a table, chart, signature or layout matters and the text is not enough. Cite it with the source it returns. The image is only available during this turn: look again in later turns if you need it.',
     input_schema: {
       type: 'object',
       properties: {
@@ -1237,19 +1258,28 @@ const viewPage: ClientTool = {
     const r = pageRange(s, i, 1);
     if ('error' in r) return r;
     const { d, from: page } = r;
-    const { pageJpeg } = await import('../pdf');
     const id = pageId(d, page);
+    const image =
+      d.kind === 'image'
+        ? d.data
+        : await (await import('../pdf')).pageJpeg(d.data, page);
     return {
       doc: d.id,
       page,
+      kind: d.kind,
       source: sourceOf(d, page, id),
-      note: 'The page follows as an image.',
-      images: [await pageJpeg(d.data, page)],
+      note:
+        d.kind === 'image'
+          ? 'The image follows. Describe only what is visible in it.'
+          : 'The page follows as an image.',
+      images: [image],
     };
   },
   summary: (r, es) => {
-    const x = r as { doc: string; page: number };
-    return `${x.doc} · ${es ? 'pág.' : 'p.'} ${x.page}`;
+    const x = r as { doc: string; page: number; kind: string };
+    return x.kind === 'image'
+      ? `${x.doc} · ${es ? 'imagen' : 'image'}`
+      : `${x.doc} · ${es ? 'pág.' : 'p.'} ${x.page}`;
   },
 };
 

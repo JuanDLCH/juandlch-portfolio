@@ -1,7 +1,8 @@
-// Document intelligence: the visitor's PDFs, indexed in the browser (see
-// pdf.ts, indexPdf) and searched here. Nothing is uploaded to the provider:
-// the model reads the documents through the tools in tools.ts, passage by
-// passage, and cites passages by id so the viewer can highlight them.
+// Document intelligence: the visitor's Knowledge Base of PDFs and images,
+// read in the browser (see kb.ts and pdf.ts, indexPdf) and searched here.
+// Nothing is uploaded to the provider: the model reads the documents through
+// the tools in tools.ts, passage by passage (images whole), and cites them by
+// id so the viewer can highlight them.
 
 /** A box on a page in PDF units: x, y (bottom, from the page's bottom edge),
  * width and height. One per line of a passage. */
@@ -31,12 +32,17 @@ export interface DocIndex {
   chunks: Chunk[];
 }
 
-/** A document of the conversation (ChatSession.docs). */
+/** A document of the Knowledge Base (ChatSession.docs). Images have one
+ * page and no passages: the model looks at them with view_page. */
 export interface Doc extends DocIndex {
-  /** d1, d2… in the order they were sent. */
+  /** d1, d2… in the order they were added; never reused. */
   id: string;
+  kind: 'pdf' | 'image';
   name: string;
-  /** The PDF itself, base64: for the viewer and the download. */
+  /** Media type of `data`. */
+  type: string;
+  /** The file, base64: for the viewer, the download and view_page (images
+   * are stored downscaled). */
   data: string;
 }
 
@@ -69,17 +75,24 @@ export const docLinkId = (href: string) => {
   }
 };
 
-export const sourceOf = (d: Doc, page: number, id: string) => ({
+export const sourceOf = (d: Doc, page: number, id: string) => {
   // Brackets would break the Markdown link the model writes.
-  label: `${d.name.replace(/[[\]()]/g, '')} · p. ${page}`,
-  url: docLink(location.origin, id),
-});
-
-/** What the model reads next to a document sent with a message. */
-export const docNote = (id: string, name: string, ix: DocIndex) => {
-  const blank = ix.pages.filter((p) => !p.text).length;
-  return `[Document ${id} "${name}" added: ${ix.pages.length} ${ix.pages.length === 1 ? 'page' : 'pages'}, ${ix.chunks.length} passages${blank ? `, ${blank} ${blank === 1 ? 'page' : 'pages'} without text (scanned: use view_page)` : ''}. Its content is not in this message: read it with the document tools.]`;
+  const name = d.name.replace(/[[\]()]/g, '');
+  return {
+    label: d.kind === 'image' ? name : `${name} · p. ${page}`,
+    url: docLink(location.origin, id),
+  };
 };
+
+const describe = (d: Doc) =>
+  d.kind === 'image'
+    ? `${d.id} "${d.name}" (image)`
+    : `${d.id} "${d.name}" (PDF, ${d.pages.length} ${d.pages.length === 1 ? 'page' : 'pages'}${d.pages.some((p) => !p.text) ? ', some pages scanned' : ''})`;
+
+/** What the model reads before every message: the Knowledge Base as it is
+ * now, since the visitor can add and remove documents between turns. */
+export const kbNote = (docs: Doc[]) =>
+  `[Knowledge Base now: ${docs.map(describe).join('; ')}. Their content is not in this message: read them with the document tools. Documents not listed here were removed: do not use what you read from them before.]`;
 
 // Search: BM25 over passages, with accents and case folded, a light plural
 // stemmer and word pairs so phrases rank higher.

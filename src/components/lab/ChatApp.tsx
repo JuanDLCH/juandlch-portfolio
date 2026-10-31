@@ -50,7 +50,8 @@ import {
 } from '../../lab/chat/insurance';
 import CvViewer from './CvViewer';
 import DocViewer from './DocViewer';
-import { docLinkId, pageId } from '../../lab/chat/docs';
+import { docLinkId, kbNote, pageId, type Doc } from '../../lab/chat/docs';
+import { readKbFile } from '../../lab/kb';
 import contractUrl from '../../assets/lab/documents/sample-contract.pdf?url';
 import insuredCarUrl from '../../assets/lab/insurance/sample-insured-car.jpg?url';
 import otherCarUrl from '../../assets/lab/insurance/sample-other-car.jpg?url';
@@ -151,6 +152,7 @@ const I = {
   send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
   stop: '<rect x="6" y="6" width="12" height="12"/>',
   file: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
@@ -185,7 +187,8 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   pdfSize: 'file',
   pdfUnreadable: 'file',
   docFile: 'file',
-  docLimit: 'clear',
+  docNone: 'addDoc',
+  docUnreadable: 'file',
   docPages: 'file',
   docSize: 'file',
 };
@@ -430,6 +433,12 @@ export default function ChatApp({
     });
   };
   const setDraft = (v: string) => $drafts.setKey(c.id, v);
+  // Clears the conversation; the Knowledge Base stays (switching cases
+  // clears it too).
+  const clearChat = () => {
+    const { docs, docSeq } = getSession(c.id);
+    setSession(c.id, { ...emptySession(), docs, docSeq });
+  };
   // A case starts from scratch: switching away from a started conversation
   // asks first, then clears it (and anything left in the new case).
   const pickCase = (k: ChatCase, confirmed = false) => {
@@ -486,7 +495,11 @@ export default function ChatApp({
   // log (partial answer, tool calls, the error) is dropped first.
   const retry = () => {
     const s = getSession(c.id);
-    if ($busy.get() || !s.turn) return;
+    if ($busy.get() || readingRef.current || !s.turn) return;
+    // The Knowledge Base may have changed since the turn failed.
+    const input = c.docs
+      ? { ...s.turn.input, context: kbNote(s.docs ?? []) }
+      : s.turn.input;
     void run(
       {
         ...s,
@@ -495,7 +508,7 @@ export default function ChatApp({
         order: s.turn.order,
         claims: s.turn.claims,
       },
-      s.turn.input,
+      input,
     );
   };
 
@@ -504,7 +517,7 @@ export default function ChatApp({
     else if (f === 'voiceKey' || f === 'voiceKeyReview') openKeys('openai');
     else if (f === 'billing') open(BILLING[PROVIDER], '_blank', 'noopener');
     else if (f === 'retry') retry();
-    else if (f === 'clear') setSession(c.id, emptySession());
+    else if (f === 'clear') clearChat();
     else fileRef.current?.click();
   };
 
@@ -512,8 +525,17 @@ export default function ChatApp({
     const text = (override ?? draft).trim();
     // Read the store, not the render's `busy`: a transcription finishing
     // after a turn ended calls this from an older closure.
+    // Nor while a Knowledge Base file is being read: the turn would start
+    // without it.
     if ((!text && files.length === 0) || $busy.get() || readingRef.current)
       return;
+    // Document agent: nothing to answer from until the Knowledge Base has
+    // something. Said here, without spending a request; the message stays.
+    if (c.docs && !getSession(c.id).docs?.length) {
+      if (override) setDraft(override);
+      notice('docNone');
+      return;
+    }
     // No key: the message stays in the composer and the assistant asks for
     // the key, so sending again after adding it just works.
     if (!chatKey) {
@@ -522,21 +544,6 @@ export default function ChatApp({
       return;
     }
     const start = getSession(c.id);
-    // Documents join the conversation as d1, d2…; the model gets a note
-    // with the id instead of the file.
-    let docs = start.docs ?? [];
-    const sent = files.map((f) => {
-      if (!f.doc) return f;
-      const id = `d${docs.length + 1}`;
-      // Same file name twice: the second gets a number, so their sources
-      // can be told apart.
-      const taken = (n: string) => docs.some((d) => d.name === n);
-      let name = f.name;
-      for (let k = 2; taken(name); k++)
-        name = f.name.replace(/(\.pdf)?$/i, ` ${k}$1`);
-      docs = [...docs, { id, name, data: f.data, ...f.doc }];
-      return { ...f, name, docId: id };
-    });
     const user: ChatItem = {
       kind: 'user',
       text,
@@ -547,14 +554,17 @@ export default function ChatApp({
         src: `data:${f.mediaType};base64,${f.data}`,
       })),
     };
-    const input: UserInput = { text, files: sent };
+    const input: UserInput = {
+      text,
+      files,
+      ...(c.docs && { context: kbNote(start.docs ?? []) }),
+    };
     setDraft('');
     $attachments.setKey(c.id, []);
     await run(
       {
         ...start,
         items: [...start.items, user],
-        ...(c.docs && { docs }),
         turn: {
           items: start.items.length + 1,
           api: start.api.length,
@@ -580,22 +590,6 @@ export default function ChatApp({
   // refuse big or long ones before any token is spent.
   const attach = async (f: File): Promise<Attachment | NoticeCode> => {
     const pdf = f.type === 'application/pdf';
-    // Document agent: PDFs only, read into passages right away.
-    if (c.docs) {
-      if (!pdf) return 'docFile';
-      if (f.size > c.docs.maxMB * 1024 * 1024) return 'docSize';
-      try {
-        const { indexPdf } = await import('../../lab/pdf');
-        const [a, doc] = await Promise.all([
-          readAttachment(f),
-          indexPdf(f, c.docs.maxPages),
-        ]);
-        return { ...a, doc };
-      } catch (e) {
-        const code = (e as { code?: string }).code;
-        return code === 'pdfPages' ? 'docPages' : 'pdfUnreadable';
-      }
-    }
     if ((!IMAGE_TYPES.includes(f.type) && !pdf) || f.size > MAX_BYTES)
       return 'file';
     if (!pdf || !c.pdf) return readAttachment(f);
@@ -610,33 +604,60 @@ export default function ChatApp({
   };
   const addFiles = async (list: File[]) => {
     for (const f of list) {
-      // At most c.docs.maxFiles documents per conversation, counting the
-      // ones waiting in the composer.
-      const held =
-        (getSession(c.id).docs?.length ?? 0) +
-        ($attachments.get()[c.id]?.length ?? 0) +
-        readingRef.current;
-      if (c.docs && held >= c.docs.maxFiles) {
-        notice('docLimit');
-        return;
-      }
-      const reads = !!c.docs && f.type === 'application/pdf';
-      if (reads) setReading((readingRef.current += 1));
-      const a = await attach(f).finally(() => {
-        if (reads) setReading((readingRef.current -= 1));
-      });
+      const a = await attach(f);
       if (typeof a === 'string') notice(a);
       else $attachments.setKey(c.id, [...($attachments.get()[c.id] ?? []), a]);
     }
   };
 
-  // Document agent: the sample contract goes to the composer like an upload.
+  // Document agent: files go straight to the Knowledge Base (not to the
+  // composer), read in the browser. Not while a turn runs: it works on a
+  // copy of the session and would drop them when it ends.
+  const addToKb = async (list: File[]) => {
+    if (!c.docs) return;
+    for (const f of list) {
+      if ($busy.get()) return;
+      const held = (getSession(c.id).docs?.length ?? 0) + readingRef.current;
+      if (held >= c.docs.maxFiles) {
+        notice('docLimit');
+        return;
+      }
+      setReading((readingRef.current += 1));
+      const r = await readKbFile(f, c.docs).finally(() =>
+        setReading((readingRef.current -= 1)),
+      );
+      if (typeof r === 'string') {
+        notice(r);
+        continue;
+      }
+      // A turn started meanwhile would overwrite the session: drop the file.
+      if ($busy.get()) return;
+      const s = getSession(c.id);
+      const docs = s.docs ?? [];
+      // Same file name twice: the second gets a number, so their sources
+      // can be told apart.
+      let name = r.name;
+      for (let k = 2; docs.some((d) => d.name === name); k++)
+        name = r.name.replace(/(\.[^.]+)?$/, ` ${k}$1`);
+      const seq = (s.docSeq ?? 0) + 1;
+      setSession(c.id, {
+        ...s,
+        docs: [...docs, { ...r, name, id: `d${seq}` }],
+        docSeq: seq,
+      });
+    }
+    composerRef.current?.focus();
+  };
+  const removeDoc = (id: string) => {
+    if ($busy.get()) return;
+    const s = getSession(c.id);
+    setSession(c.id, { ...s, docs: s.docs?.filter((d) => d.id !== id) });
+  };
   const addSample = async () => {
     const blob = await fetch(contractUrl).then((r) => r.blob());
-    await addFiles([
+    await addToKb([
       new File([blob], x.docs.sampleFile, { type: 'application/pdf' }),
     ]);
-    composerRef.current?.focus();
   };
 
   // Insurance examples: the sample file goes to the composer like an upload.
@@ -650,7 +671,7 @@ export default function ChatApp({
     if (!list || c.attachments === false) return;
     const picked = Array.from(list);
     if (fileRef.current) fileRef.current.value = '';
-    await addFiles(picked);
+    await (c.docs ? addToKb(picked) : addFiles(picked));
   };
 
   const onMic = async () => {
@@ -1091,85 +1112,52 @@ export default function ChatApp({
                 ref={fileRef}
                 type="file"
                 multiple
-                accept={
-                  c.docs
-                    ? 'application/pdf'
-                    : 'image/png,image/jpeg,image/gif,image/webp,application/pdf'
-                }
+                accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}
               />
-              {session.items.length === 0 && (
+              {session.items.length === 0 && c.suggestions.length > 0 && (
                 <div
                   role="group"
                   aria-label={x.suggestions}
                   className="mob:flex-nowrap mob:overflow-x-auto mob:-mx-2.5 mob:px-2.5 mb-2 flex flex-wrap gap-1.5"
                 >
-                  {c.docs && files.length === 0 && reading === 0 && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void addSample()}
-                      className="border-accent bg-panel text-accent hover:text-ink mob:h-9 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Icon d={I.file} size={13} />
-                      {x.docs.sample}
-                    </button>
-                  )}
                   {c.suggestions.map((sg) => {
                     const text = pick(sg.text, es);
-                    // Document agent: with a document in the composer, an
-                    // attach suggestion is sent about it.
-                    const ready = !!c.docs && files.length > 0;
                     return (
                       <button
                         key={text}
                         type="button"
-                        disabled={busy || reading > 0}
+                        disabled={busy}
                         onClick={() => {
-                          if (!sg.attach || ready) return void send(text);
+                          if (!sg.attach) return void send(text);
                           setDraft(text);
                           fileRef.current?.click();
                         }}
                         className="border-line2 bg-panel text-body hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {sg.attach && !ready && <Icon d={I.clip} size={13} />}
-                        {sg.attach && !c.docs ? x.attachSuggestion : text}
+                        {sg.attach && <Icon d={I.clip} size={13} />}
+                        {sg.attach ? x.attachSuggestion : text}
                       </button>
                     );
                   })}
                 </div>
               )}
-              {c.docs && (session.docs?.length ?? 0) > 0 && (
-                <div
-                  role="group"
-                  aria-label={x.docs.strip}
-                  className="mob:flex-nowrap mob:overflow-x-auto mob:-mx-2.5 mob:px-2.5 mb-2 flex flex-wrap items-center gap-1.5"
-                >
-                  <span className={`${label} shrink-0 text-[10px]`}>
-                    {x.docs.strip} {session.docs!.length}/{c.docs.maxFiles}
-                  </span>
-                  {session.docs!.map((d) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      title={`${x.docs.openDoc} ${d.name}`}
-                      onClick={() =>
-                        setDocView({ ids: [], focus: pageId(d, 1) })
-                      }
-                      className={`${mono} border-line2 bg-panel text-chip hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 max-w-[240px] shrink-0 cursor-pointer items-center gap-1.5 border px-2 text-[11px] transition-colors`}
-                    >
-                      <Icon d={I.file} size={13} />
-                      <span className="truncate">{d.name}</span>
-                      <span className="text-muted">
-                        {d.pages.length} {x.docs.pages}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+              {c.docs && (
+                <KnowledgeBase
+                  docs={session.docs ?? []}
+                  max={c.docs.maxFiles}
+                  reading={reading}
+                  busy={busy}
+                  x={x.docs}
+                  onAdd={() => fileRef.current?.click()}
+                  onSample={() => void addSample()}
+                  onOpen={(d) => setDocView({ ids: [], focus: pageId(d, 1) })}
+                  onRemove={removeDoc}
+                />
               )}
               <div className="border-line2 bg-panel border">
-                {(files.length > 0 || reading > 0) && (
+                {files.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 px-3 pt-3">
                     {files.map((f, i) => (
                       <span
@@ -1186,11 +1174,6 @@ export default function ChatApp({
                           <Icon d={I.file} size={13} />
                         )}
                         {f.name}
-                        {f.doc && (
-                          <span className="text-muted">
-                            {f.doc.pages.length} {x.docs.pages}
-                          </span>
-                        )}
                         <button
                           type="button"
                           aria-label={`${x.removeFile} ${f.name}`}
@@ -1206,18 +1189,6 @@ export default function ChatApp({
                         </button>
                       </span>
                     ))}
-                    {reading > 0 && (
-                      <span
-                        role="status"
-                        className={`${mono} border-line2 text-muted inline-flex items-center gap-2 border px-2 py-1 text-[11px]`}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="jd-blink bg-accent size-1.5"
-                        />
-                        {x.docs.reading}
-                      </span>
-                    )}
                   </div>
                 )}
                 {rec !== 'off' ? (
@@ -1267,12 +1238,12 @@ export default function ChatApp({
                     />
                     <div className="mob:contents flex items-center justify-between gap-2 px-1 pb-1">
                       <div className="mob:contents flex gap-1">
-                        {c.attachments !== false && (
+                        {c.attachments !== false && !c.docs && (
                           <button
                             type="button"
                             onClick={() => fileRef.current?.click()}
                             aria-label={x.attach}
-                            title={c.docs ? x.docs.attachHint : x.attachHint}
+                            title={x.attachHint}
                             className={`${iconBtn} text-muted desk:size-8 size-11 border-transparent`}
                           >
                             <Icon d={I.clip} />
@@ -1510,7 +1481,7 @@ export default function ChatApp({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => setSession(c.id, emptySession())}
+                onClick={clearChat}
                 className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
               >
                 {x.clear}
@@ -1907,7 +1878,7 @@ export default function ChatApp({
         </div>
       )}
 
-      {docView && session.docs?.length ? (
+      {docView ? (
         <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
           <button
             type="button"
@@ -1936,7 +1907,7 @@ export default function ChatApp({
                 <div
                   className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
                 >
-                  {docView.ids.length ? x.docs.tag : x.docs.strip}
+                  {docView.ids.length ? x.docs.tag : x.docs.kb}
                 </div>
                 <button
                   type="button"
@@ -1950,7 +1921,7 @@ export default function ChatApp({
               <div className="mt-1.5 flex min-h-0 flex-1 flex-col">
                 <DocViewer
                   key={docView.focus}
-                  docs={session.docs}
+                  docs={session.docs ?? []}
                   ids={docView.ids}
                   focus={docView.focus}
                   x={x.docs}
@@ -2747,6 +2718,131 @@ function PolicyDetails({ lang, holder }: { lang: Lang; holder: string }) {
         </ul>
       </div>
     </div>
+  );
+}
+
+// Document agent: the Knowledge Base the model answers from, as a row of
+// slots above the composer. A filled slot opens the document; an empty one
+// opens the file picker (PDFs and images).
+function KnowledgeBase({
+  docs,
+  max,
+  reading,
+  busy,
+  x,
+  onAdd,
+  onSample,
+  onOpen,
+  onRemove,
+}: {
+  docs: Doc[];
+  max: number;
+  reading: number;
+  busy: boolean;
+  x: ChatCopy['docs'];
+  onAdd: () => void;
+  onSample: () => void;
+  onOpen: (d: Doc) => void;
+  onRemove: (id: string) => void;
+}) {
+  const empty = Math.max(0, max - docs.length - reading);
+  const slot =
+    'mob:h-[68px] relative flex h-[76px] min-w-0 flex-col items-center justify-center gap-1 border';
+  return (
+    <section
+      aria-label={x.kb}
+      className="border-line2 bg-panel mb-2 border px-3 pt-2.5 pb-3"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h3
+          className={`${mono} text-accent m-0 text-[11px] font-normal tracking-[0.08em] uppercase`}
+        >
+          {x.kb}{' '}
+          <span className="text-muted">
+            {docs.length}/{max}
+          </span>
+        </h3>
+        {docs.length === 0 && reading === 0 && (
+          <button
+            type="button"
+            onClick={onSample}
+            disabled={busy}
+            className="text-accent hover:text-ink mob:min-h-9 cursor-pointer border-0 bg-transparent p-0 text-[12px] underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {x.sample}
+          </button>
+        )}
+      </div>
+      <p className="text-muted m-0 mt-0.5 text-[11px] leading-snug">
+        {x.kbHint}
+      </p>
+      <ul className="m-0 mt-2 grid list-none grid-cols-5 gap-2 p-0">
+        {docs.map((d) => (
+          <li key={d.id} className={`${slot} border-line2 bg-bg`}>
+            <button
+              type="button"
+              onClick={() => onOpen(d)}
+              title={`${x.openDoc} ${d.name}`}
+              className="hover:text-ink text-chip flex size-full min-w-0 cursor-pointer flex-col items-center justify-center gap-1 border-0 bg-transparent px-1.5 pt-1 pb-1.5"
+            >
+              {d.kind === 'image' ? (
+                <img
+                  src={`data:${d.type};base64,${d.data}`}
+                  alt=""
+                  className="h-8 min-h-0 w-full object-contain"
+                />
+              ) : (
+                <Icon d={I.file} size={20} />
+              )}
+              <span
+                className={`${mono} block w-full truncate text-center text-[10px]`}
+              >
+                {d.name}
+              </span>
+              <span className="text-muted text-[10px] leading-none">
+                {d.kind === 'image'
+                  ? x.image
+                  : `PDF · ${d.pages.length} ${x.pages}`}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(d.id)}
+              disabled={busy}
+              aria-label={`${x.remove} ${d.name}`}
+              className="text-muted hover:text-ink bg-bg absolute -top-px -right-px grid size-6 cursor-pointer place-items-center border-0 p-0 text-sm leading-none disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ×
+            </button>
+          </li>
+        ))}
+        {Array.from({ length: reading }, (_, i) => (
+          <li
+            key={`r${i}`}
+            role="status"
+            className={`${slot} border-line2 text-muted bg-bg text-[10px]`}
+          >
+            <span aria-hidden="true" className="jd-blink bg-accent size-1.5" />
+            {x.reading}
+          </li>
+        ))}
+        {Array.from({ length: empty }, (_, i) => (
+          <li key={`e${i}`} className="contents">
+            <button
+              type="button"
+              onClick={onAdd}
+              disabled={busy}
+              aria-label={x.add}
+              title={x.add}
+              className={`${slot} border-line2 text-muted hover:border-accent hover:text-accent cursor-pointer border-dashed bg-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              <Icon d={I.plus} size={16} />
+              <span className="mob:hidden text-[10px]">{x.addShort}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

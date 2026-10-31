@@ -41,6 +41,9 @@ export const nextNoticeId = () => ++noticeSeq;
 export interface UserInput {
   text: string;
   files: Attachment[];
+  /** Sent to the model before the text, not shown in the log (the document
+   * agent's Knowledge Base note). */
+  context?: string;
 }
 
 export interface ChatSession {
@@ -62,8 +65,10 @@ export interface ChatSession {
   /** Auto insurance assistant: filed claims and the latest photo check (see
    * chat/insurance.ts). */
   claims?: Claims;
-  /** Document agent: the PDFs sent so far, indexed (see chat/docs.ts). */
+  /** Document agent: its Knowledge Base, PDFs and images (see chat/docs.ts). */
   docs?: Doc[];
+  /** Last document id handed out, so removed ids are never reused. */
+  docSeq?: number;
 }
 
 export const emptySession = (): ChatSession => ({

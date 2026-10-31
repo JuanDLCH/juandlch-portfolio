@@ -3,7 +3,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { ChatItem, ChatSession, UserInput } from '../store';
 import { MODELS, type ChatCase } from './cases';
-import { docNote } from './docs';
 import { CLIENT_TOOLS } from './tools';
 import {
   PAGES_DROPPED,
@@ -33,42 +32,41 @@ const userContent = (
   input: UserInput,
 ): Anthropic.Beta.BetaContentBlockParam[] => [
   ...input.files.flatMap((f): Anthropic.Beta.BetaContentBlockParam[] =>
-    f.doc
-      ? [{ type: 'text', text: docNote(f.docId ?? '', f.name, f.doc) }]
-      : f.pages
+    f.pages
+      ? [
+          { type: 'text' as const, text: pdfNote(f) },
+          {
+            type: 'image' as const,
+            source: {
+              type: 'base64' as const,
+              media_type: 'image/jpeg' as const,
+              data: f.pages[0],
+            },
+          },
+        ]
+      : f.mediaType === 'application/pdf'
         ? [
-            { type: 'text' as const, text: pdfNote(f) },
             {
-              type: 'image' as const,
+              type: 'document',
               source: {
-                type: 'base64' as const,
-                media_type: 'image/jpeg' as const,
-                data: f.pages[0],
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: f.data,
               },
             },
           ]
-        : f.mediaType === 'application/pdf'
-          ? [
-              {
-                type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: f.data,
-                },
+        : [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: f.mediaType as 'image/png',
+                data: f.data,
               },
-            ]
-          : [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: f.mediaType as 'image/png',
-                  data: f.data,
-                },
-              },
-            ],
+            },
+          ],
   ),
+  ...(input.context ? [{ type: 'text' as const, text: input.context }] : []),
   ...(input.text ? [{ type: 'text' as const, text: input.text }] : []),
 ];
 
