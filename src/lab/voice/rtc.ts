@@ -49,8 +49,6 @@ export interface Call {
   /** The server accepted the resume (otherwise it's a new call). */
   resumed: boolean;
   mute: (on: boolean) => void;
-  /** Sophie's speaking speed, 0.8–1.5 (applies from her next answer). */
-  setSpeed: (speed: number) => void;
   /** Asks Sophie to wrap up (the session is about to end). */
   wrapUp: () => void;
   /** Hangs up here and tells the server. */
@@ -74,7 +72,6 @@ export async function connect(opts: {
   lang: 'en' | 'es';
   mic: MediaStream;
   audio: HTMLAudioElement;
-  speed: number;
   /** Ended call to continue, with what was said in it. */
   resume?: {
     callId: string;
@@ -107,7 +104,6 @@ export async function connect(opts: {
         sdp: offer.sdp,
         token: opts.token,
         lang: opts.lang,
-        speed: opts.speed,
         resume: opts.resume?.callId,
       }),
     });
@@ -296,11 +292,6 @@ export async function connect(opts: {
     seconds: body.seconds ?? 180,
     budget: body.budget ?? body.seconds ?? 180,
     resumed: !!body.resumed,
-    setSpeed: (speed) =>
-      send({
-        type: 'session.update',
-        session: { type: 'realtime', audio: { output: { speed } } },
-      }),
     mute: (m) => {
       track.enabled = !m;
     },

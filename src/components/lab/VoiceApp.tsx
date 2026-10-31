@@ -114,7 +114,6 @@ const CONTACT_TALK =
 
 /** Shorter remainders start a new call instead (as the Worker does). */
 const MIN_RESUME_S = 10;
-const SPEED = { min: 0.8, max: 1.5, step: 0.05 };
 
 const monoLabel = `${mono} text-[10px] tracking-[0.08em] uppercase`;
 
@@ -195,8 +194,6 @@ export default function VoiceApp() {
   const usedRef = useRef(0);
   // Ended call with time left: Start resumes it instead of a new call.
   const [resumable, setResumable] = useState<string | null>(null);
-  // Sophie's speaking speed (and the greeting's).
-  const [speed, setSpeed] = useState(1);
   const [metrics, setMetrics] = useState({ connect: 0, turn: 0, bargeIns: 0 });
   const [sheet, setSheet] = useState(false);
   // A moment of expression on Sophie's face (SophieOrb plays it).
@@ -419,7 +416,6 @@ export default function VoiceApp() {
         lang,
         mic,
         audio: remoteRef.current!,
-        speed,
         resume: resume ? { callId: resume, history } : undefined,
         on: {
           activity: onActivity,
@@ -522,14 +518,6 @@ export default function VoiceApp() {
     const el = logRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [lines]);
-
-  // Speed: the greeting follows it right away; Sophie from her next answer
-  // (sent once the slider settles).
-  useEffect(() => {
-    if (greetRef.current) greetRef.current.playbackRate = speed;
-    const id = setTimeout(() => callRef.current?.setSpeed(speed), 300);
-    return () => clearTimeout(id);
-  }, [speed]);
 
   // Browsers block sound until the visitor interacts with the page (unless
   // they came from the landing): then the greeting plays on the first click
@@ -873,24 +861,6 @@ export default function VoiceApp() {
                 {x.startOver}
               </button>
             )}
-            <label
-              className={`${mono} text-muted flex items-center gap-2.5 text-[10px] tracking-[0.08em] uppercase`}
-            >
-              {x.speed}
-              <input
-                type="range"
-                min={SPEED.min}
-                max={SPEED.max}
-                step={SPEED.step}
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
-                aria-valuetext={`${speed.toFixed(2)}×`}
-                className="accent-accent h-1 w-[clamp(90px,10vw,120px)] cursor-pointer"
-              />
-              <span className="text-ink w-[3.6em] text-left tabular-nums">
-                {speed.toFixed(2)}×
-              </span>
-            </label>
             {failed && (
               <a
                 href="/lab/cv"

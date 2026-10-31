@@ -72,7 +72,6 @@ async function startSession(req: Request, env: Env) {
     sdp?: unknown;
     token?: unknown;
     lang?: unknown;
-    speed?: unknown;
     resume?: unknown;
   } | null;
   const sdp = body?.sdp;
@@ -86,10 +85,6 @@ async function startSession(req: Request, env: Env) {
   )
     return json({ error: 'bad_request' }, 400);
   const lang = body?.lang === 'es' ? 'es' : 'en';
-  const speed =
-    typeof body?.speed === 'number' && Number.isFinite(body.speed)
-      ? Math.min(1.5, Math.max(0.8, body.speed))
-      : 1;
   const resume =
     typeof body?.resume === 'string' && CALL_ID.test(body.resume)
       ? body.resume
@@ -126,12 +121,7 @@ async function startSession(req: Request, env: Env) {
 
   let call: { sdp: string; callId: string } | null = null;
   try {
-    const session = sessionConfig(
-      env,
-      await loadProfile(env, req),
-      lang,
-      speed,
-    );
+    const session = sessionConfig(env, await loadProfile(env, req), lang);
     call = await createCall(env, sdp, session);
     // A few seconds of grace for the connection to come up.
     const endsAt = Date.now() + (seconds + 5) * 1000;
