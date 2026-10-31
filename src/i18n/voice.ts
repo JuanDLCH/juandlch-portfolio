@@ -68,6 +68,14 @@ const EN = {
     mic: 'Sophie needs your microphone to hear you. Allow it in your browser and try again.',
     network: 'No connection. Check your network and try again.',
   },
+  resume: 'Resume',
+  startOver: 'Start over',
+  resumedNote: 'call resumed · left',
+  paused:
+    'Call paused. You have {t} left: resume whenever you want, Sophie remembers the conversation.',
+  droppedPaused:
+    'The call dropped. You still have {t}: resume and Sophie picks up where you left off.',
+  speed: 'Speed',
   textChat: 'Chat with my CV',
   reachOut: 'Want to keep talking? Reach Juan Diego directly:',
 };
@@ -140,6 +148,14 @@ const ES: typeof EN = {
     mic: 'Sophie necesita tu micrófono para escucharte. Permítelo en el navegador y vuelve a intentarlo.',
     network: 'Sin conexión. Revisa tu red y vuelve a intentarlo.',
   },
+  resume: 'Reanudar',
+  startOver: 'Empezar de cero',
+  resumedNote: 'llamada reanudada · quedan',
+  paused:
+    'Llamada en pausa. Te quedan {t}: reanuda cuando quieras, Sophie recuerda la conversación.',
+  droppedPaused:
+    'Se cayó la llamada. Aún te quedan {t}: reanuda y Sophie sigue donde iban.',
+  speed: 'Velocidad',
   textChat: 'Chatear con mi CV',
   reachOut:
     '¿Quieres seguir la conversación? Escríbele a Juan Diego directamente:',

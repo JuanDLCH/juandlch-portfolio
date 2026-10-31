@@ -33,6 +33,15 @@ export class VoiceQuota extends DurableObject<Env> {
     return null;
   }
 
+  /** Marks a resumed call active, without counting a new session. */
+  async hold(ip: string, until: number): Promise<StartError | null> {
+    const s = this.ctx.storage;
+    const active = await s.get<number>(`active:${ip}`);
+    if (active && active > Date.now()) return 'busy';
+    await s.put(`active:${ip}`, until);
+    return null;
+  }
+
   /** Gives the session back: OpenAI never started it. */
   async refund(ip: string) {
     const s = this.ctx.storage;

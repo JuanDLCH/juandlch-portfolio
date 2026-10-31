@@ -11,6 +11,7 @@ export const sessionConfig = (
   env: Env,
   profile: string,
   lang: 'en' | 'es',
+  speed: number,
 ): RealtimeSessionCreateRequest => ({
   type: 'realtime',
   model: env.VOICE_MODEL,
@@ -30,7 +31,8 @@ export const sessionConfig = (
         interrupt_response: true,
       },
     },
-    output: { voice: env.VOICE_NAME },
+    // The visitor sets the speed (0.8–1.5) and may change it mid-call.
+    output: { voice: env.VOICE_NAME, speed },
   },
   tools: [
     CONTACT_TOOL as unknown as NonNullable<

@@ -42,9 +42,15 @@ export interface CallHandlers {
 
 export interface Call {
   callId: string;
-  /** Session length the server enforces. */
+  /** Seconds this call may last (what's left of the budget). */
   seconds: number;
+  /** The whole session budget, across resumes. */
+  budget: number;
+  /** The server accepted the resume (otherwise it's a new call). */
+  resumed: boolean;
   mute: (on: boolean) => void;
+  /** Sophie's speaking speed, 0.8–1.5 (applies from her next answer). */
+  setSpeed: (speed: number) => void;
   /** Asks Sophie to wrap up (the session is about to end). */
   wrapUp: () => void;
   /** Hangs up here and tells the server. */
@@ -68,6 +74,12 @@ export async function connect(opts: {
   lang: 'en' | 'es';
   mic: MediaStream;
   audio: HTMLAudioElement;
+  speed: number;
+  /** Ended call to continue, with what was said in it. */
+  resume?: {
+    callId: string;
+    history: { role: 'user' | 'assistant'; text: string }[];
+  };
   on: CallHandlers;
 }): Promise<Call> {
   const { on } = opts;
@@ -95,6 +107,8 @@ export async function connect(opts: {
         sdp: offer.sdp,
         token: opts.token,
         lang: opts.lang,
+        speed: opts.speed,
+        resume: opts.resume?.callId,
       }),
     });
   } catch {
@@ -105,6 +119,8 @@ export async function connect(opts: {
     sdp?: string;
     callId?: string;
     seconds?: number;
+    budget?: number;
+    resumed?: boolean;
     error?: string;
   };
   if (!res.ok || !body.sdp || !body.callId) {
@@ -126,9 +142,32 @@ export async function connect(opts: {
     throw new VoiceError('unavailable');
   }
 
+  // Events sent before the channel opens wait for it.
+  const queue: string[] = [];
   const send = (event: object) => {
     if (dc.readyState === 'open') dc.send(JSON.stringify(event));
+    else if (dc.readyState === 'connecting') queue.push(JSON.stringify(event));
   };
+  dc.addEventListener('open', () => {
+    for (const e of queue.splice(0)) dc.send(e);
+  });
+  // A resumed call starts with what was said before, so Sophie keeps the
+  // thread (as text: the audio isn't replayed).
+  if (body.resumed)
+    for (const h of opts.resume?.history ?? [])
+      send({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: h.role,
+          content: [
+            {
+              type: h.role === 'user' ? 'input_text' : 'output_text',
+              text: h.text,
+            },
+          ],
+        },
+      });
   // A response must finish before the next one is asked for.
   let responding = false;
   let pending = false;
@@ -255,6 +294,13 @@ export async function connect(opts: {
   return {
     callId,
     seconds: body.seconds ?? 180,
+    budget: body.budget ?? body.seconds ?? 180,
+    resumed: !!body.resumed,
+    setSpeed: (speed) =>
+      send({
+        type: 'session.update',
+        session: { type: 'realtime', audio: { output: { speed } } },
+      }),
     mute: (m) => {
       track.enabled = !m;
     },

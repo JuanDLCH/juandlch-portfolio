@@ -9,6 +9,10 @@ import { createCall, hangup, sessionConfig } from './openai';
 export { VoiceCall } from './call';
 export { VoiceQuota } from './quota';
 
+const CALL_ID = /^rtc_[\w-]{1,100}$/;
+/** Shorter remainders aren't worth a resume: a new call starts instead. */
+const MIN_RESUME_S = 10;
+
 const json = (body: unknown, status = 200) =>
   Response.json(body, {
     status,
@@ -68,6 +72,8 @@ async function startSession(req: Request, env: Env) {
     sdp?: unknown;
     token?: unknown;
     lang?: unknown;
+    speed?: unknown;
+    resume?: unknown;
   } | null;
   const sdp = body?.sdp;
   const token = body?.token;
@@ -80,39 +86,73 @@ async function startSession(req: Request, env: Env) {
   )
     return json({ error: 'bad_request' }, 400);
   const lang = body?.lang === 'es' ? 'es' : 'en';
+  const speed =
+    typeof body?.speed === 'number' && Number.isFinite(body.speed)
+      ? Math.min(1.5, Math.max(0.8, body.speed))
+      : 1;
+  const resume =
+    typeof body?.resume === 'string' && CALL_ID.test(body.resume)
+      ? body.resume
+      : null;
   if (!(await turnstileOk(env, req, token)))
     return json({ error: 'captcha' }, 403);
 
-  const seconds = Number(env.SESSION_S);
+  const budget = Number(env.SESSION_S);
   const ip = await ipHash(env, req);
   const day = new Date().toISOString().slice(0, 10);
   const quota = env.QUOTA.get(env.QUOTA.idFromName(day));
+  // Resuming an ended call with time left continues its budget and doesn't
+  // count as a new call.
+  const used = resume
+    ? await env.CALL.get(env.CALL.idFromName(resume)).takeResume(
+        ip,
+        budget,
+        MIN_RESUME_S,
+      )
+    : null;
+  const seconds = budget - (used ?? 0);
   // The active slot outlives the call a bit, in case its cleanup is lost.
-  const denied = await quota.reserve(
-    ip,
-    Date.now() + (seconds + 30) * 1000,
-    Number(env.MAX_PER_IP),
-    Number(env.MAX_PER_DAY),
-  );
+  const until = Date.now() + (seconds + 30) * 1000;
+  const denied =
+    used === null
+      ? await quota.reserve(
+          ip,
+          until,
+          Number(env.MAX_PER_IP),
+          Number(env.MAX_PER_DAY),
+        )
+      : await quota.hold(ip, until);
   if (denied) return json({ error: denied }, 429);
 
   let call: { sdp: string; callId: string } | null = null;
   try {
-    const session = sessionConfig(env, await loadProfile(env, req), lang);
+    const session = sessionConfig(
+      env,
+      await loadProfile(env, req),
+      lang,
+      speed,
+    );
     call = await createCall(env, sdp, session);
     // A few seconds of grace for the connection to come up.
     const endsAt = Date.now() + (seconds + 5) * 1000;
     await env.CALL.get(env.CALL.idFromName(call.callId)).start(
-      { callId: call.callId, ip, day },
+      { callId: call.callId, ip, day, used: used ?? 0, startedAt: Date.now() },
       endsAt,
       session,
     );
-    return json({ sdp: call.sdp, callId: call.callId, seconds });
+    return json({
+      sdp: call.sdp,
+      callId: call.callId,
+      seconds,
+      budget,
+      resumed: used !== null,
+    });
   } catch (err) {
     console.error(`start: ${String(err)}`);
     // Never leave a call running without its cutoff.
     if (call) await hangup(env, call.callId);
-    await quota.refund(ip);
+    if (used === null) await quota.refund(ip);
+    else await quota.release(ip);
     return json({ error: 'unavailable' }, 502);
   }
 }
@@ -122,7 +162,7 @@ async function endSession(req: Request, env: Env) {
     callId?: unknown;
   } | null;
   const callId = body?.callId;
-  if (typeof callId !== 'string' || !/^rtc_[\w-]{1,100}$/.test(callId))
+  if (typeof callId !== 'string' || !CALL_ID.test(callId))
     return json({ error: 'bad_request' }, 400);
   const ended = await env.CALL.get(env.CALL.idFromName(callId)).end(
     await ipHash(env, req),

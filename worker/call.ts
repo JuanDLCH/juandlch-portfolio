@@ -3,7 +3,9 @@
 // since a Durable Object has a single alarm and calls can overlap. It also
 // watches the call through the sideband and hangs up if the client tries to
 // change the session (instructions, tools or voice) or keeps it
-// answering far beyond a normal conversation.
+// answering far beyond a normal conversation. Once over it remembers, for a
+// while, how much of the session budget was used, so the same visitor can
+// resume with the time left instead of starting a new call.
 import { DurableObject } from 'cloudflare:workers';
 import type { RealtimeSessionCreateRequest } from 'openai/resources/realtime/realtime';
 import type { Env } from './env';
@@ -15,7 +17,20 @@ interface Call {
   ip: string;
   /** Quota instance (UTC day) the session was counted in. */
   day: string;
+  /** Seconds of the budget used before this call (by the calls it resumes). */
+  used: number;
+  startedAt: number;
 }
+
+/** What's left of an ended call, for a resume. */
+interface Done {
+  ip: string;
+  used: number;
+  taken: boolean;
+}
+
+/** How long an ended call can be resumed. */
+const RESUME_MS = 30 * 60_000;
 
 /** Far more answers than 3 minutes of talk can take. */
 const MAX_RESPONSES = 60;
@@ -50,6 +65,16 @@ export class VoiceCall extends DurableObject<Env> {
     }
   }
 
+  /** Seconds used by this (ended) call and the ones it resumed, if `ip`
+   * may resume it and at least `min` seconds of `budget` are left. Once. */
+  async takeResume(ip: string, budget: number, min: number) {
+    const done = await this.ctx.storage.get<Done>('done');
+    if (!done || done.taken || done.ip !== ip) return null;
+    if (budget - done.used < min) return null;
+    await this.ctx.storage.put('done', { ...done, taken: true });
+    return done.used;
+  }
+
   /** The visitor ended the call. Only the IP that started it can. */
   async end(ip: string) {
     const call = await this.ctx.storage.get<Call>('call');
@@ -59,7 +84,9 @@ export class VoiceCall extends DurableObject<Env> {
   }
 
   async alarm() {
-    await this.finish('time');
+    // The cutoff, or the end of the resume window.
+    if (await this.ctx.storage.get('call')) await this.finish('time');
+    else await this.ctx.storage.deleteAll();
   }
 
   private watch(data: unknown) {
@@ -86,9 +113,18 @@ export class VoiceCall extends DurableObject<Env> {
   private async finish(reason: string) {
     const call = await this.ctx.storage.get<Call>('call');
     if (!call) return;
+    const budget = Number(this.env.SESSION_S);
+    const used =
+      reason === 'time'
+        ? budget
+        : Math.min(
+            budget,
+            call.used + Math.ceil((Date.now() - call.startedAt) / 1000),
+          );
     await this.ctx.storage.deleteAll();
-    await this.ctx.storage.deleteAlarm();
-    console.log(`end ${call.callId}: ${reason}`);
+    await this.ctx.storage.put('done', { ip: call.ip, used, taken: false });
+    await this.ctx.storage.setAlarm(Date.now() + RESUME_MS);
+    console.log(`end ${call.callId}: ${reason} (${used}s used)`);
     await hangup(this.env, call.callId);
     try {
       this.ws?.close(1000, reason);

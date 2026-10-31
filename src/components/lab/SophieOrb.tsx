@@ -292,7 +292,7 @@ export default function SophieOrb({
       </svg>
       <span
         aria-hidden="true"
-        className={`absolute inset-x-0 top-[62%] text-center font-mono text-[clamp(16px,2.2vw,24px)] tracking-[0.02em] ${warn ? 'text-warn' : 'text-ink'}`}
+        className={`absolute inset-x-0 top-[63%] text-center font-mono text-[clamp(10px,1vw,12px)] tracking-[0.14em] ${warn ? 'text-warn' : 'text-muted'}`}
       >
         {clock}
       </span>

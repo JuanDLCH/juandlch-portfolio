@@ -55,7 +55,15 @@ type Speech = {
 };
 type Line =
   | Speech
-  | { kind: 'tool' | 'barge-in'; id: string; text: string; meta?: string };
+  | {
+      kind: 'tool' | 'barge-in' | 'resume';
+      id: string;
+      text: string;
+      meta?: string;
+    };
+
+const isSpeech = (l: Line): l is Speech =>
+  l.kind === 'user' || l.kind === 'agent';
 
 const ENDING_CONTACT = JSON.stringify({
   options: ['meeting', 'email', 'linkedin'],
@@ -72,6 +80,18 @@ const rms = (a: AnalyserNode | null, buf: Float32Array<ArrayBuffer>) => {
 
 const mmss = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+/** The end of a long text, from a word boundary: the caption shows only
+ * the latest words (the transcript has it all). */
+const tail = (text: string, max = 170) => {
+  if (text.length <= max) return text;
+  const cut = text.slice(-max);
+  return `…${cut.slice(cut.indexOf(' ') + 1)}`;
+};
+
+/** Shorter remainders start a new call instead (as the Worker does). */
+const MIN_RESUME_S = 10;
+const SPEED = { min: 0.8, max: 1.5, step: 0.05 };
 
 const monoLabel = `${mono} text-[10px] tracking-[0.08em] uppercase`;
 
@@ -92,12 +112,12 @@ function Transcript({
       </p>
     );
   return shown.map((l) =>
-    l.kind === 'tool' || l.kind === 'barge-in' ? (
+    !isSpeech(l) ? (
       <div
         key={l.id}
         className={`${mono} border-line2 text-muted flex flex-wrap items-center gap-x-2.5 gap-y-1.5 border border-dashed px-2.5 py-[7px] text-[11px]`}
       >
-        <span className={l.kind === 'tool' ? 'text-accent' : 'text-warn'}>
+        <span className={l.kind === 'barge-in' ? 'text-warn' : 'text-accent'}>
           {l.kind}
         </span>
         <span className="text-chip break-words">{l.text}</span>
@@ -117,7 +137,7 @@ function Transcript({
           className={`${big ? 'text-[15px]' : 'text-sm'} leading-normal ${l.kind === 'agent' ? 'text-ink' : 'text-body'}`}
         >
           {l.text}
-          {'cut' in l && l.cut && ' —'}
+          {l.cut && ' —'}
         </span>
       </div>
     ),
@@ -142,8 +162,14 @@ export default function VoiceApp() {
   const [lines, setLines] = useState<Line[]>([]);
   const [contact, setContact] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [limit, setLimit] = useState(180);
+  // Session budget (3 min) and how much of it is used, across resumes.
+  const [budget, setBudget] = useState(180);
+  const [used, setUsed] = useState(0);
+  const usedRef = useRef(0);
+  // Ended call with time left: Start resumes it instead of a new call.
+  const [resumable, setResumable] = useState<string | null>(null);
+  // Sophie's speaking speed (and the greeting's).
+  const [speed, setSpeed] = useState(1);
   const [metrics, setMetrics] = useState({ connect: 0, turn: 0, bargeIns: 0 });
   const [sheet, setSheet] = useState(false);
 
@@ -183,7 +209,7 @@ export default function VoiceApp() {
         : meters.current.agent,
       buf.current,
     );
-  const left = limit - elapsed;
+  const left = budget - used;
   const wrapping = live && left <= WRAP_UP_S;
 
   // Greeting: plays on arrival when the browser allows it (coming from the
@@ -224,7 +250,13 @@ export default function VoiceApp() {
   }, [hydrated, lang]);
 
   const hangUp = (why: 'time' | 'user' | 'dropped') => {
-    callRef.current?.close();
+    const call = callRef.current;
+    setResumable(
+      call && why !== 'time' && budget - usedRef.current >= MIN_RESUME_S
+        ? call.callId
+        : null,
+    );
+    call?.close();
     callRef.current = null;
     void audioCtx.current?.close();
     audioCtx.current = null;
@@ -288,14 +320,33 @@ export default function VoiceApp() {
     ]);
   };
 
-  const start = async () => {
-    stopGreeting();
-    setPhase({ at: 'connecting' });
+  /** Back to a clean slate: no transcript, the whole budget. */
+  const reset = () => {
+    setPhase({ at: 'idle' });
     setLines([]);
     setContact(null);
-    setMuted(false);
-    setElapsed(0);
+    setResumable(null);
+    setUsed(0);
+    usedRef.current = 0;
     setMetrics({ connect: 0, turn: 0, bargeIns: 0 });
+  };
+
+  const start = async (resume: string | null = null) => {
+    stopGreeting();
+    if (!resume) reset();
+    setPhase({ at: 'connecting' });
+    setContact(null);
+    setMuted(false);
+    const history = lines
+      .filter(
+        (l): l is Speech =>
+          (l.kind === 'user' || l.kind === 'agent') && !!l.text,
+      )
+      .slice(-24)
+      .map((l) => ({
+        role: l.kind === 'user' ? ('user' as const) : ('assistant' as const),
+        text: l.text.slice(0, 600),
+      }));
     activityRef.current = 'listening';
     setActivity('listening');
     const t0 = performance.now();
@@ -326,6 +377,8 @@ export default function VoiceApp() {
         lang,
         mic,
         audio: remoteRef.current!,
+        speed,
+        resume: resume ? { callId: resume, history } : undefined,
         on: {
           activity: onActivity,
           user: (id, text) => upsert('user', id, text),
@@ -341,7 +394,25 @@ export default function VoiceApp() {
         },
       });
       callRef.current = call;
-      setLimit(call.seconds);
+      // A resume the server refused (expired) is a new call.
+      if (resume && !call.resumed) {
+        setLines([]);
+        setMetrics((m) => ({ ...m, bargeIns: 0 }));
+      }
+      setResumable(null);
+      setBudget(call.budget);
+      usedRef.current = call.budget - call.seconds;
+      setUsed(usedRef.current);
+      if (call.resumed)
+        setLines((ls) => [
+          ...ls,
+          {
+            kind: 'resume',
+            id: `r${ls.length}`,
+            text: x.resumedNote,
+            meta: `${mmss(call.seconds)}`,
+          },
+        ]);
       setMetrics((m) => ({
         ...m,
         connect: Math.round(performance.now() - t0),
@@ -365,10 +436,12 @@ export default function VoiceApp() {
     const call = callRef.current;
     if (!call) return;
     const t0 = performance.now();
+    const base = call.budget - call.seconds;
     let warned = false;
     const id = setInterval(() => {
       const s = Math.floor((performance.now() - t0) / 1000);
-      setElapsed(Math.min(s, call.seconds));
+      usedRef.current = base + Math.min(s, call.seconds);
+      setUsed(usedRef.current);
       if (!warned && call.seconds - s <= WRAP_UP_S) {
         warned = true;
         call.wrapUp();
@@ -376,6 +449,8 @@ export default function VoiceApp() {
       if (s >= call.seconds) hangUp('time');
     }, 250);
     return () => clearInterval(id);
+    // One interval per call; hangUp reads refs and the call's own budget.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live]);
 
   // Leaving the page (or this island) ends the call.
@@ -397,6 +472,33 @@ export default function VoiceApp() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [lines]);
 
+  // Speed: the greeting follows it right away; Sophie from her next answer
+  // (sent once the slider settles).
+  useEffect(() => {
+    if (greetRef.current) greetRef.current.playbackRate = speed;
+    const id = setTimeout(() => callRef.current?.setSpeed(speed), 300);
+    return () => clearTimeout(id);
+  }, [speed]);
+
+  // Browsers block sound until the visitor interacts with the page (unless
+  // they came from the landing): then the greeting plays on the first click
+  // or key, anywhere but Start.
+  useEffect(() => {
+    if (greeting !== 'blocked' || phase.at !== 'idle') return;
+    const play = (e: Event) => {
+      if ((e.target as Element | null)?.closest?.('[data-voice-start]')) return;
+      playGreeting();
+    };
+    window.addEventListener('pointerdown', play, { once: true });
+    window.addEventListener('keydown', play, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', play);
+      window.removeEventListener('keydown', play);
+    };
+    // playGreeting reads the current language when it runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [greeting, phase.at]);
+
   // The transcript sheet closes with Escape.
   useEffect(() => {
     if (!sheet) return;
@@ -411,6 +513,8 @@ export default function VoiceApp() {
     callRef.current?.mute(!muted);
     setMuted(!muted);
   };
+
+  const fillLeft = (t: string) => t.replace('{t}', mmss(left));
 
   // Caption: the greeting before the call, the turn in progress during it
   // (or the last one, dimmed), and how it ended after.
@@ -438,7 +542,9 @@ export default function VoiceApp() {
       who: '',
       text: failed
         ? x.errors[ended as StartError]
-        : x.ended[ended as 'time' | 'user' | 'dropped'],
+        : resumable
+          ? fillLeft(ended === 'dropped' ? x.droppedPaused : x.paused)
+          : x.ended[ended as 'time' | 'user' | 'dropped'],
       tone: failed ? 'text-warn' : 'text-body',
       cursor: false,
     };
@@ -501,7 +607,7 @@ export default function VoiceApp() {
     { k: x.metrics[0], v: metrics.connect ? `${metrics.connect} ms` : '— ms' },
     { k: x.metrics[1], v: metrics.turn ? `${metrics.turn} ms` : '— ms' },
     { k: x.metrics[2], v: live || ended ? String(metrics.bargeIns) : '—' },
-    { k: x.metrics[3], v: mmss(elapsed) },
+    { k: x.metrics[3], v: mmss(used) },
   ];
   const themeLabel = dark ? CHAT[lang].toLight : CHAT[lang].toDark;
 
@@ -581,7 +687,7 @@ export default function VoiceApp() {
             <SophieOrb
               mode={mode}
               level={level}
-              clock={mmss(elapsed)}
+              clock={mmss(left)}
               warn={wrapping}
               label={`${x.orb} — ${x.phase[mode]}`}
             />
@@ -595,9 +701,9 @@ export default function VoiceApp() {
               </div>
               <p
                 role={failed ? 'alert' : undefined}
-                className={`mob:min-h-[3.2em] mob:text-[clamp(17px,4.8vw,22px)] mt-2 mb-0 min-h-[2.6em] text-[clamp(18px,2vw,26px)] leading-[1.3] font-normal tracking-[-0.02em] text-balance ${caption.tone}`}
+                className={`mob:min-h-[3.2em] mob:text-[clamp(15px,4.2vw,18px)] mt-2 mb-0 min-h-[2.6em] text-[clamp(16px,1.45vw,20px)] leading-[1.4] font-normal tracking-[-0.02em] text-balance ${caption.tone}`}
               >
-                {caption.text}
+                {tail(caption.text)}
                 {caption.cursor && (
                   <span
                     aria-hidden="true"
@@ -654,7 +760,12 @@ export default function VoiceApp() {
               </button>
               <button
                 type="button"
-                onClick={live ? () => hangUp('user') : () => void start()}
+                data-voice-start
+                onClick={
+                  live
+                    ? () => hangUp('user')
+                    : () => void start(ended ? resumable : null)
+                }
                 disabled={phase.at === 'connecting'}
                 className={`inline-flex h-[60px] min-w-[200px] cursor-pointer items-center justify-center gap-2.5 border px-6 text-base font-semibold transition-[filter,border-color] disabled:cursor-wait disabled:opacity-70 ${live ? 'border-line2 text-ink hover:border-accent bg-transparent' : 'border-accent bg-accent text-on-accent hover:brightness-110'}`}
               >
@@ -663,9 +774,11 @@ export default function VoiceApp() {
                   ? x.end
                   : phase.at === 'connecting'
                     ? x.connecting
-                    : ended
-                      ? x.again
-                      : x.start}
+                    : resumable
+                      ? `${x.resume} · ${mmss(left)}`
+                      : ended
+                        ? x.again
+                        : x.start}
               </button>
               <button
                 type="button"
@@ -677,6 +790,33 @@ export default function VoiceApp() {
                 <Icon d='<path d="M4 6h16M4 11h16M4 16h10"/>' size={20} />
               </button>
             </div>
+            {resumable && !live && phase.at !== 'connecting' && (
+              <button
+                type="button"
+                onClick={reset}
+                className={`${mono} text-muted hover:text-ink cursor-pointer border-0 bg-transparent p-0 text-[11px] tracking-[0.06em] uppercase underline-offset-4 hover:underline`}
+              >
+                {x.startOver}
+              </button>
+            )}
+            <label
+              className={`${mono} text-muted flex items-center gap-2.5 text-[10px] tracking-[0.08em] uppercase`}
+            >
+              {x.speed}
+              <input
+                type="range"
+                min={SPEED.min}
+                max={SPEED.max}
+                step={SPEED.step}
+                value={speed}
+                onChange={(e) => setSpeed(Number(e.target.value))}
+                aria-valuetext={`${speed.toFixed(2)}×`}
+                className="accent-accent h-1 w-[clamp(110px,14vw,160px)] cursor-pointer"
+              />
+              <span className="text-ink w-[3.6em] text-left tabular-nums">
+                {speed.toFixed(2)}×
+              </span>
+            </label>
             <p
               className={`${mono} m-0 max-w-[560px] text-center text-[10px] leading-[1.6] tracking-[0.04em] ${wrapping ? 'text-warn' : 'text-muted'}`}
             >

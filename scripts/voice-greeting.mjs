@@ -25,7 +25,7 @@ for (const lang of ['en', 'es']) {
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini-tts',
-      voice: 'marin',
+      voice: 'coral',
       input: VOICE[lang].greeting,
       instructions: STYLE[lang],
       response_format: 'mp3',
