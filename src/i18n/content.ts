@@ -17,7 +17,7 @@ const EN = {
   mobileNote: 'Best experienced on desktop',
   navAbout: 'About',
   navContact: 'Contact',
-  navCv: 'CV ↓',
+  navCv: 'My CV ↓',
   talkCv: 'Chat with my CV',
   bookCall: 'Book a call with me',
   langGroup: 'Language',
@@ -43,7 +43,7 @@ const EN = {
   stAgent: 'AGENT',
   stTool: 'TOOL',
   figCaption:
-    'One conversational turn — speech in, transcription, reasoning, a tool call, speech out — interruptible at every step. A live version is on its way to the Lab.',
+    'One conversational turn — speech in, transcription, reasoning, a tool call, speech out — interruptible at every step.',
   aboutTitle: 'From full stack to AI lead',
   aboutA:
     'I spent my first years shipping ERP systems, cloud backends and integrations. That is why the AI I build today comes with ',
@@ -131,7 +131,7 @@ const ES: typeof EN = {
   mobileNote: 'Se disfruta mejor en escritorio',
   navAbout: 'Sobre mí',
   navContact: 'Contacto',
-  navCv: 'CV ↓',
+  navCv: 'Mi CV ↓',
   talkCv: 'Chatea con mi CV',
   bookCall: 'Agenda una llamada conmigo',
   langGroup: 'Idioma',
@@ -157,7 +157,7 @@ const ES: typeof EN = {
   stAgent: 'AGENTE',
   stTool: 'HERRAMIENTA',
   figCaption:
-    'Un turno de conversación — voz de entrada, transcripción, razonamiento, una llamada a herramienta, voz de salida — interrumpible en cada paso. La versión en vivo está en camino al Lab.',
+    'Un turno de conversación — voz de entrada, transcripción, razonamiento, una llamada a herramienta, voz de salida — interrumpible en cada paso.',
   aboutTitle: 'De full stack a líder de IA',
   aboutA:
     'Mis primeros años los pasé construyendo ERPs, backends en la nube e integraciones. Por eso la IA que construyo hoy viene con ',
