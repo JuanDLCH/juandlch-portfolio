@@ -13,6 +13,10 @@ export type Provider = 'anthropic' | 'openai';
 /** Provider the chat runs on. Both are wired; the visitor can't pick one
  * yet, so only this provider's key is asked for. */
 export const PROVIDER: Provider = 'openai';
+/** Bring your own key. Off: the chat runs on the site's key through the
+ * Worker (worker/chat.ts, with daily limits) and the key options are hidden.
+ * On: visitors paste their own keys and the SDK calls the provider directly. */
+export const BYOK = false;
 
 export type ModelId =
   'claude-haiku-5-5' | 'claude-sonnet-5-5' | 'gpt-6-luna' | 'gpt-6.1-sol';

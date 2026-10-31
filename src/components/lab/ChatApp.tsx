@@ -19,6 +19,7 @@ import {
 import {
   CASES,
   PROVIDER,
+  BYOK,
   caseEffort,
   caseModel,
   caseTools,
@@ -90,6 +91,8 @@ import {
   useHydrated,
   usePhone,
 } from './ui';
+import { CONTACT } from '../../lab/chat/contact';
+import { CaptchaError } from '../../lab/chat/lab';
 
 const pick = (v: { en: string; es: string }, es: boolean) => (es ? v.es : v.en);
 
@@ -110,6 +113,9 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   pdfPages: 'file',
   imageSize: 'file',
   convLimit: 'clear',
+  chatLimitIp: 'book',
+  chatLimitDay: 'book',
+  captcha: 'retry',
   imageUnreadable: 'file',
   pdfSize: 'file',
   pdfUnreadable: 'file',
@@ -232,7 +238,9 @@ export default function ChatApp({
   // CV chat only: what the demo is, how to run it and how to reach me. Until
   // the visitor opens or closes it (null), it shows while there's no key.
   const [introPick, setIntro] = useState<boolean | null>(null);
-  const intro = introPick ?? (!!only && !chatKey);
+  // With the visitor's own keys (BYOK) the CV chat opens on it while there's
+  // no key; on the site's key it only opens from its button.
+  const intro = introPick ?? (BYOK && !!only && !chatKey);
   const [infoCase, setInfoCase] = useState(CASES[0].id);
   // CV viewer opened from a citation: the answer's cited items and the one
   // clicked.
@@ -414,7 +422,8 @@ export default function ChatApp({
     setTurn(ctrl);
     // A provider module that fails to load (offline, or a stale deploy)
     // must not leave the chat stuck on "Thinking…".
-    const err = await runTurn(PROVIDER, chatKey, c, start, input, {
+    // '' runs on the site's key, through the Worker.
+    const err = await runTurn(PROVIDER, BYOK ? chatKey : '', c, start, input, {
       update: (s) => {
         setSession(c.id, s);
         // The full menu opens by itself once, when a show_menu call for it
@@ -469,6 +478,8 @@ export default function ChatApp({
     else if (f === 'billing') open(BILLING[PROVIDER], '_blank', 'noopener');
     else if (f === 'retry') retry();
     else if (f === 'clear') clearChat();
+    else if (f === 'book' && CONTACT.booking)
+      open(CONTACT.booking, '_blank', 'noopener');
     else fileRef.current?.click();
   };
 
@@ -504,7 +515,7 @@ export default function ChatApp({
     }
     // No key: the message stays in the composer and the assistant asks for
     // the key, so sending again after adding it just works.
-    if (!chatKey) {
+    if (BYOK && !chatKey) {
       if (override) setDraft(override);
       notice('noKey');
       return;
@@ -671,7 +682,7 @@ export default function ChatApp({
 
   const onMic = async () => {
     if ($busy.get()) return;
-    if (!keys.openai) return notice('micNoKey');
+    if (BYOK && !keys.openai) return notice('micNoKey');
     if (rec === 'on') return recRef.current?.stop();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -685,15 +696,24 @@ export default function ChatApp({
         setRec('busy');
         try {
           const text = await transcribe(
-            keys.openai,
+            BYOK ? keys.openai : '',
             new Blob(chunks, { type: mr.mimeType }),
             es ? 'es' : 'en',
           );
           setRec('off');
           if (text) void send(text);
-        } catch {
+        } catch (err) {
           setRec('off');
-          notice('transcribe');
+          const why = err instanceof Error ? err.message : '';
+          notice(
+            err instanceof CaptchaError
+              ? 'captcha'
+              : why === 'chat_limit_ip'
+                ? 'chatLimitIp'
+                : why === 'chat_limit_day'
+                  ? 'chatLimitDay'
+                  : 'transcribe',
+          );
         }
       };
       recRef.current = mr;
@@ -730,7 +750,7 @@ export default function ChatApp({
   const started = session.items.some((m) => m.kind === 'user');
   const effort = caseEffort(c, session.docs?.length);
   const tools = caseTools(c);
-  const ready = !!chatKey;
+  const ready = !BYOK || !!chatKey;
   // Copy placeholders: the provider and the case's model.
   const fill = (t: string) =>
     t.replaceAll('{p}', PROVIDER_NAME[PROVIDER]).replaceAll('{m}', model.name);
@@ -868,30 +888,35 @@ export default function ChatApp({
               />
             </>
           )}
-          <button
-            type="button"
-            onClick={() => openKeys()}
-            className={`${mono} border-line2 text-ink hover:border-accent narrow:hidden inline-flex h-9 cursor-pointer items-center gap-3 border bg-transparent px-3 text-[10px] tracking-[0.04em] transition-colors`}
-          >
-            {KEY_FIELDS.map((p) => (
-              <span key={p} className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className={`size-[7px] ${keys[p] ? 'bg-ok' : p === PROVIDER ? 'bg-warn' : 'bg-line2'}`}
-                />
-                {PROVIDER_NAME[p]}
-              </span>
-            ))}
-            <span className="text-accent">{x.keysBtn}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => openKeys()}
-            aria-label={x.keysBtn}
-            className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
-          >
-            <Icon d={I.key} />
-          </button>
+          {/* Key options, hidden while the chat runs on the site's key. */}
+          {BYOK && (
+            <>
+              <button
+                type="button"
+                onClick={() => openKeys()}
+                className={`${mono} border-line2 text-ink hover:border-accent narrow:hidden inline-flex h-9 cursor-pointer items-center gap-3 border bg-transparent px-3 text-[10px] tracking-[0.04em] transition-colors`}
+              >
+                {KEY_FIELDS.map((p) => (
+                  <span key={p} className="inline-flex items-center gap-1.5">
+                    <span
+                      aria-hidden="true"
+                      className={`size-[7px] ${keys[p] ? 'bg-ok' : p === PROVIDER ? 'bg-warn' : 'bg-line2'}`}
+                    />
+                    {PROVIDER_NAME[p]}
+                  </span>
+                ))}
+                <span className="text-accent">{x.keysBtn}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => openKeys()}
+                aria-label={x.keysBtn}
+                className={`${iconBtn} narrow:grid mob:size-11 hidden size-9`}
+              >
+                <Icon d={I.key} />
+              </button>
+            </>
+          )}
           {!only && (
             <button
               type="button"
@@ -1258,8 +1283,8 @@ export default function ChatApp({
                           onClick={() => void onMic()}
                           disabled={busy}
                           aria-label={x.mic}
-                          title={keys.openai ? x.mic : x.micNeedsKey}
-                          className={`${iconBtn} mob:hidden desk:size-8 size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${keys.openai ? 'text-ink' : 'text-muted'}`}
+                          title={!BYOK || keys.openai ? x.mic : x.micNeedsKey}
+                          className={`${iconBtn} mob:hidden desk:size-8 size-11 border-transparent disabled:cursor-not-allowed disabled:opacity-40 ${!BYOK || keys.openai ? 'text-ink' : 'text-muted'}`}
                         >
                           <Icon d={I.mic} />
                         </button>
@@ -1305,7 +1330,9 @@ export default function ChatApp({
                                 onClick={() => void onMic()}
                                 disabled={busy}
                                 aria-label={x.mic}
-                                title={keys.openai ? x.mic : x.micNeedsKey}
+                                title={
+                                  !BYOK || keys.openai ? x.mic : x.micNeedsKey
+                                }
                                 className="bg-accent text-on-accent mob:grid hidden size-11 shrink-0 cursor-pointer place-items-center border-0 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <Icon d={I.mic} size={18} />
@@ -2063,7 +2090,7 @@ export default function ChatApp({
                       <div
                         className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
                       >
-                        {x.introTag}
+                        {BYOK ? x.introTag : x.introTagSite}
                       </div>
                       <h2
                         id="jd-intro-title"
@@ -2085,7 +2112,7 @@ export default function ChatApp({
                     id="jd-intro-body"
                     className="text-body mt-2 mb-0 text-sm leading-[1.55]"
                   >
-                    {x.introBody}
+                    {BYOK ? x.introBody : x.introBodySite}
                   </p>
                   {c.video ? (
                     <video
@@ -2114,38 +2141,42 @@ export default function ChatApp({
                       {x.videoSoon}
                     </div>
                   )}
-                  <div className="mob:grid-cols-1 mt-5 grid grid-cols-2 gap-x-7 gap-y-5">
-                    <section aria-labelledby="jd-intro-run">
-                      <h3 id="jd-intro-run" className={`${label} m-0`}>
-                        {x.introRun}
-                      </h3>
-                      <ol className="text-body m-0 mt-2 flex list-none flex-col gap-2 p-0 text-[13px] leading-[1.5]">
-                        {x.introSteps.map((step, i) => (
-                          <li key={i} className="flex gap-2.5">
-                            <span
-                              aria-hidden="true"
-                              className={`${mono} text-accent shrink-0 text-[11px] leading-[1.75]`}
-                            >
-                              0{i + 1}
-                            </span>
-                            <span>
-                              {i === 0 ? (
-                                <a
-                                  href={KEYS_URL}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-accent underline underline-offset-2"
-                                >
-                                  {step}
-                                </a>
-                              ) : (
-                                step
-                              )}
-                            </span>
-                          </li>
-                        ))}
-                      </ol>
-                    </section>
+                  <div
+                    className={`mob:grid-cols-1 mt-5 grid gap-x-7 gap-y-5 ${BYOK ? 'grid-cols-2' : 'grid-cols-1'}`}
+                  >
+                    {BYOK && (
+                      <section aria-labelledby="jd-intro-run">
+                        <h3 id="jd-intro-run" className={`${label} m-0`}>
+                          {x.introRun}
+                        </h3>
+                        <ol className="text-body m-0 mt-2 flex list-none flex-col gap-2 p-0 text-[13px] leading-[1.5]">
+                          {x.introSteps.map((step, i) => (
+                            <li key={i} className="flex gap-2.5">
+                              <span
+                                aria-hidden="true"
+                                className={`${mono} text-accent shrink-0 text-[11px] leading-[1.75]`}
+                              >
+                                0{i + 1}
+                              </span>
+                              <span>
+                                {i === 0 ? (
+                                  <a
+                                    href={KEYS_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accent underline underline-offset-2"
+                                  >
+                                    {step}
+                                  </a>
+                                ) : (
+                                  step
+                                )}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
+                      </section>
+                    )}
                     <section aria-labelledby="jd-intro-talk">
                       <h3 id="jd-intro-talk" className={`${label} m-0 mb-2`}>
                         {x.introTalk}
@@ -2159,24 +2190,37 @@ export default function ChatApp({
                   </div>
                 </div>
                 <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 justify-end gap-2 border-t px-7 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setIntro(false)}
-                    className="border-line2 text-ink mob:h-11 mob:flex-1 h-10 cursor-pointer border bg-transparent px-4 text-sm"
-                  >
-                    {x.introBrowse}
-                  </button>
-                  <button
-                    type="button"
-                    data-autofocus
-                    onClick={() => {
-                      setIntro(false);
-                      openKeys(PROVIDER);
-                    }}
-                    className="bg-accent text-on-accent mob:h-11 mob:flex-1 h-10 cursor-pointer border-0 px-4 text-sm font-semibold"
-                  >
-                    {x.introAddKey}
-                  </button>
+                  {BYOK ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIntro(false)}
+                        className="border-line2 text-ink mob:h-11 mob:flex-1 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+                      >
+                        {x.introBrowse}
+                      </button>
+                      <button
+                        type="button"
+                        data-autofocus
+                        onClick={() => {
+                          setIntro(false);
+                          openKeys(PROVIDER);
+                        }}
+                        className="bg-accent text-on-accent mob:h-11 mob:flex-1 h-10 cursor-pointer border-0 px-4 text-sm font-semibold"
+                      >
+                        {x.introAddKey}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      data-autofocus
+                      onClick={() => setIntro(false)}
+                      className="bg-accent text-on-accent mob:h-11 mob:flex-1 h-10 cursor-pointer border-0 px-4 text-sm font-semibold"
+                    >
+                      {x.introStart}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

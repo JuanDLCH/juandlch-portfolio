@@ -70,7 +70,7 @@ const EN = {
   labA: 'Don’t take my word for it. ',
   labB: 'Talk to it.',
   labSub:
-    'Talk to my voice agent right away, no key needed. The chat runs live on your own API key, which stays in your browser tab — never stored, never logged.',
+    'Both run live, no key needed: talk to my voice agent or try the chat with your own files. Each visitor gets a daily allowance — plenty to see how they work.',
   lab1Tag: 'Lab 01 · Flagship',
   lab1Body:
     'Talk to Sophie, a realtime voice agent that knows my work. Interrupt her anytime; captions as she speaks.',
@@ -185,7 +185,7 @@ const ES: typeof EN = {
   labA: 'No me creas a mí. ',
   labB: 'Háblale.',
   labSub:
-    'Habla con mi agente de voz ya mismo, sin API key. El chat funciona en vivo con tu propia key, que se queda en tu pestaña — nunca se guarda ni se registra.',
+    'Los dos funcionan en vivo, sin API key: habla con mi agente de voz o prueba el chat con tus propios archivos. Cada visitante tiene un cupo diario — de sobra para ver cómo funcionan.',
   lab1Tag: 'Lab 01 · Principal',
   lab1Body:
     'Habla con Sophie, un agente de voz en tiempo real que conoce mi trabajo. Interrúmpela cuando quieras; subtítulos mientras habla.',

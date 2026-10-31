@@ -1,10 +1,14 @@
-// Browser-side chat loop on OpenAI's Responses API with the visitor's own key
-// (BYOK). Loaded through turn.ts on the first message. Nothing is stored on
+// Browser-side chat loop on OpenAI's Responses API. Loaded through turn.ts on
+// the first message. With the visitor's own key (BYOK) the SDK calls OpenAI
+// directly; without one it calls the site's Worker (worker/chat.ts) with a
+// session token, and the Worker forwards on the site's key within the daily
+// limits. Nothing is stored on
 // OpenAI's side (`store: false`): the conversation is replayed from memory on
 // every request, reasoning included (encrypted).
 import type OpenAI from 'openai';
 import type { ChatItem, ChatSession, UserInput } from '../store';
 import { MODELS, caseEffort, type ChatCase } from './cases';
+import { CaptchaError, LAB_API, dropLabToken, labToken } from './lab';
 import { CLIENT_TOOLS } from './tools';
 import {
   PAGES_DROPPED,
@@ -19,13 +23,17 @@ type Item = OpenAI.Responses.ResponseInputItem;
 type ToolItem = Extract<ChatItem, { kind: 'tool' }>;
 
 let clientFor: { key: string; client: OpenAI } | null = null;
+/** The SDK client: on the visitor's key, or ('') on the site's Worker. */
 async function getClient(key: string) {
   if (clientFor?.key === key) return clientFor.client;
   const { default: OpenAISdk } = await import('openai');
-  // The key is the visitor's own and stays in this tab; the SDK flag only
-  // acknowledges that the request is made from a browser.
+  // A visitor's key stays in this tab; the site's never reaches the browser
+  // (the Worker holds it). The SDK flag only acknowledges that the request
+  // is made from a browser.
   const client = new OpenAISdk({
-    apiKey: key,
+    ...(key
+      ? { apiKey: key }
+      : { apiKey: labToken, baseURL: `${location.origin}${LAB_API}` }),
     dangerouslyAllowBrowser: true,
     maxRetries: 1,
   });
@@ -192,7 +200,8 @@ export async function runTurn(
           store: false,
           include: ['reasoning.encrypted_content'],
         },
-        { signal: cb.signal },
+        // The Worker runs the case's own setup (prompt, model, tools).
+        { signal: cb.signal, headers: { 'X-Lab-Case': c.id } },
       );
 
       for await (const ev of stream) {
@@ -378,6 +387,17 @@ export async function runTurn(
     endStreaming();
     cb.update(clone(s));
     if (cb.signal.aborted) return null;
+    if (err instanceof CaptchaError) return 'captcha';
+    // The site's Worker: daily limits, and a token for another IP.
+    if (err instanceof OpenAISdk.APIError) {
+      if (err.code === 'chat_limit_ip') return 'chatLimitIp';
+      if (err.code === 'chat_limit_day') return 'chatLimitDay';
+      if (err.code === 'chat_busy') return 'rate';
+      if (err.code === 'session') {
+        dropLabToken();
+        return 'network';
+      }
+    }
     if (err instanceof OpenAISdk.AuthenticationError) return 'auth';
     if (
       err instanceof OpenAISdk.PermissionDeniedError ||

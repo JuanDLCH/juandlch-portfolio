@@ -40,7 +40,7 @@ export type NoticeCode = keyof ChatCopy['errors'];
 /** Characters in one message. */
 export const MAX_CHARS = 4000;
 /** Messages the visitor can send in one conversation. */
-export const MAX_MESSAGES = 100;
+export const MAX_MESSAGES = 30;
 /** Seconds of one voice note (transcription is billed by the minute). */
 export const MAX_VOICE_S = 60;
 let noticeSeq = 0;
