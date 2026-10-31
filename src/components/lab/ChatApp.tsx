@@ -2078,7 +2078,12 @@ function MenuCard({
                       <span className="text-ink">
                         {d.name[lang]}
                         {d.tags
-                          .filter((t) => TAG_LABEL[t])
+                          // Vegan already says vegetarian.
+                          .filter(
+                            (t) =>
+                              TAG_LABEL[t] &&
+                              !(t === 'vegetarian' && d.tags.includes('vegan')),
+                          )
                           .map((t) => (
                             <span
                               key={t}
