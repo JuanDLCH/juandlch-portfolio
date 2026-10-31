@@ -34,6 +34,15 @@ export type ChatItem =
   | { kind: 'notice'; id: number; code: NoticeCode };
 
 export type NoticeCode = keyof ChatCopy['errors'];
+
+// Limits for every case. The whole conversation is replayed on each
+// request, so long messages and long conversations cost on every turn.
+/** Characters in one message. */
+export const MAX_CHARS = 4000;
+/** Messages the visitor can send in one conversation. */
+export const MAX_MESSAGES = 100;
+/** Seconds of one voice note (transcription is billed by the minute). */
+export const MAX_VOICE_S = 60;
 let noticeSeq = 0;
 export const nextNoticeId = () => ++noticeSeq;
 

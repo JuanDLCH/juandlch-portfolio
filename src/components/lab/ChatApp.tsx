@@ -12,6 +12,8 @@ import {
   $attachments,
   IMAGE_TYPES,
   MAX_BYTES,
+  MAX_PDF_PAGES,
+  shrinkImage,
   readAttachment,
   type Attachment,
 } from '../../lab/attachments';
@@ -64,6 +66,9 @@ import {
   $drafts,
   $keys,
   $sessions,
+  MAX_CHARS,
+  MAX_MESSAGES,
+  MAX_VOICE_S,
   emptySession,
   getSession,
   nextNoticeId,
@@ -185,6 +190,9 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   api: 'clear',
   file: 'file',
   pdfPages: 'file',
+  imageSize: 'file',
+  convLimit: 'clear',
+  imageUnreadable: 'file',
   pdfSize: 'file',
   pdfUnreadable: 'file',
   docFile: 'file',
@@ -334,6 +342,8 @@ export default function ChatApp({
   // Case waiting for confirmation: switching clears the conversation.
   const [switchTo, setSwitchTo] = useState<ChatCase | null>(null);
   const [rec, setRec] = useState<'off' | 'on' | 'busy'>('off');
+  // Seconds recorded so far; the note stops itself at MAX_VOICE_S.
+  const [recSecs, setRecSecs] = useState(0);
   const recRef = useRef<MediaRecorder | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -418,6 +428,19 @@ export default function ChatApp({
     if (el && session.items.length) el.scrollTop = el.scrollHeight;
   }, [session.items]);
 
+  // Voice notes: tick the clock and stop at MAX_VOICE_S (stopping sends the
+  // note, as the stop button does).
+  useEffect(() => {
+    if (rec !== 'on') return;
+    const t0 = performance.now();
+    const id = setInterval(() => {
+      const secs = Math.floor((performance.now() - t0) / 1000);
+      setRecSecs(Math.min(secs, MAX_VOICE_S));
+      if (secs >= MAX_VOICE_S) recRef.current?.stop();
+    }, 250);
+    return () => clearInterval(id);
+  }, [rec]);
+
   const openInfo = (kind: 'video' | 'build') => {
     setInfoCase(c.id);
     setInfo(kind);
@@ -458,6 +481,7 @@ export default function ChatApp({
         return;
       }
       kbGeneration++;
+      pickSeq++;
       setSession(c.id, emptySession());
       setSession(k.id, emptySession());
       $caseId.set(k.id);
@@ -545,6 +569,21 @@ export default function ChatApp({
       notice('docNone');
       return;
     }
+    // Limits (MAX_*): the message stays so it can be shortened, or the
+    // conversation cleared.
+    if (text.length > MAX_CHARS) {
+      setDraft(text);
+      notice('tooLong');
+      return;
+    }
+    if (
+      getSession(c.id).items.filter((m) => m.kind === 'user').length >=
+      MAX_MESSAGES
+    ) {
+      if (override) setDraft(override);
+      notice('convLimit');
+      return;
+    }
     // No key: the message stays in the composer and the assistant asks for
     // the key, so sending again after adding it just works.
     if (!chatKey) {
@@ -595,28 +634,43 @@ export default function ChatApp({
   };
 
   // A picked file as the composer keeps it, or the notice that rejects it.
-  // Cases that read PDFs page by page (c.pdf) get them as page images, and
-  // refuse big or long ones before any token is spent.
+  // Every case: images and PDFs up to MAX_MB, images shrunk to a JPEG, PDFs
+  // up to MAX_PDF_PAGES, all refused before any token is spent. Cases that
+  // read PDFs page by page (c.pdf) get them as page images.
   const attach = async (f: File): Promise<Attachment | NoticeCode> => {
     const pdf = f.type === 'application/pdf';
-    if ((!IMAGE_TYPES.includes(f.type) && !pdf) || f.size > MAX_BYTES)
-      return 'file';
-    if (!pdf || !c.pdf) return readAttachment(f);
-    if (f.size > c.pdf.maxMB * 1024 * 1024) return 'pdfSize';
+    if (!IMAGE_TYPES.includes(f.type) && !pdf) return 'file';
+    if (f.size > MAX_BYTES) return pdf ? 'pdfSize' : 'imageSize';
+    if (!pdf) {
+      try {
+        const img = await shrinkImage(f);
+        return { name: f.name, mediaType: 'image/jpeg', data: img.data };
+      } catch {
+        return 'imageUnreadable';
+      }
+    }
     try {
-      const { pdfPages } = await import('../../lab/pdf');
-      const pages = await pdfPages(f, c.pdf.maxPages);
-      return { ...(await readAttachment(f)), pages };
+      const { loadPdf, pdfPages } = await import('../../lab/pdf');
+      if (c.pdf) {
+        const pages = await pdfPages(f, c.pdf.maxPages);
+        return { ...(await readAttachment(f)), pages };
+      }
+      // Sent whole: only its page count is checked.
+      (await loadPdf(await f.arrayBuffer(), MAX_PDF_PAGES)).destroy();
+      return await readAttachment(f);
     } catch (e) {
       return (e as { code?: NoticeCode }).code ?? 'pdfUnreadable';
     }
   };
+  // One file per message: a new pick replaces the one in the composer.
   const addFiles = async (list: File[]) => {
-    for (const f of list) {
-      const a = await attach(f);
-      if (typeof a === 'string') notice(a);
-      else $attachments.setKey(c.id, [...($attachments.get()[c.id] ?? []), a]);
-    }
+    const f = list[0];
+    if (!f) return;
+    const seq = ++pickSeq;
+    const a = await attach(f);
+    if (seq !== pickSeq) return;
+    if (typeof a === 'string') notice(a);
+    else $attachments.setKey(c.id, [a]);
   };
 
   // Document agent: files go straight to the Knowledge Base (not to the
@@ -726,6 +780,7 @@ export default function ChatApp({
       };
       recRef.current = mr;
       mr.start();
+      setRecSecs(0);
       setRec('on');
     } catch {
       notice('mic');
@@ -1136,7 +1191,7 @@ export default function ChatApp({
               <input
                 ref={fileRef}
                 type="file"
-                multiple
+                multiple={!!c.docs}
                 accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}
@@ -1226,7 +1281,9 @@ export default function ChatApp({
                       className="jd-blink bg-warn size-2"
                     />
                     <span className={`${label} flex-1 text-[11px]`}>
-                      {rec === 'on' ? x.recording : x.transcribing}
+                      {rec === 'on'
+                        ? `${x.recording} ${clock(recSecs)} / ${clock(MAX_VOICE_S)}`
+                        : x.transcribing}
                     </span>
                     {rec === 'on' && (
                       <>
@@ -1261,6 +1318,7 @@ export default function ChatApp({
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={onKeyDown}
+                      maxLength={MAX_CHARS}
                       placeholder={phone ? x.placeholderShort : x.placeholder}
                       className="text-ink placeholder:text-muted mob:min-h-11 mob:min-w-0 mob:flex-1 mob:self-center mob:px-0 mob:py-2.5 mob:text-base mob:max-h-[8.5em] block [field-sizing:content] max-h-[8em] min-h-[1.5em] w-full resize-none border-0 bg-transparent px-3 pt-2 pb-0.5 text-[13px] leading-normal focus:outline-none"
                     />
@@ -1289,6 +1347,15 @@ export default function ChatApp({
                         </button>
                       </div>
                       <div className="mob:contents flex items-center gap-2.5">
+                        {/* Shown near the limit, so a long paste isn't cut off unnoticed. */}
+                        {draft.length > MAX_CHARS * 0.9 && (
+                          <span
+                            aria-live="polite"
+                            className={`${mono} text-[10px] ${draft.length >= MAX_CHARS ? 'text-warn' : 'text-muted'}`}
+                          >
+                            {draft.length}/{MAX_CHARS}
+                          </span>
+                        )}
                         <span
                           className={`${mono} text-muted narrow:hidden text-[10px]`}
                         >
@@ -2448,11 +2515,18 @@ function Linked({
   return out;
 }
 
+/** Seconds as m:ss. */
+const clock = (s: number) =>
+  `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
 const ORDER_TOOLS = ['update_order', 'place_order'];
 // Bumped when a case switch clears the sessions: Knowledge Base reads that
 // started before it are dropped instead of landing in the cleared one.
 // Module state, so it also holds across a remount of the island.
 let kbGeneration = 0;
+// Bumped on every file pick (and case switch): a slow file still being read
+// when another is picked is dropped, so the latest pick always wins.
+let pickSeq = 0;
 // show_menu calls already seen, by tool call id, so each full menu opens
 // once.
 const menusOpened = new Set<string>();
