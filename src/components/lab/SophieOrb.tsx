@@ -1,10 +1,16 @@
 // Sophie's orb, from the Voice board of the design canvas: 60 radial rays
 // around a core, pulsing rings while she speaks and a dashed ring that spins
-// while she thinks, plus her eyes inside the core. Rays and eyes are moved
-// by rAF writing SVG attributes, so the audio level never re-renders React.
-// The eyes follow the pointer while idle, widen while you talk, narrow and
-// glance aside while she thinks, and bounce with her voice. With reduced
-// motion only the shapes per state remain.
+// while she thinks, plus her face inside the core. Everything moves by rAF
+// writing SVG attributes, so the audio level never re-renders React.
+//
+// The face is two capsule eyes drawn as paths, so they can change shape:
+// a smile turns them into ^ ^ crescents, a tilt makes them sad, a squint
+// narrows one. Each state has a base expression (idle follows the pointer,
+// looks around on its own and gets sleepy; listening leans in and nods;
+// thinking looks up and aside; speaking bounces and tilts), and gestures
+// play on top for a moment (a wink for the greeting, reading eyes for a
+// tool, joy and sparkles for contact, surprise when interrupted, a glance
+// at the clock). With reduced motion only the shape per state remains.
 import { useEffect, useRef } from 'react';
 
 export type OrbMode =
@@ -16,7 +22,23 @@ export type OrbMode =
   | 'thinking'
   | 'speaking'
   | 'muted'
-  | 'ended';
+  | 'ended'
+  | 'sad';
+
+/** A moment of expression on top of the state's. `id` replays it. */
+export type Gesture = {
+  kind: 'wink' | 'happy' | 'contact' | 'surprise' | 'scan' | 'clock';
+  id: number;
+};
+
+const GESTURE_MS: Record<Gesture['kind'], number> = {
+  wink: 650,
+  happy: 1600,
+  contact: 3200,
+  surprise: 700,
+  scan: 1300,
+  clock: 1400,
+};
 
 const N = 60;
 // Ray lengths, as in the board: a fixed irregular crown.
@@ -24,15 +46,190 @@ const LEN = Array.from({ length: N }, (_, i) => {
   const wob = 0.45 + 0.55 * Math.abs(Math.sin(i * 1.9) * Math.cos(i * 0.7));
   return 6 + 26 * wob;
 });
-// Eyes inside the core (r = 56 around 100,100).
-const EYES = [86, 114];
-const EYE = { w: 13, h: 21, r: 6.5, y: 90 };
+// Face inside the core (r = 56 around 100,100).
+const EYE_X = [86, 114];
+const EYE_Y = 93;
+const EYE = { w: 12, h: 30 };
+// Sparkles that pop around the face when she's delighted.
+const SPARKS = [
+  { x: 68, y: 70, s: 1 },
+  { x: 133, y: 66, s: 0.75 },
+];
+
+/** One eye's shape and place, relative to its rest position. */
+interface Eye {
+  /** Width and height scale. */
+  w: number;
+  h: number;
+  /** 0: capsule; 1: a ^ crescent (a smiling, closed eye). */
+  smile: number;
+  /** Degrees; positive turns clockwise. */
+  rot: number;
+  dx: number;
+  dy: number;
+}
+const eye = (o: Partial<Eye> = {}): Eye => ({
+  w: 1,
+  h: 1,
+  smile: 0,
+  rot: 0,
+  dx: 0,
+  dy: 0,
+  ...o,
+});
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const mix = (a: Eye, b: Eye, t: number): Eye => ({
+  w: lerp(a.w, b.w, t),
+  h: lerp(a.h, b.h, t),
+  smile: lerp(a.smile, b.smile, t),
+  rot: lerp(a.rot, b.rot, t),
+  dx: lerp(a.dx, b.dx, t),
+  dy: lerp(a.dy, b.dy, t),
+});
+/** 0 → 1 → 0 over a gesture, with soft edges. */
+const envelope = (p: number, edge = 0.18) =>
+  p <= 0 || p >= 1 ? 0 : Math.min(1, p / edge, (1 - p) / edge);
+
+/** A capsule of w × h centered on 0,0 whose bottom edge rises with
+ * `smile` until it's a thin crescent under the top edge. */
+function eyePath(w: number, h: number, smile: number) {
+  const x0 = -w / 2;
+  const x1 = w / 2;
+  const y0 = -h / 2;
+  const y1 = h / 2;
+  const r = Math.min(w / 2, h / 2);
+  const k = r * 0.55;
+  // Top edge: a rounded cap. Its peak, for the crescent's thickness.
+  const topC = y0 - k * 0.6;
+  const topPeak = 0.25 * (y0 + r) + 0.75 * topC;
+  const rest = y1 + k * 0.6;
+  const happy = (topPeak + Math.max(2.6, h * 0.22) - 0.25 * (y1 - r)) / 0.75;
+  const botC = lerp(rest, happy, smile);
+  const f = (n: number) => n.toFixed(2);
+  return [
+    `M${f(x0)} ${f(y0 + r)}`,
+    `C${f(x0)} ${f(topC)} ${f(x1)} ${f(topC)} ${f(x1)} ${f(y0 + r)}`,
+    `L${f(x1)} ${f(y1 - r)}`,
+    `C${f(x1)} ${f(botC)} ${f(x0)} ${f(botC)} ${f(x0)} ${f(y1 - r)}`,
+    'Z',
+  ].join('');
+}
+
+/** The face each state rests in. `t` is the time, `lv` the voice level,
+ * `look` where the eyes point (−1…1). */
+function baseFace(
+  m: OrbMode,
+  t: number,
+  lv: number,
+  look: { x: number; y: number },
+  sleepy: number,
+): [Eye, Eye] {
+  switch (m) {
+    case 'idle': {
+      const e = eye({
+        dx: look.x * 6,
+        dy: look.y * 5 + sleepy * 3,
+        h: lerp(1, 0.28, sleepy),
+      });
+      return [e, e];
+    }
+    case 'connecting': {
+      const e = eye({ h: 0.8, dx: Math.sin(t / 260) * 6 });
+      return [e, e];
+    }
+    case 'listening': {
+      const e = eye({ h: 1.04, dx: look.x * 3, dy: look.y * 2 });
+      return [e, e];
+    }
+    case 'user': {
+      // Leaning in: wider, up a little, nodding with the visitor's voice.
+      const e = eye({ h: 1.12 + lv * 0.12, w: 1.08, dy: -2 + lv * 4 });
+      return [e, e];
+    }
+    case 'thinking': {
+      // Up and aside, one eye narrowed, the gaze wandering as she ponders.
+      const wander = Math.sin(t / 900) * 3;
+      return [
+        eye({ h: 0.78, dx: 6 + wander, dy: -6, rot: -4 }),
+        eye({ h: 0.6, dx: 6 + wander, dy: -6, rot: -4 }),
+      ];
+    }
+    case 'greeting':
+    case 'speaking': {
+      const e = eye({ h: 0.9 + lv * 0.28, dy: -lv * 4, smile: 0.12 });
+      return [e, e];
+    }
+    case 'muted': {
+      const e = eye({ h: 0.5, dy: 4 });
+      return [e, e];
+    }
+    case 'ended':
+      // Closed, content: ^ ^.
+      return [
+        eye({ h: 0.5, smile: 1, w: 1.15 }),
+        eye({ h: 0.5, smile: 1, w: 1.15 }),
+      ];
+    case 'sad':
+      // Inner corners up, looking down.
+      return [
+        eye({ h: 0.7, rot: -16, dy: 4, dx: -1 }),
+        eye({ h: 0.7, rot: 16, dy: 4, dx: 1 }),
+      ];
+  }
+}
+
+/** A gesture's face at progress p (0…1), and its sway (bounce, sparkles). */
+function gestureFace(
+  g: Gesture['kind'],
+  p: number,
+): { face: [Eye, Eye]; jump: number; spark: number } {
+  const none = { jump: 0, spark: 0 };
+  switch (g) {
+    case 'wink':
+      return {
+        face: [eye({ smile: 0.15 }), eye({ h: 0.45, smile: 1, w: 1.15 })],
+        ...none,
+      };
+    case 'happy': {
+      const e = eye({ h: 0.55, smile: 1, w: 1.15 });
+      return { face: [e, e], jump: Math.sin(p * Math.PI * 3) * 3, spark: 0 };
+    }
+    case 'contact': {
+      // A quick look at the buttons, then joy: ^ ^, a hop and sparkles.
+      if (p < 0.18) {
+        const e = eye({ dy: 7, dx: -2, h: 0.85 });
+        return { face: [e, e], ...none };
+      }
+      const e = eye({ h: 0.55, smile: 1, w: 1.18 });
+      const q = (p - 0.18) / 0.82;
+      return {
+        face: [e, e],
+        jump: Math.abs(Math.sin(q * Math.PI * 4)) * -4 * (1 - q),
+        spark: Math.min(1, q * 5) * (1 - Math.max(0, q - 0.7) / 0.3),
+      };
+    }
+    case 'surprise': {
+      const e = eye({ h: 1.25, w: 1.18, dy: -3 });
+      return { face: [e, e], ...none };
+    }
+    case 'scan': {
+      // Reading: the eyes sweep side to side.
+      const e = eye({ h: 0.7, dx: Math.sin(p * Math.PI * 6) * 7, dy: 2 });
+      return { face: [e, e], ...none };
+    }
+    case 'clock': {
+      // A glance down at the countdown.
+      const e = eye({ h: 0.85, dy: 9 });
+      return { face: [e, e], ...none };
+    }
+  }
+}
 
 export default function SophieOrb({
   mode,
   level,
+  gesture,
   clock,
   warn,
   label,
@@ -40,6 +237,7 @@ export default function SophieOrb({
   mode: OrbMode;
   /** Current audio level, 0–1: Sophie's voice or the visitor's mic. */
   level: () => number;
+  gesture: Gesture | null;
   /** Shown in the core, under the eyes. */
   clock: string;
   /** The clock turns to the warning color (the call is about to end). */
@@ -48,25 +246,41 @@ export default function SophieOrb({
   label: string;
 }) {
   const rays = useRef<(SVGRectElement | null)[]>([]);
-  const eyes = useRef<(SVGRectElement | null)[]>([]);
+  const eyes = useRef<(SVGPathElement | null)[]>([]);
+  const face = useRef<SVGGElement>(null);
+  const sparks = useRef<(SVGPathElement | null)[]>([]);
   const modeRef = useRef(mode);
   const levelRef = useRef(level);
+  const gestureRef = useRef<{ g: Gesture; at: number } | null>(null);
+  const lastGesture = useRef<number | null>(null);
   useEffect(() => {
     modeRef.current = mode;
     levelRef.current = level;
+    if (gesture && gesture.id !== lastGesture.current) {
+      lastGesture.current = gesture.id;
+      gestureRef.current = { g: gesture, at: performance.now() };
+    }
   });
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const pointer = { x: 0, y: 0 };
+    const pointer = { x: 0, y: 0, at: performance.now() };
+    let woke = false;
     const onMove = (e: PointerEvent) => {
+      const now = performance.now();
+      // Moving after a long still spell wakes her up with a start.
+      if (now - pointer.at > 25_000 && modeRef.current === 'idle') woke = true;
       pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
       pointer.y = (e.clientY / window.innerHeight) * 2 - 1;
+      pointer.at = now;
     };
     window.addEventListener('pointermove', onMove, { passive: true });
 
     const heights = LEN.map((l) => l * 0.35);
-    const eye = { sy: 1, dx: 0, dy: 0 };
+    const cur: [Eye, Eye] = [eye(), eye()];
+    // Where she looks on her own when the pointer is still.
+    const gaze = { x: 0, y: 0, next: performance.now() + 3000 };
+    let sleepy = 0;
     let nextBlink = performance.now() + 2500;
     let blinkUntil = 0;
     let frame = 0;
@@ -109,6 +323,7 @@ export default function SophieOrb({
                 0.7 * (still ? 1 : 0.5 + 0.5 * Math.sin(now / 300 + i * 0.6)));
             break;
           case 'ended':
+          case 'sad':
             h = 2;
             break;
           default:
@@ -122,62 +337,91 @@ export default function SophieOrb({
         }
       }
 
-      // Eyes.
-      const t = { sy: 1, dx: 0, dy: 0 };
-      switch (m) {
-        case 'idle':
-          t.dx = pointer.x * 5;
-          t.dy = pointer.y * 4;
-          break;
-        case 'connecting':
-          t.dx = still ? 0 : Math.sin(now / 260) * 6;
-          t.sy = 0.8;
-          break;
-        case 'listening':
-          t.sy = 1.05;
-          t.dx = pointer.x * 3;
-          break;
-        case 'user':
-          // Leaning in: wider, a little up, pulsing with your voice.
-          t.sy = 1.15 + (still ? 0 : lv * 0.18);
-          t.dy = -2;
-          break;
-        case 'thinking':
-          t.sy = 0.42;
-          t.dx = 7;
-          t.dy = -4 + (still ? 0 : Math.sin(now / 400) * 1.2);
-          break;
-        case 'greeting':
-        case 'speaking':
-          t.sy = 0.85 + (still ? 0 : lv * 0.35);
-          t.dy = still ? 0 : -lv * 3;
-          break;
-        case 'muted':
-          t.sy = 0.5;
-          t.dy = 2;
-          break;
-        case 'ended':
-          t.sy = 0.12;
-          break;
+      // Where to look: the pointer while it moves, her own glances after.
+      const idleFor = now - pointer.at;
+      if (now > gaze.next) {
+        gaze.x = (Math.random() * 2 - 1) * 0.9;
+        gaze.y = (Math.random() * 2 - 1) * 0.6;
+        gaze.next = now + 1800 + Math.random() * 2800;
       }
-      if (!still && m !== 'ended') {
+      const look = idleFor < 3000 || still ? pointer : { x: gaze.x, y: gaze.y };
+      sleepy =
+        m === 'idle' && !still && idleFor > 25_000
+          ? Math.min(1, sleepy + 0.004)
+          : Math.max(0, sleepy - 0.08);
+      if (woke) {
+        woke = false;
+        gestureRef.current = {
+          g: { kind: 'surprise', id: -1 },
+          at: now,
+        };
+      }
+
+      // Face: the state's, then the gesture on top.
+      let target = baseFace(m, now, still ? 0 : lv, look, sleepy);
+      let jump = 0;
+      let spark = 0;
+      const g = gestureRef.current;
+      if (g && !still) {
+        const p = (now - g.at) / GESTURE_MS[g.g.kind];
+        if (p >= 1) gestureRef.current = null;
+        else {
+          const gf = gestureFace(g.g.kind, p);
+          const k = envelope(p, g.g.kind === 'wink' ? 0.3 : 0.15);
+          target = [
+            mix(target[0], gf.face[0], k),
+            mix(target[1], gf.face[1], k),
+          ];
+          jump = gf.jump * k;
+          spark = gf.spark;
+        }
+      }
+      // Blinks, unless the eyes are closed or smiling.
+      if (!still && m !== 'ended' && m !== 'sad' && target[0].smile < 0.5) {
         if (now > nextBlink) {
           blinkUntil = now + 130;
           nextBlink = now + 2200 + Math.random() * 3800;
+          // Now and then, a double blink.
+          if (Math.random() < 0.2) nextBlink = now + 320;
         }
-        if (now < blinkUntil) t.sy = 0.08;
+        if (now < blinkUntil)
+          target = [
+            { ...target[0], h: 0.08 },
+            { ...target[1], h: 0.08 },
+          ];
       }
-      const k = still ? 1 : 0.22;
-      eye.sy = lerp(eye.sy, t.sy, k);
-      eye.dx = lerp(eye.dx, t.dx, k);
-      eye.dy = lerp(eye.dy, t.dy, k);
+      const k = still ? 1 : 0.24;
+      cur[0] = mix(cur[0], target[0], k);
+      cur[1] = mix(cur[1], target[1], k);
       eyes.current.forEach((el, i) => {
         if (!el) return;
-        const h = Math.max(2, EYE.h * eye.sy);
-        el.setAttribute('x', (EYES[i] - EYE.w / 2 + eye.dx).toFixed(2));
-        el.setAttribute('y', (EYE.y - h / 2 + eye.dy).toFixed(2));
-        el.setAttribute('height', h.toFixed(2));
-        el.setAttribute('rx', Math.min(EYE.r, h / 2).toFixed(2));
+        const e = cur[i];
+        const w = EYE.w * e.w;
+        const h = Math.max(2, EYE.h * e.h);
+        el.setAttribute('d', eyePath(w, h, e.smile));
+        el.setAttribute(
+          'transform',
+          `translate(${(EYE_X[i] + e.dx).toFixed(2)} ${(EYE_Y + e.dy).toFixed(2)}) rotate(${e.rot.toFixed(2)})`,
+        );
+      });
+      // The whole face tilts with her voice and hops with joy.
+      const tilt =
+        !still && (m === 'speaking' || m === 'greeting')
+          ? Math.sin(now / 700) * 3 * (0.4 + lv)
+          : 0;
+      face.current?.setAttribute(
+        'transform',
+        `translate(0 ${jump.toFixed(2)}) rotate(${tilt.toFixed(2)} 100 100)`,
+      );
+      sparks.current.forEach((el, i) => {
+        if (!el) return;
+        const sp = SPARKS[i];
+        const sc = spark * sp.s * (1 + 0.15 * Math.sin(now / 90 + i));
+        el.setAttribute(
+          'transform',
+          `translate(${sp.x} ${sp.y}) rotate(${(now / 12 + i * 40) % 360}) scale(${sc.toFixed(3)})`,
+        );
+        el.setAttribute('opacity', spark.toFixed(2));
       });
       frame = requestAnimationFrame(tick);
     };
@@ -197,7 +441,7 @@ export default function SophieOrb({
   const coreStroke =
     mode === 'speaking' || mode === 'thinking' || mode === 'greeting'
       ? 'stroke-accent'
-      : mode === 'muted'
+      : mode === 'muted' || mode === 'sad'
         ? 'stroke-warn'
         : 'stroke-line2';
 
@@ -274,25 +518,41 @@ export default function SophieOrb({
           className="stroke-line2"
           strokeWidth="1"
         />
-        <g className={mode === 'muted' ? 'fill-warn' : 'fill-accent'}>
-          {EYES.map((cx, i) => (
-            <rect
-              key={cx}
-              ref={(el) => {
-                eyes.current[i] = el;
-              }}
-              x={cx - EYE.w / 2}
-              y={EYE.y - EYE.h / 2}
-              width={EYE.w}
-              height={EYE.h}
-              rx={EYE.r}
-            />
-          ))}
+        <g ref={face}>
+          <g
+            className={
+              mode === 'muted' || mode === 'sad' ? 'fill-warn' : 'fill-accent'
+            }
+          >
+            {EYE_X.map((cx, i) => (
+              <path
+                key={cx}
+                ref={(el) => {
+                  eyes.current[i] = el;
+                }}
+                transform={`translate(${cx} ${EYE_Y})`}
+                d={eyePath(EYE.w, EYE.h, 0)}
+              />
+            ))}
+          </g>
+          <g className="fill-accent">
+            {SPARKS.map((sp, i) => (
+              <path
+                key={i}
+                ref={(el) => {
+                  sparks.current[i] = el;
+                }}
+                opacity="0"
+                transform={`translate(${sp.x} ${sp.y}) scale(0)`}
+                d="M0 -6C1 -1 1 -1 6 0C1 1 1 1 0 6C-1 1 -1 1 -6 0C-1 -1 -1 -1 0 -6Z"
+              />
+            ))}
+          </g>
         </g>
       </svg>
       <span
         aria-hidden="true"
-        className={`absolute inset-x-0 top-[63%] text-center font-mono text-[clamp(10px,1vw,12px)] tracking-[0.14em] ${warn ? 'text-warn' : 'text-muted'}`}
+        className={`absolute inset-x-0 top-[66%] text-center font-mono text-[clamp(10px,1vw,12px)] tracking-[0.14em] ${warn ? 'text-warn' : 'text-muted'}`}
       >
         {clock}
       </span>

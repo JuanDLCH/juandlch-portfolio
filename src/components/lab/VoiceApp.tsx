@@ -20,7 +20,7 @@ import {
 } from '../../lab/voice/rtc';
 import { getToken } from '../../lab/voice/turnstile';
 import { setLang, setTheme } from '../../scripts/prefs';
-import SophieOrb, { type OrbMode } from './SophieOrb';
+import SophieOrb, { type Gesture, type OrbMode } from './SophieOrb';
 import {
   ContactActions,
   I,
@@ -107,6 +107,10 @@ function useTypewriter(text: string) {
   }, [text]);
   return shown;
 }
+
+/** Visitor words about reaching Juan Diego: Sophie lights up. */
+const CONTACT_TALK =
+  /\b(contact\w*|reach|hire|hiring|interview\w*|meet(ing)?|call|email|e-mail|mail|linkedin|github|book\w*|schedul\w*|contrat\w*|entrevist\w*|reuni[oó]n\w*|llamad\w*|agend\w*|correo|escrib\w*|hablar con [eé]l)\b/i;
 
 /** Shorter remainders start a new call instead (as the Worker does). */
 const MIN_RESUME_S = 10;
@@ -195,6 +199,13 @@ export default function VoiceApp() {
   const [speed, setSpeed] = useState(1);
   const [metrics, setMetrics] = useState({ connect: 0, turn: 0, bargeIns: 0 });
   const [sheet, setSheet] = useState(false);
+  // A moment of expression on Sophie's face (SophieOrb plays it).
+  const [gesture, setGesture] = useState<Gesture | null>(null);
+  const gestureSeq = useRef(0);
+  const emote = (kind: Gesture['kind']) =>
+    setGesture({ kind, id: ++gestureSeq.current });
+  // Visitor turns that already made her light up (contact talk).
+  const cheered = useRef(new Set<string>());
 
   const greetRef = useRef<HTMLAudioElement>(null);
   const remoteRef = useRef<HTMLAudioElement>(null);
@@ -221,7 +232,9 @@ export default function VoiceApp() {
     : phase.at === 'connecting'
       ? 'connecting'
       : ended
-        ? 'ended'
+        ? failed
+          ? 'sad'
+          : 'ended'
         : greeting === 'playing'
           ? 'greeting'
           : 'idle';
@@ -248,7 +261,11 @@ export default function VoiceApp() {
     el.currentTime = 0;
     setHeard(0);
     el.play().then(
-      () => setGreeting('playing'),
+      () => {
+        setGreeting('playing');
+        // "Hi, I'm Sophie!" comes with a wink.
+        setTimeout(() => emote('wink'), 450);
+      },
       () => setGreeting('blocked'),
     );
   };
@@ -312,6 +329,7 @@ export default function VoiceApp() {
   };
 
   const onBargeIn = () => {
+    emote('surprise');
     setLines((ls) => {
       const next = [...ls];
       for (let i = next.length - 1; i >= 0; i--) {
@@ -330,6 +348,7 @@ export default function VoiceApp() {
   };
 
   const onContact = (args: string) => {
+    emote('contact');
     setContact(args);
     const { options } = contactInput(args);
     setLines((ls) => [
@@ -404,7 +423,14 @@ export default function VoiceApp() {
         resume: resume ? { callId: resume, history } : undefined,
         on: {
           activity: onActivity,
-          user: (id, text) => upsert('user', id, text),
+          user: (id, text) => {
+            upsert('user', id, text);
+            // Talk of reaching him lights her up, once per turn.
+            if (CONTACT_TALK.test(text) && !cheered.current.has(id)) {
+              cheered.current.add(id);
+              emote('happy');
+            }
+          },
           agent: (id, text) => upsert('agent', id, text),
           bargeIn: onBargeIn,
           contact: onContact,
@@ -441,6 +467,7 @@ export default function VoiceApp() {
         connect: Math.round(performance.now() - t0),
       }));
       setPhase({ at: 'live' });
+      emote('happy');
     } catch (err) {
       for (const t of mic.getTracks()) t.stop();
       void audioCtx.current?.close();
@@ -468,6 +495,7 @@ export default function VoiceApp() {
       if (!warned && call.seconds - s <= WRAP_UP_S) {
         warned = true;
         call.wrapUp();
+        emote('clock');
       }
       if (s >= call.seconds) hangUp('time');
     }, 250);
@@ -607,7 +635,7 @@ export default function VoiceApp() {
       : 'text-muted';
 
   const phaseTone =
-    mode === 'muted'
+    mode === 'muted' || mode === 'sad'
       ? 'text-warn'
       : mode === 'speaking' || mode === 'thinking' || mode === 'greeting'
         ? 'text-accent'
@@ -615,7 +643,7 @@ export default function VoiceApp() {
           ? 'text-ok'
           : 'text-muted';
   const phaseDot =
-    mode === 'muted'
+    phaseTone === 'text-warn'
       ? 'bg-warn'
       : phaseTone === 'text-accent'
         ? 'bg-accent'
@@ -709,6 +737,7 @@ export default function VoiceApp() {
               <SophieOrb
                 mode={mode}
                 level={level}
+                gesture={gesture}
                 clock={mmss(left)}
                 warn={wrapping}
                 label={`${x.orb} — ${x.phase[mode]}`}
