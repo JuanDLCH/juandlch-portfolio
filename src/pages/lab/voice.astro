@@ -1,0 +1,17 @@
+---
+import VoiceApp from '../../components/lab/VoiceApp';
+import Layout from '../../layouts/Layout.astro';
+
+// Without it every Start fails the Turnstile check (dev uses the test key).
+if (!import.meta.env.DEV && !import.meta.env.PUBLIC_TURNSTILE_SITEKEY)
+  console.warn(
+    '[voice] PUBLIC_TURNSTILE_SITEKEY is not set: the voice lab will refuse every call.',
+  );
+---
+
+<Layout
+  title="Talk to Sophie — JuanDLCH Voice Lab"
+  description="A realtime voice agent grounded in Juan Diego's CV and portfolio. Ask out loud about his experience, projects and stack, in English or Spanish."
+>
+  <VoiceApp client:load />
+</Layout>
