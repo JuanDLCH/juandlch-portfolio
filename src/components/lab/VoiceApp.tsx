@@ -622,13 +622,6 @@ export default function VoiceApp() {
         : phaseTone === 'text-ok'
           ? 'bg-ok'
           : 'bg-muted';
-  const hint = !live
-    ? x.hintIdle
-    : muted
-      ? x.hintMuted
-      : wrapping
-        ? x.hintWrap
-        : x.hintLive;
   const turnCount = `${speech.length} ${x.turns}`;
   const metricCells = [
     { k: x.metrics[0], v: metrics.connect ? `${metrics.connect} ms` : '— ms' },
@@ -759,7 +752,7 @@ export default function VoiceApp() {
             </div>
 
             {/* Fixed slot, so the orb doesn't jump when buttons appear. */}
-            <div className="flex min-h-9 shrink-0 flex-col items-center justify-center gap-2">
+            <div className="flex min-h-7 shrink-0 flex-col items-center justify-center gap-2">
               {(contact || ended) && (
                 <div className="flex flex-col items-center gap-2">
                   {!contact && (
@@ -777,7 +770,7 @@ export default function VoiceApp() {
                 <button
                   type="button"
                   onClick={greeting === 'playing' ? stopGreeting : playGreeting}
-                  className={`${mono} border-line2 text-muted hover:border-accent hover:text-ink inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.08em] uppercase transition-colors`}
+                  className={`${mono} border-line2 text-muted hover:border-accent hover:text-ink inline-flex h-7 cursor-pointer items-center gap-1.5 border bg-transparent px-2.5 text-[9px] tracking-[0.08em] uppercase transition-colors`}
                 >
                   <Icon
                     d={greeting === 'playing' ? I.stop : I.play}
@@ -802,11 +795,11 @@ export default function VoiceApp() {
                 aria-pressed={muted}
                 aria-label={muted ? x.unmute : x.mute}
                 title={muted ? x.unmute : x.mute}
-                className={`grid size-[60px] place-items-center border p-0 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${muted ? 'border-warn bg-warn text-bg' : 'border-line2 text-ink hover:border-accent cursor-pointer bg-transparent'}`}
+                className={`grid size-11 place-items-center border p-0 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${muted ? 'border-warn bg-warn text-bg' : 'border-line2 text-ink hover:border-accent cursor-pointer bg-transparent'}`}
               >
                 <Icon
                   d={muted ? `${I.mic}<path d="M3 3l18 18"/>` : I.mic}
-                  size={22}
+                  size={18}
                 />
               </button>
               <button
@@ -818,9 +811,9 @@ export default function VoiceApp() {
                     : () => void start(ended ? resumable : null)
                 }
                 disabled={phase.at === 'connecting'}
-                className={`inline-flex h-[60px] min-w-[200px] cursor-pointer items-center justify-center gap-2.5 border px-6 text-base font-semibold transition-[filter,border-color] disabled:cursor-wait disabled:opacity-70 ${live ? 'border-line2 text-ink hover:border-accent bg-transparent' : 'border-accent bg-accent text-on-accent hover:brightness-110'}`}
+                className={`inline-flex h-11 min-w-[176px] cursor-pointer items-center justify-center gap-2 border px-5 text-sm font-semibold transition-[filter,border-color] disabled:cursor-wait disabled:opacity-70 ${live ? 'border-line2 text-ink hover:border-accent bg-transparent' : 'border-accent bg-accent text-on-accent hover:brightness-110'}`}
               >
-                <Icon d={live ? I.stop : I.mic} size={live ? 16 : 18} />
+                <Icon d={live ? I.stop : I.mic} size={live ? 13 : 15} />
                 {live
                   ? x.end
                   : phase.at === 'connecting'
@@ -836,9 +829,9 @@ export default function VoiceApp() {
                 onClick={() => setSheet(true)}
                 aria-label={x.transcriptBtn}
                 title={x.transcriptBtn}
-                className={`${iconBtn} narrow:grid hidden size-[60px]`}
+                className={`${iconBtn} narrow:grid hidden size-11`}
               >
-                <Icon d='<path d="M4 6h16M4 11h16M4 16h10"/>' size={20} />
+                <Icon d='<path d="M4 6h16M4 11h16M4 16h10"/>' size={17} />
               </button>
             </div>
             {resumable && !live && phase.at !== 'connecting' && (
@@ -862,17 +855,12 @@ export default function VoiceApp() {
                 value={speed}
                 onChange={(e) => setSpeed(Number(e.target.value))}
                 aria-valuetext={`${speed.toFixed(2)}×`}
-                className="accent-accent h-1 w-[clamp(110px,14vw,160px)] cursor-pointer"
+                className="accent-accent h-1 w-[clamp(90px,10vw,120px)] cursor-pointer"
               />
               <span className="text-ink w-[3.6em] text-left tabular-nums">
                 {speed.toFixed(2)}×
               </span>
             </label>
-            <p
-              className={`${mono} m-0 max-w-[560px] text-center text-[10px] leading-[1.6] tracking-[0.04em] ${wrapping ? 'text-warn' : 'text-muted'}`}
-            >
-              {hint}
-            </p>
             {failed && (
               <a
                 href="/lab/cv"

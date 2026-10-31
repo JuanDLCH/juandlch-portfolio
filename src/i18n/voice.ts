@@ -28,11 +28,6 @@ const EN = {
   again: 'Talk again',
   mute: 'Mute microphone',
   unmute: 'Unmute microphone',
-  hintIdle:
-    'No setup, no keys. Allow the microphone and just talk — Sophie answers out loud. Calls last up to 3 minutes, 3 a day.',
-  hintLive: 'Interrupt anytime: start talking and Sophie stops to listen.',
-  hintMuted: 'Your microphone is muted — Sophie can’t hear you.',
-  hintWrap: 'Almost out of time: Sophie is wrapping up.',
   idleCaption:
     'Press start and ask anything about Juan Diego — his experience, projects, stack, or how to reach him.',
   greeting:
@@ -106,12 +101,6 @@ const ES: typeof EN = {
   again: 'Hablar de nuevo',
   mute: 'Silenciar micrófono',
   unmute: 'Activar micrófono',
-  hintIdle:
-    'Sin configuración ni llaves. Permite el micrófono y habla — Sophie responde en voz alta. Las llamadas duran hasta 3 minutos, 3 al día.',
-  hintLive:
-    'Interrúmpela cuando quieras: empieza a hablar y Sophie se detiene a escuchar.',
-  hintMuted: 'Tu micrófono está silenciado — Sophie no te escucha.',
-  hintWrap: 'Se acaba el tiempo: Sophie está cerrando la conversación.',
   idleCaption:
     'Pulsa iniciar y pregunta lo que quieras sobre Juan Diego — su experiencia, proyectos, stack o cómo contactarlo.',
   greeting:
