@@ -92,7 +92,6 @@ export const MODELS: Record<
   },
 };
 
-const SOL = { anthropic: 'claude-sonnet-5-5', openai: 'gpt-6.1-sol' } as const;
 const LUNA = { anthropic: 'claude-haiku-5-5', openai: 'gpt-6-luna' } as const;
 
 /** The case's model on the active provider. */
@@ -431,9 +430,9 @@ export const CASES: ChatCase[] = [
     },
     // The Knowledge Base box takes the place of suggestions.
     suggestions: [],
-    models: SOL,
+    models: LUNA,
     effort: 'medium',
-    maxTokens: 16000,
+    maxTokens: 8000,
     system: [
       LANG,
       "You are a document assistant that answers only from the user's Knowledge Base: up to 5 PDFs (20 pages each) or images they added in the box above the chat. Every user message starts with a note listing the Knowledge Base as it is now (ids d1, d2…); the user can add or remove documents between messages, so always go by the latest note. The files are not in the messages: you read them only with the document tools.",
