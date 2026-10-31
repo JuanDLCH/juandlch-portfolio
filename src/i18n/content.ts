@@ -96,7 +96,7 @@ const EN = {
   awsLeadA: 'Most of what I ship runs on AWS. ',
   awsLeadB: ' is my default for production GenAI.',
   awsBody:
-    'Model choice across providers, Bedrock AgentCore to run agents and Amazon Nova among the options — wired into serverless pipelines with Lambda, Step Functions and EventBridge. I also gave technical support to my company’s AWS Generative AI Competency process.',
+    'Model choice across providers with Claude models as my go-to, and Bedrock AgentCore to run agents — wired into serverless pipelines with Lambda, Step Functions and EventBridge. I also gave technical support to my company’s AWS Generative AI Competency process.',
   awsFlex:
     'AWS is my focus, not my limit — I work with whichever cloud or model provider a project requires.',
   awsIconsLabel: 'AWS services I work with',
@@ -210,7 +210,7 @@ const ES: typeof EN = {
   awsLeadA: 'Casi todo lo que llevo a producción corre en AWS. ',
   awsLeadB: ' es mi opción por defecto para GenAI en producción.',
   awsBody:
-    'Elección de modelos entre proveedores, Bedrock AgentCore para ejecutar agentes y Amazon Nova entre las opciones — integrado en pipelines serverless con Lambda, Step Functions y EventBridge. También di soporte técnico al proceso de AWS Generative AI Competency de la compañía.',
+    'Elección de modelos entre proveedores con los modelos de Claude como mi opción principal, y Bedrock AgentCore para ejecutar agentes — integrado en pipelines serverless con Lambda, Step Functions y EventBridge. También di soporte técnico al proceso de AWS Generative AI Competency de la compañía.',
   awsFlex:
     'AWS es mi enfoque, no mi límite — trabajo con la nube o el proveedor de modelos que cada proyecto requiera.',
   awsIconsLabel: 'Servicios de AWS con los que trabajo',
