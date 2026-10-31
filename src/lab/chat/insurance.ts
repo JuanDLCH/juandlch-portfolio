@@ -147,6 +147,14 @@ const CLAIMABLE: Incident[] = INCIDENT_IDS.filter((i) => {
 /** Nothing left to photograph. */
 const NO_PHOTO: Incident[] = ['theft'];
 
+/** A YYYY-MM-DD date that exists: Date.parse would turn 2026-02-30 into
+ * March 2, so the date has to come back unchanged. */
+const realDate = (d: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const t = new Date(`${d}T00:00:00Z`);
+  return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d;
+};
+
 export const today = () => new Date().toLocaleDateString('en-CA');
 
 export const describePolicy = (lang: Lang, holder: string) => ({
@@ -416,9 +424,9 @@ export const fileClaim = (
       `Claims here are for damage to the insured car (${CLAIMABLE.join(', ')}); ${i.incident} is handled by phone.`,
     );
   const now = today();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(i.date) || Number.isNaN(Date.parse(i.date)))
+  if (!realDate(i.date))
     errors.push(
-      `date must be YYYY-MM-DD (today is ${now}); ask when it happened.`,
+      `date must be a real calendar date, YYYY-MM-DD (today is ${now}); ask when it happened.`,
     );
   else if (i.date > now)
     errors.push(`The date ${i.date} is in the future (today is ${now}).`);
