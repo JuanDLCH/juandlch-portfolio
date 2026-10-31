@@ -98,6 +98,11 @@
   html {
     scroll-behavior: smooth;
   }
+  /* Thin, theme-colored scrollbars everywhere instead of the native ones. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line2) transparent;
+  }
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
