@@ -7,7 +7,7 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist/', '.astro/', 'node_modules/'] },
+  { ignores: ['dist/', '.astro/', '.wrangler/', 'node_modules/'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...astro.configs.recommended,
@@ -20,6 +20,10 @@ export default [
       ...reactHooks.configs.recommended.rules,
       ...jsxA11y.flatConfigs.recommended.rules,
     },
+  },
+  {
+    files: ['scripts/**/*.{js,mjs}'],
+    languageOptions: { globals: globals.node },
   },
   prettier,
 ];

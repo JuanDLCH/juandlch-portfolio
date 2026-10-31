@@ -1,0 +1,40 @@
+// Voice Lab backend (worker/) and, with `assets`, the static site itself.
+// Secrets: `wrangler secret put OPENAI_API_KEY | TURNSTILE_SECRET | IP_SALT`
+// (locally: .dev.vars, see .dev.vars.example). Use a key from an OpenAI
+// project of its own, with a monthly budget cap.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "juandlch-portfolio",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Pages are linked without a trailing slash (/lab/voice).
+    "html_handling": "drop-trailing-slash",
+    // The API is the Worker's; everything else is the static build.
+    "run_worker_first": ["/api/*"],
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "QUOTA", "class_name": "VoiceQuota" },
+      { "name": "CALL", "class_name": "VoiceCall" },
+    ],
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["VoiceQuota", "VoiceCall"] },
+  ],
+  "vars": {
+    // The production origin(s), comma-separated (dev: .dev.vars). Empty, every
+    // session is refused.
+    "SITE_ORIGIN": "",
+    "VOICE_MODEL": "gpt-realtime-2.1-mini",
+    "VOICE_NAME": "marin",
+    "VOICE_REASONING": "",
+    "MAX_PER_IP": "3",
+    "MAX_PER_DAY": "40",
+    "SESSION_S": "180",
+    "MOCK_OPENAI": "",
+  },
+  "observability": { "enabled": true },
+}

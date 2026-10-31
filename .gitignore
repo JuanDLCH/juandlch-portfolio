@@ -30,6 +30,7 @@ pnpm-debug.log*
 .vercel/
 .netlify/
 .wrangler/
+.dev.vars
 
 # OS files
 .DS_Store
