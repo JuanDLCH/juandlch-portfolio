@@ -25,7 +25,16 @@ import {
 import { runTurn } from '../../lab/chat/turn';
 import { cvLinkId, cvPdf } from '../../lab/chat/cv';
 import { CONTACT, contactInput } from '../../lab/chat/contact';
-import { dish, optionLabel, type Order } from '../../lab/chat/order';
+import {
+  CATEGORY_LABEL,
+  TAG_LABEL,
+  dish,
+  menuSelection,
+  optionLabel,
+  type Category,
+  type Lang,
+  type Order,
+} from '../../lab/chat/order';
 import CvViewer from './CvViewer';
 import { transcribe } from '../../lab/chat/openai';
 import {
@@ -213,21 +222,23 @@ export default function ChatApp({
   const hasInput = draft.trim().length > 0 || files.length > 0;
   // Contact buttons go at the end of the turn they were shown in, below the
   // answer, wherever in the turn the tool was called.
-  const contactAt = new Map<number, string[]>();
-  for (let i = 0, turn: string[] = []; i < session.items.length; i++) {
-    const m = session.items[i];
-    if (
-      m.kind === 'tool' &&
-      m.name === 'show_contact_options' &&
-      m.status === 'done'
-    )
-      turn.push(m.input);
-    const next = session.items[i + 1];
-    if (turn.length && (!next || next.kind === 'user')) {
-      contactAt.set(i, turn);
-      turn = [];
+  // Same for the Order assistant's menu cards.
+  const endOfTurn = (name: string) => {
+    const at = new Map<number, string[]>();
+    for (let i = 0, turn: string[] = []; i < session.items.length; i++) {
+      const m = session.items[i];
+      if (m.kind === 'tool' && m.name === name && m.status === 'done')
+        turn.push(m.input);
+      const next = session.items[i + 1];
+      if (turn.length && (!next || next.kind === 'user')) {
+        at.set(i, turn);
+        turn = [];
+      }
     }
-  }
+    return at;
+  };
+  const contactAt = endOfTurn('show_contact_options');
+  const menuAt = endOfTurn('show_menu');
   // The order card goes once, at the end of the last turn that changed the
   // order, and always shows its current state.
   let orderAt = -1;
@@ -264,6 +275,7 @@ export default function ChatApp({
   const recRef = useRef<MediaRecorder | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const dialog = modal
     ? 'keys'
@@ -823,13 +835,23 @@ export default function ChatApp({
                   {contactAt.get(i)?.map((input, k) => (
                     <ContactActions key={k} input={input} x={x} />
                   ))}
+                  {menuAt.get(i)?.map((input, k) => (
+                    <MenuCard
+                      key={k}
+                      input={input}
+                      onPick={(d) => {
+                        setDraft(d);
+                        composerRef.current?.focus();
+                      }}
+                    />
+                  ))}
                   {i === orderAt && session.order && (
                     <OrderCard
                       order={session.order}
-                      es={es}
-                      x={x}
                       busy={busy}
-                      onPlace={() => void send(x.order.confirm)}
+                      onPlace={() =>
+                        void send(CHAT[session.order!.lang].order.confirm)
+                      }
                     />
                   )}
                 </Fragment>
@@ -951,6 +973,7 @@ export default function ChatApp({
                       {x.inputLabel}
                     </label>
                     <textarea
+                      ref={composerRef}
                       id="jd-prompt"
                       rows={1}
                       value={draft}
@@ -1905,21 +1928,20 @@ const usd = (n: number) => `$${n.toFixed(2)}`;
 
 // The Order assistant's order, as its tools left it. "Place order" sends the
 // confirmation as a user message, so the model still calls place_order.
+// Both cards render in the conversation's language (from the tools), which
+// may differ from the page's.
 function OrderCard({
   order,
-  es,
-  x,
   busy,
   onPlace,
 }: {
   order: Order;
-  es: boolean;
-  x: ChatCopy;
   busy: boolean;
   onPlace: () => void;
 }) {
   const placed = order.status === 'placed';
-  const pick = (l: { en: string; es: string }) => (es ? l.es : l.en);
+  const x = CHAT[order.lang];
+  const pick = (l: { en: string; es: string }) => l[order.lang];
   const row = 'flex items-baseline justify-between gap-4';
   return (
     <section
@@ -1999,6 +2021,87 @@ function OrderCard({
           </button>
         )
       )}
+    </section>
+  );
+}
+
+// The menu (or part of it) from show_menu. Tapping an available dish puts an
+// order for it in the composer, to send as is or add details to.
+function MenuCard({
+  input,
+  onPick,
+}: {
+  input: string;
+  onPick: (draft: string) => void;
+}) {
+  let args: { category?: Category; item_ids?: string[]; lang?: Lang };
+  try {
+    args = JSON.parse(input);
+  } catch {
+    return null;
+  }
+  const lang: Lang = args.lang === 'es' ? 'es' : 'en';
+  const x = CHAT[lang];
+  const dishes = menuSelection(args.category, args.item_ids);
+  const groups = [...new Set(dishes.map((d) => d.category))];
+  if (!dishes.length) return null;
+  return (
+    <section
+      aria-label={x.order.menu}
+      className="bg-panel border-line2 mob:max-w-full ml-3 flex max-w-[min(88%,520px)] flex-col gap-3 border p-4 text-[13px]"
+    >
+      <span
+        className={`${mono} text-accent text-[11px] tracking-wider uppercase`}
+      >
+        {x.order.menu}
+      </span>
+      {groups.map((g) => (
+        <div key={g} className="flex flex-col gap-1">
+          <span className={`${mono} text-muted text-[11px] uppercase`}>
+            {CATEGORY_LABEL[g][lang]}
+          </span>
+          <ul className="m-0 flex list-none flex-col p-0">
+            {dishes
+              .filter((d) => d.category === g)
+              .map((d) => (
+                <li key={d.id}>
+                  <button
+                    type="button"
+                    disabled={!d.available}
+                    onClick={() =>
+                      onPick(x.order.want.replace('{d}', d.name[lang]))
+                    }
+                    title={d.available ? x.order.tapHint : undefined}
+                    className="hover:bg-bg/40 flex w-full cursor-pointer items-baseline justify-between gap-4 border-0 bg-transparent px-1 py-1.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-ink">
+                        {d.name[lang]}
+                        {d.tags
+                          .filter((t) => TAG_LABEL[t])
+                          .map((t) => (
+                            <span
+                              key={t}
+                              className={`${mono} text-accent ml-2 text-[10px] uppercase`}
+                            >
+                              {TAG_LABEL[t][lang]}
+                            </span>
+                          ))}
+                      </span>
+                      <span className="text-muted text-[12px] leading-snug">
+                        {d.description[lang]}
+                      </span>
+                    </span>
+                    <span className={`${mono} text-ink shrink-0`}>
+                      {d.available ? usd(d.price) : x.order.soldOut}
+                    </span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
+      <p className="text-muted m-0 text-[11px]">{x.order.tapHint}</p>
     </section>
   );
 }

@@ -7,11 +7,16 @@ import { CONTACT, CONTACT_OPTIONS, type ContactOption } from './contact';
 import {
   CATEGORIES,
   DINER,
+  LANGS,
   MENU,
+  TAG_LABEL,
   applyOps,
   describeDish,
   describeOrder,
   emptyOrder,
+  menuSelection,
+  type Category,
+  type Lang,
   type OrderOp,
 } from './order';
 
@@ -34,6 +39,18 @@ interface ClientTool {
 
 const str = (v: unknown) => typeof v === 'string' && v.trim().length > 0;
 
+// Order assistant tools: they take the customer's language so names come
+// back (and the cards render) in it.
+const LANG_PROP = {
+  type: 'string',
+  enum: [...LANGS],
+  description:
+    "The language of the customer's latest message: es for Spanish, en for any other.",
+} as const;
+const langOf = (v: unknown, fallback: Lang = 'en'): Lang =>
+  LANGS.includes(v as Lang) ? (v as Lang) : fallback;
+const isCategory = (v: unknown) => CATEGORIES.includes(v as Category);
+
 const searchMenu: ClientTool = {
   def: {
     name: 'search_menu',
@@ -44,24 +61,24 @@ const searchMenu: ClientTool = {
         query: {
           type: 'string',
           description:
-            'English words matched against names, descriptions, tags and option names, e.g. "vegan" or "burger". Empty for all.',
+            'Words (English or Spanish) matched against names, descriptions, tags and option names, e.g. "vegan" or "burger". Empty for all.',
         },
         category: { type: 'string', enum: [...CATEGORIES] },
+        lang: LANG_PROP,
       },
+      required: ['lang'],
     },
     eager_input_streaming: true,
   },
   validate: (i) => {
     if (i.query !== undefined && typeof i.query !== 'string')
       return 'query must be a string';
-    if (
-      i.category !== undefined &&
-      !CATEGORIES.includes(i.category as (typeof CATEGORIES)[number])
-    )
+    if (i.category !== undefined && !isCategory(i.category))
       return `category must be one of: ${CATEGORIES.join(', ')}`;
     return null;
   },
   run: async (i) => {
+    const lang = langOf(i.lang);
     const q = words(String(i.query ?? ''));
     const hits = MENU.filter(
       (d) =>
@@ -70,15 +87,22 @@ const searchMenu: ClientTool = {
           words(
             [
               d.id,
-              d.name.en,
-              d.description,
-              ...d.tags,
-              ...d.groups.flatMap((g) => g.choices.map((x) => x.label.en)),
+              ...LANGS.flatMap((l) => [d.name[l], d.description[l]]),
+              ...d.tags.flatMap((t) => [
+                t,
+                ...LANGS.map((l) => TAG_LABEL[t]?.[l] ?? ''),
+              ]),
+              ...d.groups.flatMap((g) =>
+                g.choices.flatMap((x) => LANGS.map((l) => x.label[l])),
+              ),
             ].join(' '),
           ).some((t) => t.startsWith(w) || w.startsWith(t)),
         ),
     );
-    return { dishes: hits.map(describeDish), currency: 'USD' };
+    return {
+      dishes: hits.map((d) => describeDish(d, lang)),
+      currency: 'USD',
+    };
   },
   summary: (r, es) => {
     const n = (r as { dishes: unknown[] }).dishes.length;
@@ -90,7 +114,7 @@ const updateOrder: ClientTool = {
   def: {
     name: 'update_order',
     description:
-      'Change the current order with a list of operations, applied in order. add: a dish by item_id, with quantity (default 1), option choice ids from search_menu (required groups left out get their default) and an optional short note. update: a line by line_id; options picks choices (in one-choice groups like side it replaces the current pick), remove_options drops choices. remove: a line by line_id. If the current order was already placed, this starts a new one. Returns the whole order and errors for the operations that could not be applied (those were skipped).',
+      'Change the current order with a list of operations, applied in order. add: a dish by item_id, with quantity (default 1), option choice ids from search_menu (a required group left out gets its default if it has one; otherwise the op fails and you must ask the customer) and an optional short note. update: a line by line_id; options picks choices (in one-choice groups like side it replaces the current pick), remove_options drops choices. remove: a line by line_id. If the current order was already placed, this starts a new one. Returns the whole order and errors for the operations that could not be applied (those were skipped).',
     input_schema: {
       type: 'object',
       properties: {
@@ -114,8 +138,9 @@ const updateOrder: ClientTool = {
             required: ['op'],
           },
         },
+        lang: LANG_PROP,
       },
-      required: ['ops'],
+      required: ['ops', 'lang'],
     },
     eager_input_streaming: true,
   },
@@ -146,8 +171,8 @@ const updateOrder: ClientTool = {
         ? { ...emptyOrder(), seq: s.order?.seq ?? 0 }
         : s.order;
     const { order, errors } = applyOps(current, i.ops as OrderOp[]);
-    s.order = order;
-    return { order: describeOrder(order), errors };
+    s.order = { ...order, lang: langOf(i.lang, current.lang) };
+    return { order: describeOrder(s.order), errors };
   },
   summary: (r, es) => {
     const { order, errors } = r as {
@@ -164,6 +189,60 @@ const updateOrder: ClientTool = {
         : ` · ${errors.length} not applied`
       : '';
     return `${lines} · $${order.total.toFixed(2)}${err}`;
+  },
+};
+
+const showMenu: ClientTool = {
+  def: {
+    name: 'show_menu',
+    description:
+      'Show the customer the menu as a card under your reply: the whole menu, one category, or specific dishes (e.g. the ones matching a question), with prices, dietary tags and what is sold out. Tapping a dish starts a message to order it. Use it whenever the customer wants to see the menu or options instead of listing dishes in text.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', enum: [...CATEGORIES] },
+        item_ids: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Specific dishes (ids from search_menu).',
+        },
+        lang: LANG_PROP,
+      },
+      required: ['lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) => {
+    if (i.category !== undefined && !isCategory(i.category))
+      return `category must be one of: ${CATEGORIES.join(', ')}`;
+    if (i.item_ids !== undefined) {
+      if (!Array.isArray(i.item_ids)) return 'item_ids must be an array';
+      const bad = (i.item_ids as unknown[]).find(
+        (id) => !MENU.some((d) => d.id === id),
+      );
+      if (bad !== undefined) return `unknown item_id: ${String(bad)}`;
+    }
+    return null;
+  },
+  run: async (i) => {
+    const shown = menuSelection(
+      i.category as Category | undefined,
+      i.item_ids as string[] | undefined,
+    );
+    const lang = langOf(i.lang);
+    return {
+      shown: shown.map((d) => ({
+        id: d.id,
+        name: d.name[lang],
+        price: d.price,
+        ...(d.available ? {} : { available: false }),
+      })),
+      note: 'The customer sees these dishes in a card under your reply; do not list them again.',
+    };
+  },
+  summary: (r, es) => {
+    const n = (r as { shown: unknown[] }).shown.length;
+    return es ? `${n} platos en pantalla` : `${n} dishes shown`;
   },
 };
 
@@ -451,6 +530,7 @@ export const CLIENT_TOOLS: Record<string, ClientTool> = {
   search_profile: searchProfile,
   search_menu: searchMenu,
   update_order: updateOrder,
+  show_menu: showMenu,
   place_order: placeOrder,
   get_weather: getWeather,
   get_time: getTime,

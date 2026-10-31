@@ -1,7 +1,10 @@
 // Menu and order logic of the "Order assistant" case: a made-up diner. The
 // model only maps requests to operations; validation and prices happen here.
-// Names are bilingual for the order card; the model gets them in English.
+// Names are bilingual: the model asks for the customer's language (`lang`),
+// and the order and menu cards render in it.
 type L = { en: string; es: string };
+export type Lang = keyof L;
+export const LANGS: Lang[] = ['en', 'es'];
 
 export const DINER = 'Ember & Bowl';
 const TAX = 0.08;
@@ -29,8 +32,8 @@ interface Group {
 export interface Dish {
   id: string;
   name: L;
-  category: 'burgers' | 'bowls' | 'sides' | 'drinks' | 'desserts';
-  description: string;
+  category: Category;
+  description: L;
   price: number;
   tags: string[];
   /** Allergens of the dish itself; options add their own. */
@@ -92,13 +95,13 @@ const burgerGroups: Group[] = [
   },
 ];
 
-const bowlGroups = (proteins: Choice[], protein: string): Group[] => [
+// Bowls have no defaults: the customer picks base, protein and dressing.
+const bowlGroups = (proteins: Choice[]): Group[] => [
   {
     id: 'base',
     label: { en: 'Base', es: 'Base' },
     min: 1,
     max: 1,
-    default: 'rice',
     choices: [
       c('rice', 'Brown rice', 'Arroz integral'),
       c('greens', 'Mixed greens', 'Mix de hojas'),
@@ -110,7 +113,6 @@ const bowlGroups = (proteins: Choice[], protein: string): Group[] => [
     label: { en: 'Protein', es: 'Proteína' },
     min: 1,
     max: 1,
-    default: protein,
     choices: proteins,
   },
   {
@@ -118,7 +120,6 @@ const bowlGroups = (proteins: Choice[], protein: string): Group[] => [
     label: { en: 'Dressing', es: 'Aderezo' },
     min: 1,
     max: 1,
-    default: 'tahini',
     choices: [
       c('tahini', 'Lemon tahini', 'Tahini de limón', 0, true, ['sesame']),
       c('chipotle', 'Chipotle mayo', 'Mayonesa chipotle', 0, true, ['egg']),
@@ -146,8 +147,10 @@ export const MENU: Dish[] = [
     id: 'classic-burger',
     name: { en: 'Classic burger', es: 'Hamburguesa clásica' },
     category: 'burgers',
-    description:
-      'Beef patty, lettuce, tomato, onion, pickles and house sauce on a brioche bun.',
+    description: {
+      en: 'Beef patty, lettuce, tomato, onion, pickles and house sauce on a brioche bun.',
+      es: 'Carne de res, lechuga, tomate, cebolla, pepinillos y salsa de la casa en pan brioche.',
+    },
     price: 12,
     tags: ['beef'],
     allergens: ['gluten', 'egg', 'sesame'],
@@ -158,7 +161,10 @@ export const MENU: Dish[] = [
     id: 'cheeseburger',
     name: { en: 'Cheeseburger', es: 'Hamburguesa con queso' },
     category: 'burgers',
-    description: 'The classic burger with melted cheddar.',
+    description: {
+      en: 'The classic burger with melted cheddar.',
+      es: 'La clásica con queso cheddar derretido.',
+    },
     price: 13,
     tags: ['beef'],
     allergens: ['gluten', 'egg', 'sesame', 'dairy'],
@@ -169,8 +175,10 @@ export const MENU: Dish[] = [
     id: 'veggie-burger',
     name: { en: 'Veggie burger', es: 'Hamburguesa vegetariana' },
     category: 'burgers',
-    description:
-      'Black bean and quinoa patty, lettuce, tomato, onion and pickles.',
+    description: {
+      en: 'Black bean and quinoa patty, lettuce, tomato, onion and pickles.',
+      es: 'Medallón de fríjol negro y quinoa, lechuga, tomate, cebolla y pepinillos.',
+    },
     price: 12,
     tags: ['vegetarian'],
     allergens: ['gluten', 'sesame'],
@@ -181,41 +189,44 @@ export const MENU: Dish[] = [
     id: 'garden-bowl',
     name: { en: 'Garden bowl', es: 'Bowl de la huerta' },
     category: 'bowls',
-    description: 'Roasted vegetables, chickpeas, cucumber and herbs.',
+    description: {
+      en: 'Roasted vegetables, chickpeas, cucumber and herbs.',
+      es: 'Vegetales asados, garbanzos, pepino y hierbas.',
+    },
     price: 11,
     tags: ['vegetarian', 'vegan', 'gluten-free'],
     allergens: [],
     available: true,
-    groups: bowlGroups(
-      [
-        c('tofu', 'Crispy tofu', 'Tofu crocante'),
-        c('falafel', 'Falafel', 'Falafel'),
-      ],
-      'tofu',
-    ),
+    groups: bowlGroups([
+      c('tofu', 'Crispy tofu', 'Tofu crocante'),
+      c('falafel', 'Falafel', 'Falafel'),
+    ]),
   },
   {
     id: 'chicken-bowl',
     name: { en: 'Chicken bowl', es: 'Bowl de pollo' },
     category: 'bowls',
-    description: 'Grilled chicken, corn, black beans, pico de gallo.',
+    description: {
+      en: 'Grilled chicken, corn, black beans, pico de gallo.',
+      es: 'Pollo a la plancha, maíz, fríjol negro y pico de gallo.',
+    },
     price: 13,
     tags: ['chicken', 'gluten-free'],
     allergens: [],
     available: true,
-    groups: bowlGroups(
-      [
-        c('chicken', 'Grilled chicken', 'Pollo a la plancha'),
-        c('double-chicken', 'Double chicken', 'Doble pollo', 3),
-      ],
-      'chicken',
-    ),
+    groups: bowlGroups([
+      c('chicken', 'Grilled chicken', 'Pollo a la plancha'),
+      c('double-chicken', 'Double chicken', 'Doble pollo', 3),
+    ]),
   },
   {
     id: 'fries',
     name: { en: 'Fries', es: 'Papas fritas' },
     category: 'sides',
-    description: 'Hand-cut fries with sea salt.',
+    description: {
+      en: 'Hand-cut fries with sea salt.',
+      es: 'Papas cortadas a mano con sal marina.',
+    },
     price: 4,
     tags: ['vegan', 'gluten-free'],
     allergens: [],
@@ -226,7 +237,10 @@ export const MENU: Dish[] = [
     id: 'sweet-potato-fries',
     name: { en: 'Sweet potato fries', es: 'Papas de camote' },
     category: 'sides',
-    description: 'With chipotle mayo.',
+    description: {
+      en: 'With chipotle mayo.',
+      es: 'Con mayonesa chipotle.',
+    },
     price: 5,
     tags: ['vegetarian', 'gluten-free'],
     allergens: ['egg'],
@@ -237,7 +251,10 @@ export const MENU: Dish[] = [
     id: 'side-salad',
     name: { en: 'Side salad', es: 'Ensalada' },
     category: 'sides',
-    description: 'Greens, cucumber and tomato with vinaigrette.',
+    description: {
+      en: 'Greens, cucumber and tomato with vinaigrette.',
+      es: 'Hojas verdes, pepino y tomate con vinagreta.',
+    },
     price: 4,
     tags: ['vegan', 'gluten-free'],
     allergens: [],
@@ -248,7 +265,10 @@ export const MENU: Dish[] = [
     id: 'lemonade',
     name: { en: 'Mint lemonade', es: 'Limonada de hierbabuena' },
     category: 'drinks',
-    description: 'Fresh lemon and mint.',
+    description: {
+      en: 'Fresh lemon and mint.',
+      es: 'Limón fresco y hierbabuena.',
+    },
     price: 3.5,
     tags: ['vegan', 'gluten-free'],
     allergens: [],
@@ -259,7 +279,10 @@ export const MENU: Dish[] = [
     id: 'iced-tea',
     name: { en: 'Iced tea', es: 'Té helado' },
     category: 'drinks',
-    description: 'Black tea with peach, lightly sweetened.',
+    description: {
+      en: 'Black tea with peach, lightly sweetened.',
+      es: 'Té negro con durazno, poco dulce.',
+    },
     price: 3,
     tags: ['vegan', 'gluten-free'],
     allergens: [],
@@ -270,7 +293,10 @@ export const MENU: Dish[] = [
     id: 'soda',
     name: { en: 'Soda', es: 'Gaseosa' },
     category: 'drinks',
-    description: 'Cola, diet cola or lemon-lime.',
+    description: {
+      en: 'Cola, diet cola or lemon-lime.',
+      es: 'Cola, cola light o lima-limón.',
+    },
     price: 2.5,
     tags: ['vegan', 'gluten-free'],
     allergens: [],
@@ -281,7 +307,6 @@ export const MENU: Dish[] = [
         label: { en: 'Flavor', es: 'Sabor' },
         min: 1,
         max: 1,
-        default: 'cola',
         choices: [
           c('cola', 'Cola', 'Cola'),
           c('diet-cola', 'Diet cola', 'Cola light'),
@@ -294,7 +319,10 @@ export const MENU: Dish[] = [
     id: 'brownie',
     name: { en: 'Chocolate brownie', es: 'Brownie de chocolate' },
     category: 'desserts',
-    description: 'Warm, with a pinch of sea salt.',
+    description: {
+      en: 'Warm, with a pinch of sea salt.',
+      es: 'Tibio, con un toque de sal marina.',
+    },
     price: 5,
     tags: ['vegetarian'],
     allergens: ['gluten', 'egg', 'dairy', 'nuts'],
@@ -310,6 +338,25 @@ export const CATEGORIES = [
   'drinks',
   'desserts',
 ] as const;
+export type Category = (typeof CATEGORIES)[number];
+export const CATEGORY_LABEL: Record<Category, L> = {
+  burgers: { en: 'Burgers', es: 'Hamburguesas' },
+  bowls: { en: 'Bowls', es: 'Bowls' },
+  sides: { en: 'Sides', es: 'Acompañantes' },
+  drinks: { en: 'Drinks', es: 'Bebidas' },
+  desserts: { en: 'Desserts', es: 'Postres' },
+};
+export const TAG_LABEL: Record<string, L> = {
+  vegetarian: { en: 'Vegetarian', es: 'Vegetariano' },
+  vegan: { en: 'Vegan', es: 'Vegano' },
+  'gluten-free': { en: 'Gluten-free', es: 'Sin gluten' },
+};
+
+/** Dishes a show_menu call lists: given ids, a category, or everything. */
+export const menuSelection = (category?: Category, ids?: string[]) =>
+  ids?.length
+    ? MENU.filter((d) => ids.includes(d.id))
+    : MENU.filter((d) => !category || d.category === category);
 
 export interface OrderLine {
   line_id: string;
@@ -328,6 +375,8 @@ export interface Order {
   tax: number;
   total: number;
   status: 'open' | 'placed';
+  /** Language of the conversation, for the order card. */
+  lang: Lang;
   /** Last line id handed out, so removed ids are never reused. */
   seq: number;
   order_id?: string;
@@ -358,6 +407,7 @@ export const emptyOrder = (): Order => ({
   tax: 0,
   total: 0,
   status: 'open',
+  lang: 'en',
   seq: 0,
 });
 
@@ -409,7 +459,10 @@ function resolveOptions(
     const inGroup = picked.filter((p) => g.choices.some((x) => x.id === p));
     if (inGroup.length === 0 && g.min > 0 && g.default) picked.push(g.default);
     else if (inGroup.length < g.min)
-      return `${d.name.en} needs at least ${g.min} ${g.id} choice(s).`;
+      return `${d.name.en} needs a ${g.id} choice; ask the customer which one (${g.choices
+        .filter((x) => x.available)
+        .map((x) => x.id)
+        .join(', ')}).`;
     if (inGroup.length > g.max)
       return `${d.name.en} allows at most ${g.max} ${g.id} choice(s); got ${inGroup.join(', ')}.`;
   }
@@ -513,9 +566,11 @@ export const describeOrder = (o: Order) => ({
   lines: o.lines.map((l) => ({
     line_id: l.line_id,
     item_id: l.item_id,
-    name: dish(l.item_id)?.name.en,
+    name: dish(l.item_id)?.name[o.lang],
     quantity: l.quantity,
-    options: l.options.map((id) => `${optionLabel(l.item_id, id).en} (${id})`),
+    options: l.options.map(
+      (id) => `${optionLabel(l.item_id, id)[o.lang]} (${id})`,
+    ),
     allergens: allergensWith(dish(l.item_id)!, l.options),
     ...(l.note ? { note: l.note } : {}),
     unit_price: l.unit_price,
@@ -529,15 +584,15 @@ export const describeOrder = (o: Order) => ({
 });
 
 /** A dish as the model sees it. */
-export const describeDish = (d: Dish) => ({
+export const describeDish = (d: Dish, lang: Lang) => ({
   id: d.id,
-  name: d.name.en,
+  name: d.name[lang],
   category: d.category,
-  description: d.description,
+  description: d.description[lang],
   price: d.price,
   tags: d.tags,
   // As served with the default options; each choice lists what it adds.
-  allergens_with_defaults: allergensWith(
+  allergens: allergensWith(
     d,
     d.groups.flatMap((g) => (g.default ? [g.default] : [])),
   ),
@@ -549,7 +604,7 @@ export const describeDish = (d: Dish) => ({
     ...(g.default ? { default: g.default } : {}),
     choices: g.choices.map((x) => ({
       id: x.id,
-      name: x.label.en,
+      name: x.label[lang],
       ...(x.price ? { price: x.price } : {}),
       ...(x.allergens ? { allergens: x.allergens } : {}),
       ...(x.available ? {} : { available: false }),
