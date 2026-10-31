@@ -451,10 +451,13 @@ export default function ChatApp({
     if ($busy.get()) return;
     setSide(false);
     if (k.id !== c.id) {
-      if (!confirmed && getSession(c.id).items.length > 0) {
+      const s = getSession(c.id);
+      // A filled Knowledge Base counts as started: switching clears it.
+      if (!confirmed && (s.items.length > 0 || s.docs?.length)) {
         setSwitchTo(k);
         return;
       }
+      kbGeneration++;
       setSession(c.id, emptySession());
       setSession(k.id, emptySession());
       $caseId.set(k.id);
@@ -628,10 +631,13 @@ export default function ChatApp({
         notice('docLimit');
         return;
       }
+      const gen = kbGeneration;
       setReading((readingRef.current += 1));
       const r = await readKbFile(f, c.docs).finally(() =>
         setReading((readingRef.current -= 1)),
       );
+      // The visitor switched cases meanwhile: that Knowledge Base is gone.
+      if (gen !== kbGeneration) return;
       if (typeof r === 'string') {
         notice(r);
         continue;
@@ -2432,6 +2438,10 @@ function Linked({
 }
 
 const ORDER_TOOLS = ['update_order', 'place_order'];
+// Bumped when a case switch clears the sessions: Knowledge Base reads that
+// started before it are dropped instead of landing in the cleared one.
+// Module state, so it also holds across a remount of the island.
+let kbGeneration = 0;
 // show_menu calls already seen, by tool call id, so each full menu opens
 // once.
 const menusOpened = new Set<string>();
