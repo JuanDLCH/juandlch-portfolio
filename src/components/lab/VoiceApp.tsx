@@ -81,13 +81,32 @@ const rms = (a: AnalyserNode | null, buf: Float32Array<ArrayBuffer>) => {
 const mmss = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-/** The end of a long text, from a word boundary: the caption shows only
- * the latest words (the transcript has it all). */
-const tail = (text: string, max = 170) => {
-  if (text.length <= max) return text;
-  const cut = text.slice(-max);
-  return `…${cut.slice(cut.indexOf(' ') + 1)}`;
-};
+/** Types `text` out letter by letter, like the chat's messages: a steady
+ * pace that speeds up when it falls behind (speech streams in bursts). A
+ * text that doesn't continue the one shown starts over. Reduced motion
+ * shows it whole. */
+function useTypewriter(text: string) {
+  const [shown, setShown] = useState(text);
+  const target = useRef(text);
+  useEffect(() => {
+    target.current = text;
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const id = setInterval(() => {
+      setShown((prev) => {
+        const t = target.current;
+        const cur = t.startsWith(prev) ? prev : '';
+        if (still || cur.length >= t.length) {
+          clearInterval(id);
+          return t;
+        }
+        const behind = t.length - cur.length;
+        return t.slice(0, cur.length + Math.max(1, Math.ceil(behind / 14)));
+      });
+    }, 18);
+    return () => clearInterval(id);
+  }, [text]);
+  return shown;
+}
 
 /** Shorter remainders start a new call instead (as the Worker does). */
 const MIN_RESUME_S = 10;
@@ -533,11 +552,14 @@ export default function VoiceApp() {
       (activity === 'speaking' && last.kind === 'agent'));
   let caption: { who: string; text: string; tone: string; cursor: boolean };
   if (phase.at === 'idle' && greeting !== 'off') {
-    const words = x.greeting.split(' ');
-    const n = greeting === 'playing' ? Math.ceil(heard * words.length) : 0;
+    // Follows the audio, a little ahead of it.
+    const n =
+      greeting === 'playing'
+        ? Math.ceil(Math.min(1, heard * 1.08 + 0.02) * x.greeting.length)
+        : 0;
     caption = {
       who: x.agent,
-      text: n ? words.slice(0, n).join(' ') : x.greeting,
+      text: n ? x.greeting.slice(0, n) : x.greeting,
       tone: n || greeting === 'blocked' ? 'text-ink' : 'text-muted',
       cursor: greeting === 'playing',
     };
@@ -578,6 +600,7 @@ export default function VoiceApp() {
       cursor: false,
     };
   }
+  const typedCaption = useTypewriter(caption.text);
   const captionWhoTone =
     caption.who === x.agent && caption.tone !== 'text-muted'
       ? 'text-accent'
@@ -689,7 +712,7 @@ export default function VoiceApp() {
               <span>{x.scenario}</span>
             </div>
 
-            <div className="flex min-h-[120px] w-full flex-1 items-center justify-center">
+            <div className="flex min-h-[72px] w-full flex-1 items-center justify-center">
               <SophieOrb
                 mode={mode}
                 level={level}
@@ -706,18 +729,19 @@ export default function VoiceApp() {
               <div className={`${monoLabel} min-h-[1.2em] ${captionWhoTone}`}>
                 {caption.who}
               </div>
-              {/* Three lines at most, the latest at the bottom. */}
+              {/* Three lines, the newest at the bottom; older ones slide up
+                  and fade out (the transcript keeps everything). */}
               <p
                 role={failed ? 'alert' : undefined}
-                className={`mob:text-[clamp(15px,4.2vw,18px)] mt-1.5 mb-0 flex h-[4.2em] flex-col justify-end overflow-hidden text-[clamp(15px,1.35vw,19px)] leading-[1.4] font-normal tracking-[-0.02em] ${caption.tone}`}
+                className={`mob:text-[clamp(15px,4.2vw,18px)] mt-1.5 mb-0 flex h-[4.2em] flex-col justify-end overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,#000_1.1em)] text-[clamp(15px,1.35vw,19px)] leading-[1.4] font-normal tracking-[-0.02em] ${caption.tone}`}
               >
-                <span className="text-balance">
-                  {tail(caption.text)}
-                  {caption.cursor && (
-                    <span
-                      aria-hidden="true"
-                      className="bg-accent jd-blink ml-1 inline-block h-[1em] w-[0.45em] align-[-0.12em]"
-                    />
+                {/* Screen readers get the whole text, not every letter. */}
+                <span className="sr-only">{caption.text}</span>
+                <span aria-hidden="true">
+                  {typedCaption}
+                  {(caption.cursor ||
+                    typedCaption.length < caption.text.length) && (
+                    <span className="jd-blink bg-accent ml-[3px] inline-block h-[0.9em] w-[0.4em] align-[-0.1em]" />
                   )}
                 </span>
               </p>
