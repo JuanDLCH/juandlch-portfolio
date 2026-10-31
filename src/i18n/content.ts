@@ -118,6 +118,7 @@ const EN = {
   footB: 'think?',
   toLight: 'Switch to light mode',
   toDark: 'Switch to dark mode',
+  backToTop: 'Back to top',
 };
 
 const ES: typeof EN = {
@@ -231,6 +232,7 @@ const ES: typeof EN = {
   footB: 'pensar?',
   toLight: 'Cambiar a modo claro',
   toDark: 'Cambiar a modo oscuro',
+  backToTop: 'Volver arriba',
 };
 
 function build(isEs: boolean) {
