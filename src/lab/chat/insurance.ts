@@ -261,13 +261,49 @@ const colorFamily = (color: string) => {
   );
 };
 
+// Parts of the car the model can report as damaged; the claim card shows
+// them in the customer's language.
+export const DAMAGE_AREA_LABEL = {
+  front_bumper: { en: 'Front bumper', es: 'Bómper delantero' },
+  rear_bumper: { en: 'Rear bumper', es: 'Bómper trasero' },
+  hood: { en: 'Hood', es: 'Capó' },
+  trunk: { en: 'Trunk', es: 'Baúl' },
+  roof: { en: 'Roof', es: 'Techo' },
+  windshield: { en: 'Windshield', es: 'Parabrisas' },
+  rear_window: { en: 'Rear window', es: 'Vidrio trasero' },
+  side_window: { en: 'Side window', es: 'Vidrio lateral' },
+  headlight: { en: 'Headlight', es: 'Farola' },
+  taillight: { en: 'Taillight', es: 'Stop' },
+  mirror: { en: 'Side mirror', es: 'Espejo lateral' },
+  left_front_door: { en: 'Left front door', es: 'Puerta delantera izquierda' },
+  left_rear_door: { en: 'Left rear door', es: 'Puerta trasera izquierda' },
+  right_front_door: { en: 'Right front door', es: 'Puerta delantera derecha' },
+  right_rear_door: { en: 'Right rear door', es: 'Puerta trasera derecha' },
+  left_fender: { en: 'Left fender', es: 'Guardabarros izquierdo' },
+  right_fender: { en: 'Right fender', es: 'Guardabarros derecho' },
+  left_quarter_panel: {
+    en: 'Left rear quarter panel',
+    es: 'Costado trasero izquierdo',
+  },
+  right_quarter_panel: {
+    en: 'Right rear quarter panel',
+    es: 'Costado trasero derecho',
+  },
+  left_rocker_panel: { en: 'Left rocker panel', es: 'Estribo izquierdo' },
+  right_rocker_panel: { en: 'Right rocker panel', es: 'Estribo derecho' },
+  wheel: { en: 'Wheel or tire', es: 'Rin o llanta' },
+  underbody: { en: 'Underbody', es: 'Parte inferior' },
+} satisfies Record<string, L>;
+export type DamageArea = keyof typeof DAMAGE_AREA_LABEL;
+export const DAMAGE_AREAS = Object.keys(DAMAGE_AREA_LABEL) as DamageArea[];
+
 export interface PhotoObservation {
   vehicle_visible: boolean;
   color: string;
   body_type: BodyType;
   make?: string;
   damage_visible: boolean;
-  damage_areas: string[];
+  damage_areas: DamageArea[];
 }
 
 export interface PhotoCheck {
@@ -335,7 +371,11 @@ export interface Claim {
   location?: string;
   coverage: CoverageId;
   deductible: number;
-  damage_areas: string[];
+  damage_areas: DamageArea[];
+  /** Damage value declared by the customer, backed by a document. Optional:
+   * it can be added after filing. */
+  amount?: number;
+  annex?: { name: string; invoice_number?: string };
   filed: string;
   status: 'in_review';
   lang: Lang;
@@ -414,6 +454,50 @@ export const fileClaim = (
   };
 };
 
+export interface InvoiceInput {
+  /** What the customer says the damage costs. */
+  amount: number;
+  /** The total the model read on the document. */
+  document_total: number;
+  /** Plate on the document, when it shows one. */
+  plate?: string;
+  invoice_number?: string;
+}
+
+/** Adds the damage value to a claim, backed by a document whose total and
+ * plate must agree with it. */
+export const attachInvoice = (
+  c: Claim,
+  doc: string,
+  i: InvoiceInput,
+): { claim: Claim } | { errors: string[] } => {
+  const errors: string[] = [];
+  if (!(i.amount > 0 && i.amount <= 100_000))
+    errors.push('amount must be between $1 and $100,000.');
+  if (Math.abs(i.amount - i.document_total) > 1)
+    errors.push(
+      `The document total ($${i.document_total.toFixed(2)}) does not support the declared amount ($${i.amount.toFixed(2)}): ask the customer to check it.`,
+    );
+  const plate = i.plate ? i.plate.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
+  if (plate && plate !== POLICY.vehicle.plate.replace('-', ''))
+    errors.push(
+      `The document is for plate ${i.plate}, not the insured car (${POLICY.vehicle.plate}).`,
+    );
+  if (errors.length) return { errors };
+  return {
+    claim: {
+      ...c,
+      amount: Math.round(i.amount * 100) / 100,
+      annex: {
+        name: doc,
+        ...(i.invoice_number
+          ? { invoice_number: i.invoice_number.slice(0, 40) }
+          : {}),
+      },
+    },
+  };
+};
+
 export const describeClaim = (c: Claim) => ({
   claim_id: c.claim_id,
   status: 'in review: an adjuster will contact the customer (simulated)',
@@ -423,5 +507,8 @@ export const describeClaim = (c: Claim) => ({
   coverage: COVERAGE[c.coverage].label[c.lang],
   deductible: c.deductible,
   ...(c.location ? { location: c.location } : {}),
-  damage_areas: c.damage_areas,
+  damage_areas: c.damage_areas.map((a) => DAMAGE_AREA_LABEL[a][c.lang]),
+  damage_value:
+    c.amount ?? 'not declared yet (optional: needs a supporting document)',
+  ...(c.annex ? { annex: c.annex.name } : {}),
 });

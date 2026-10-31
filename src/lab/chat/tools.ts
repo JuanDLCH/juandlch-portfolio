@@ -22,6 +22,9 @@ import {
 } from './order';
 import {
   BODY_TYPES,
+  DAMAGE_AREAS,
+  attachInvoice,
+  type DamageArea,
   INCIDENT_IDS,
   INSURER,
   checkCoverage,
@@ -432,9 +435,9 @@ const checkPhotoTool: ClientTool = {
         damage_visible: { type: 'boolean' },
         damage_areas: {
           type: 'array',
-          items: { type: 'string' },
+          items: { type: 'string', enum: [...DAMAGE_AREAS] },
           description:
-            'In the customer’s language (they show on the claim card), e.g. "rear bumper".',
+            'Damaged parts. Left and right are the car’s own (as seen from the driver’s seat).',
         },
         lang: LANG_PROP,
       },
@@ -459,8 +462,11 @@ const checkPhotoTool: ClientTool = {
       return `body_type must be one of: ${BODY_TYPES.join(', ')}`;
     if (i.make !== undefined && typeof i.make !== 'string')
       return 'make must be a string';
-    if (!Array.isArray(i.damage_areas) || !i.damage_areas.every(str))
-      return 'damage_areas must be an array of strings';
+    if (
+      !Array.isArray(i.damage_areas) ||
+      !i.damage_areas.every((a) => DAMAGE_AREAS.includes(a as DamageArea))
+    )
+      return `damage_areas must be an array of: ${DAMAGE_AREAS.join(', ')}`;
     return null;
   },
   run: async (i, _signal, s) => {
@@ -479,7 +485,7 @@ const checkPhotoTool: ClientTool = {
       body_type: i.body_type as BodyType,
       ...(str(i.make) ? { make: i.make as string } : {}),
       damage_visible: i.damage_visible as boolean,
-      damage_areas: (i.damage_areas as string[]).slice(0, 8),
+      damage_areas: [...new Set(i.damage_areas as DamageArea[])].slice(0, 8),
     });
     s.claims = { ...s.claims!, photo: check };
     return { status: check.status, reasons: check.reasons };
@@ -595,6 +601,109 @@ const getClaimStatus: ClientTool = {
     const c = r as { claim?: { claim_id: string }; error?: string };
     if (!c.claim) return c.error!;
     return `${c.claim.claim_id} · ${es ? 'en trámite' : 'in review'}`;
+  },
+};
+
+const requestDocument: ClientTool = {
+  def: {
+    name: 'request_document',
+    description:
+      'Ask the customer for the document that backs the damage value (a repair invoice or quote, as a PDF): it draws an upload button under your reply. Then wait for it.',
+    input_schema: {
+      type: 'object',
+      properties: { lang: LANG_PROP },
+      required: ['lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: () => null,
+  run: async () => ({
+    note: 'The customer sees an upload button. Ask for the invoice or quote (PDF) and the amount it shows, then wait.',
+  }),
+  summary: (_r, es) => (es ? 'botón de documento' : 'document button'),
+};
+
+const attachInvoiceTool: ClientTool = {
+  def: {
+    name: 'attach_invoice',
+    description:
+      'Add the damage value to a filed claim, with the PDF the customer sent (the latest one in the conversation) as its annex. Read the document yourself and pass its total and plate: the code checks that they support the amount the customer declared. Optional step: claims can stay without a value.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        claim_id: {
+          type: 'string',
+          description: 'Leave out for the latest claim.',
+        },
+        amount: {
+          type: 'number',
+          description: 'The damage value the customer declared, in USD.',
+        },
+        document_total: {
+          type: 'number',
+          description: 'The total you read on the document, in USD.',
+        },
+        plate: {
+          type: 'string',
+          description: 'The plate on the document, if it shows one.',
+        },
+        invoice_number: { type: 'string' },
+        lang: LANG_PROP,
+      },
+      required: ['amount', 'document_total', 'lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) => {
+    if (typeof i.amount !== 'number') return 'amount must be a number';
+    if (typeof i.document_total !== 'number')
+      return 'document_total must be a number';
+    for (const k of ['claim_id', 'plate', 'invoice_number'])
+      if (i[k] !== undefined && typeof i[k] !== 'string')
+        return `${k} must be a string`;
+    return null;
+  },
+  run: async (i, _signal, s) => {
+    const list = s.claims?.list ?? [];
+    const id = str(i.claim_id) ? String(i.claim_id).trim().toUpperCase() : '';
+    const c = id ? list.find((k) => k.claim_id === id) : list.at(-1);
+    if (!c)
+      return {
+        error: list.length
+          ? `No claim ${id}. Claims: ${list.map((k) => k.claim_id).join(', ')}.`
+          : 'There is no claim yet: file it first.',
+      };
+    // The annex is the latest PDF the customer sent.
+    const doc = s.items
+      .flatMap((m) => (m.kind === 'user' ? m.files : []))
+      .filter((f) => f.type === 'application/pdf')
+      .at(-1);
+    if (!doc)
+      return {
+        error:
+          'The customer has not sent a PDF: call request_document and wait for it.',
+      };
+    const r = attachInvoice(c, doc.name, {
+      amount: i.amount as number,
+      document_total: i.document_total as number,
+      ...(str(i.plate) ? { plate: i.plate as string } : {}),
+      ...(str(i.invoice_number)
+        ? { invoice_number: i.invoice_number as string }
+        : {}),
+    });
+    if ('errors' in r) return { errors: r.errors };
+    const claim = { ...r.claim, lang: langOf(i.lang, c.lang) };
+    s.claims = {
+      ...s.claims!,
+      list: list.map((k) => (k === c ? claim : k)),
+    };
+    return { claim: describeClaim(claim) };
+  },
+  summary: (r, es) => {
+    const c = r as { claim?: { claim_id: string }; errors?: string[] };
+    if (c.claim) return `${c.claim.claim_id} · ${es ? 'anexo' : 'annex'}`;
+    const n = c.errors?.length ?? 0;
+    return es ? `${n} sin respaldo` : `${n} not supported`;
   },
 };
 
@@ -859,6 +968,8 @@ export const CLIENT_TOOLS: Record<string, ClientTool> = {
   check_photo: named(checkPhotoTool),
   file_claim: named(fileClaimTool),
   get_claim_status: named(getClaimStatus),
+  request_document: named(requestDocument),
+  attach_invoice: named(attachInvoiceTool),
   get_weather: getWeather,
   get_time: getTime,
 };

@@ -40,12 +40,16 @@ import {
 } from '../../lab/chat/order';
 import {
   COVERAGE,
+  DAMAGE_AREA_LABEL,
   INCIDENT_LABEL,
   POLICY,
   describePolicy,
   type Claim,
 } from '../../lab/chat/insurance';
 import CvViewer from './CvViewer';
+import insuredCarUrl from '../../assets/lab/insurance/sample-insured-car.jpg?url';
+import otherCarUrl from '../../assets/lab/insurance/sample-other-car.jpg?url';
+import invoiceUrl from '../../assets/lab/insurance/sample-invoice.pdf?url';
 import { transcribe } from '../../lab/chat/openai';
 import {
   $busy,
@@ -255,10 +259,11 @@ export default function ChatApp({
   const menuAt = endOfTurn(['show_menu']);
   const policyAt = endOfTurn(['get_policy']);
   const photoAt = endOfTurn(['request_photo']);
+  const docAt = endOfTurn(['request_document']);
   // A claim card per claim the turn filed or looked up, found by the number
   // in the call's result label.
   const claimAt = endOfTurn(
-    ['file_claim', 'get_claim_status'],
+    ['file_claim', 'get_claim_status', 'attach_invoice'],
     (m) => m.result.match(/CLM-\d{4}-\d{5}/)?.[0] ?? '',
   );
   const claim = (id: string) =>
@@ -483,7 +488,13 @@ export default function ChatApp({
     const user: ChatItem = {
       kind: 'user',
       text,
-      files: files.map((f) => f.name),
+      files: files.map((f) => ({
+        name: f.name,
+        type: f.mediaType,
+        ...(IMAGE_TYPES.includes(f.mediaType)
+          ? { src: `data:${f.mediaType};base64,${f.data}` }
+          : {}),
+      })),
     };
     const input: UserInput = { text, files };
     setDraft('');
@@ -510,6 +521,15 @@ export default function ChatApp({
       e.preventDefault();
       void send();
     }
+  };
+
+  // Insurance examples: the sample file goes to the composer like an upload.
+  const addExample = async (ex: Example, lang: Lang) => {
+    const blob = await fetch(ex.src).then((r) => r.blob());
+    const file = new File([blob], ex.file[lang], { type: ex.type });
+    const now = $attachments.get()[c.id] ?? [];
+    $attachments.setKey(c.id, [...now, await readAttachment(file)]);
+    composerRef.current?.focus();
   };
 
   const onFiles = async (list: FileList | null) => {
@@ -898,21 +918,30 @@ export default function ChatApp({
                         holder={session.claims?.holder ?? ''}
                       />
                     ))}
-                  {photoAt
-                    .get(i)
-                    ?.slice(-1)
-                    .map((input, k) => (
-                      <PhotoRequest
-                        key={k}
-                        input={input}
-                        // Done once a later message carries a file.
-                        sent={session.items
-                          .slice(i + 1)
-                          .some((n) => n.kind === 'user' && n.files.length > 0)}
-                        busy={busy}
-                        onUpload={() => fileRef.current?.click()}
-                      />
-                    ))}
+                  {(
+                    [
+                      ['photo', photoAt.get(i)?.at(-1)],
+                      ['document', docAt.get(i)?.at(-1)],
+                    ] as const
+                  ).map(
+                    ([kind, input]) =>
+                      input && (
+                        <AttachRequest
+                          key={kind}
+                          kind={kind}
+                          input={input}
+                          // Done once a later message carries a file.
+                          sent={session.items
+                            .slice(i + 1)
+                            .some(
+                              (n) => n.kind === 'user' && n.files.length > 0,
+                            )}
+                          busy={busy}
+                          onUpload={() => fileRef.current?.click()}
+                          onExample={(ex, lang) => void addExample(ex, lang)}
+                        />
+                      ),
+                  )}
                   {[...new Set(claimAt.get(i))].map((id) => {
                     const cl = claim(id);
                     return cl && <ClaimCard key={id} claim={cl} />;
@@ -990,7 +1019,15 @@ export default function ChatApp({
                         key={i}
                         className={`${mono} border-line2 text-chip inline-flex items-center gap-2 border px-2 py-1 text-[11px]`}
                       >
-                        <Icon d={I.file} size={13} />
+                        {IMAGE_TYPES.includes(f.mediaType) ? (
+                          <img
+                            src={`data:${f.mediaType};base64,${f.data}`}
+                            alt=""
+                            className="size-6 object-cover"
+                          />
+                        ) : (
+                          <Icon d={I.file} size={13} />
+                        )}
                         {f.name}
                         <button
                           type="button"
@@ -2384,37 +2421,145 @@ function PolicyCard({ input, holder }: { input: string; holder: string }) {
   );
 }
 
-// request_photo: a button that opens the file picker (the camera on phones),
-// shown as sent once the next message carries a file.
-function PhotoRequest({
+// Sample files offered next to "upload your own" when the assistant asks for
+// a photo or a document: the insured car damaged, another car, and a body
+// shop invoice for the first one.
+interface Example {
+  key: 'insured' | 'other' | 'invoice';
+  src: string;
+  type: string;
+  file: { en: string; es: string };
+}
+const EXAMPLES: Record<'photo' | 'document', Example[]> = {
+  photo: [
+    {
+      key: 'insured',
+      src: insuredCarUrl,
+      type: 'image/jpeg',
+      file: { en: 'insured-car-damaged.jpg', es: 'auto-asegurado-chocado.jpg' },
+    },
+    {
+      key: 'other',
+      src: otherCarUrl,
+      type: 'image/jpeg',
+      file: { en: 'other-car.jpg', es: 'otro-auto.jpg' },
+    },
+  ],
+  document: [
+    {
+      key: 'invoice',
+      src: invoiceUrl,
+      type: 'application/pdf',
+      file: { en: 'body-shop-invoice.pdf', es: 'factura-taller.pdf' },
+    },
+  ],
+};
+
+// request_photo and request_document: a button that opens a choice between
+// the examples and the file picker (the camera on phones), shown as sent once
+// a later message carries a file.
+function AttachRequest({
+  kind,
   input,
   sent,
   busy,
   onUpload,
+  onExample,
 }: {
+  kind: 'photo' | 'document';
   input: string;
   sent: boolean;
   busy: boolean;
   onUpload: () => void;
+  onExample: (ex: Example, lang: Lang) => void;
 }) {
-  const x = CHAT[langArg(input)].insurance;
+  const [open, setOpen] = useState(false);
+  const lang = langArg(input);
+  const x = CHAT[lang].insurance;
+  const ask = kind === 'photo' ? x.upload : x.uploadDoc;
+  const btn =
+    'mob:h-11 inline-flex h-9 cursor-pointer items-center gap-2 px-3 text-[13px] disabled:cursor-not-allowed disabled:opacity-60';
+  if (sent || !open)
+    return (
+      <div className="mob:pr-3 flex flex-col items-start gap-1.5 pl-3">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          disabled={busy || sent}
+          className={`${btn} bg-accent text-on-accent border-0 font-semibold`}
+        >
+          <Icon d={I.clip} size={14} />
+          {sent ? x.sent : ask}
+        </button>
+        {!sent && (
+          <span className="text-muted text-[12px] leading-snug">
+            {kind === 'photo' ? x.photoHint : x.docHint}
+          </span>
+        )}
+      </div>
+    );
   return (
-    <div className="mob:pr-3 flex flex-col items-start gap-1.5 pl-3">
-      <button
-        type="button"
-        onClick={onUpload}
-        disabled={busy || sent}
-        className="bg-accent text-on-accent mob:h-11 inline-flex h-9 cursor-pointer items-center gap-2 border-0 px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        <Icon d={I.clip} size={14} />
-        {sent ? x.photoSent : x.upload}
-      </button>
-      {!sent && (
-        <span className="text-muted text-[12px] leading-snug">
-          {x.photoHint}
-        </span>
-      )}
-    </div>
+    <section aria-label={ask} className={cardBox}>
+      <span className={cardTitle}>{x.examples}</span>
+      <ul className="m-0 flex list-none flex-wrap gap-3 p-0">
+        {EXAMPLES[kind].map((ex) => (
+          <li key={ex.key} className="mob:w-[calc(50%-6px)] w-[150px]">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setOpen(false);
+                onExample(ex, lang);
+              }}
+              className="border-line2 hover:border-accent flex w-full cursor-pointer flex-col gap-1.5 border bg-transparent p-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {ex.type.startsWith('image/') ? (
+                <img
+                  src={ex.src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  width={150}
+                  height={90}
+                  className="aspect-[5/3] h-auto w-full object-cover"
+                />
+              ) : (
+                <span className="bg-bg text-muted grid aspect-[5/3] w-full place-items-center">
+                  <Icon d={I.file} size={28} />
+                </span>
+              )}
+              <span className="text-ink text-[12px] leading-snug font-semibold">
+                {x.example[ex.key].title}
+              </span>
+              <span className="text-muted text-[11px] leading-snug">
+                {x.example[ex.key].note}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setOpen(false);
+            onUpload();
+          }}
+          className={`${btn} bg-accent text-on-accent border-0 font-semibold`}
+        >
+          <Icon d={I.clip} size={14} />
+          {x.own}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className={`${btn} border-line2 text-ink hover:border-accent border bg-transparent`}
+        >
+          {x.close}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -2427,6 +2572,8 @@ function ClaimCard({ claim }: { claim: Claim }) {
     [x.date, claim.date],
     [x.deductible, claim.deductible ? `$${claim.deductible}` : x.noDeductible],
     [x.filed, claim.filed],
+    [x.amount, claim.amount ? `$${claim.amount.toFixed(2)}` : x.amountPending],
+    ...(claim.annex ? [[x.annex, claim.annex.name] as [string, string]] : []),
   ];
   return (
     <section aria-label={`${x.claim} ${claim.claim_id}`} className={cardBox}>
@@ -2451,7 +2598,11 @@ function ClaimCard({ claim }: { claim: Claim }) {
         {claim.damage_areas.length > 0 && (
           <div className="flex flex-col gap-0.5">
             <dt className="text-muted">{x.damage}</dt>
-            <dd className="text-ink m-0">{claim.damage_areas.join(' · ')}</dd>
+            <dd className="text-ink m-0">
+              {claim.damage_areas
+                .map((a) => DAMAGE_AREA_LABEL[a][claim.lang])
+                .join(' · ')}
+            </dd>
           </div>
         )}
       </dl>
@@ -2738,15 +2889,25 @@ function Message({
   if (m.kind === 'user') {
     return (
       <div className="mob:max-w-[85%] flex max-w-[80%] flex-col items-end gap-1.5 self-end">
-        {m.files.map((f) => (
-          <span
-            key={f}
-            className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2 py-1 text-[10px]`}
-          >
-            <Icon d={I.file} size={13} />
-            {f}
-          </span>
-        ))}
+        {m.files.map((f, i) =>
+          f.src ? (
+            <img
+              key={i}
+              src={f.src}
+              alt={f.name}
+              title={f.name}
+              className="border-line2 mob:max-w-[min(100%,200px)] block max-h-48 w-auto max-w-[240px] border object-contain"
+            />
+          ) : (
+            <span
+              key={i}
+              className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2 py-1 text-[10px]`}
+            >
+              <Icon d={I.file} size={13} />
+              {f.name}
+            </span>
+          ),
+        )}
         {m.text && (
           <div className="bg-panel border-line2 border px-2.5 py-1.5 text-[13px] leading-normal whitespace-pre-wrap">
             {m.text}

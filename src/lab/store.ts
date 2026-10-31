@@ -9,8 +9,15 @@ import { CASES } from './chat/cases';
 import type { Claims } from './chat/insurance';
 import type { Order } from './chat/order';
 
+/** A file as the log keeps it: images carry a data URL for their preview. */
+export interface SentFile {
+  name: string;
+  type: string;
+  src?: string;
+}
+
 export type ChatItem =
-  | { kind: 'user'; text: string; files: string[] }
+  | { kind: 'user'; text: string; files: SentFile[] }
   | { kind: 'assistant'; text: string; meta: string; streaming: boolean }
   | {
       kind: 'tool';
