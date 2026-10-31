@@ -196,7 +196,7 @@ const showMenu: ClientTool = {
   def: {
     name: 'show_menu',
     description:
-      'Show the customer the menu as a card under your reply: the whole menu, one category, or specific dishes (e.g. the ones matching a question), with prices, dietary tags and what is sold out. Tapping a dish starts a message to order it. Use it whenever the customer wants to see the menu or options instead of listing dishes in text.',
+      'Show the customer the menu: with no category or item_ids, the whole menu opens in a view-only window (the chat keeps a button to reopen it); a category or specific dishes (e.g. the ones matching a question) show as a card under your reply, where tapping a dish starts a message to order it. Both show prices, dietary tags and what is sold out. Use it whenever the customer wants to see the menu or options instead of listing dishes in text.',
     input_schema: {
       type: 'object',
       properties: {
@@ -237,7 +237,7 @@ const showMenu: ClientTool = {
         price: d.price,
         ...(d.available ? {} : { available: false }),
       })),
-      note: 'The customer sees these dishes in a card under your reply; do not list them again.',
+      note: 'The customer sees these dishes on screen; do not list them again.',
     };
   },
   summary: (r, es) => {

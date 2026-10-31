@@ -28,10 +28,13 @@ import { CONTACT, contactInput } from '../../lab/chat/contact';
 import {
   CATEGORY_LABEL,
   TAG_LABEL,
+  DINER,
+  MENU,
   dish,
   menuSelection,
   optionLabel,
   type Category,
+  type Dish,
   type Lang,
   type Order,
 } from '../../lab/chat/order';
@@ -266,6 +269,8 @@ export default function ChatApp({
   // CV viewer opened from a citation: the answer's cited items and the one
   // clicked.
   const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
+  // Order assistant: the full menu dialog, in the conversation's language.
+  const [menuLang, setMenuLang] = useState<Lang | null>(null);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   // Key input the keys dialog focuses when it opens.
   const [keyFocus, setKeyFocus] = useState<'anthropic' | 'openai'>('anthropic');
@@ -285,15 +290,18 @@ export default function ChatApp({
         ? info
         : cv
           ? 'cv'
-          : switchTo
-            ? 'switch'
-            : null;
+          : menuLang
+            ? 'menu'
+            : switchTo
+              ? 'switch'
+              : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
     setIntro(false);
     setInfo(null);
     setCv(null);
+    setMenuLang(null);
     setSwitchTo(null);
   };
 
@@ -392,7 +400,18 @@ export default function ChatApp({
     // A provider module that fails to load (offline, or a stale deploy)
     // must not leave the chat stuck on "Thinking…".
     const err = await runTurn(PROVIDER, chatKey, c, start, input, {
-      update: (s) => setSession(c.id, s),
+      update: (s) => {
+        setSession(c.id, s);
+        // The full menu opens by itself once, when a show_menu call for it
+        // finishes; the button it leaves in the log reopens it.
+        for (const m of s.items) {
+          if (m.kind !== 'tool' || m.name !== 'show_menu') continue;
+          if (m.status !== 'done' || menusOpened.has(m.id)) continue;
+          menusOpened.add(m.id);
+          const a = menuArgs(m.input);
+          if (a?.full) setMenuLang(a.lang);
+        }
+      },
       signal: ctrl.signal,
       es,
     }).catch(() => 'network' as const);
@@ -843,6 +862,7 @@ export default function ChatApp({
                         setDraft(d);
                         composerRef.current?.focus();
                       }}
+                      onOpen={setMenuLang}
                     />
                   ))}
                   {i === orderAt && session.order && (
@@ -1481,6 +1501,75 @@ export default function ChatApp({
         </div>
       )}
 
+      {menuLang && (
+        <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={CHAT[menuLang].close}
+            onClick={() => setMenuLang(null)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jd-menu-title"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[560px] flex-col border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 mob:pt-5 flex min-h-0 flex-1 flex-col px-7 pt-6 pb-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
+                <div>
+                  <div
+                    className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                  >
+                    {CHAT[menuLang].order.menu}
+                  </div>
+                  <h2
+                    id="jd-menu-title"
+                    className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+                  >
+                    {DINER}
+                  </h2>
+                  <p className="text-muted m-0 mt-1 text-[13px]">
+                    {CHAT[menuLang].order.menuNote}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMenuLang(null)}
+                  aria-label={CHAT[menuLang].close}
+                  className={`${iconBtn} size-9 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto text-[13px]">
+                <MenuList dishes={MENU} lang={menuLang} />
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end border-t px-7 py-3">
+              <button
+                type="button"
+                data-autofocus
+                onClick={() => setMenuLang(null)}
+                className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {CHAT[menuLang].close}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {cv && (
         <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
           <button
@@ -1924,6 +2013,9 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
 }
 
 const ORDER_TOOLS = ['update_order', 'place_order'];
+// show_menu calls already seen, by tool call id, so each full menu opens
+// once.
+const menusOpened = new Set<string>();
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
 // The Order assistant's order, as its tools left it. "Place order" sends the
@@ -2025,26 +2117,133 @@ function OrderCard({
   );
 }
 
-// The menu (or part of it) from show_menu. Tapping an available dish puts an
-// order for it in the composer, to send as is or add details to.
-function MenuCard({
-  input,
-  onPick,
-}: {
-  input: string;
-  onPick: (draft: string) => void;
-}) {
-  let args: { category?: Category; item_ids?: string[]; lang?: Lang };
+// show_menu's input: which dishes and in what language. A call with neither
+// category nor ids is the whole menu, shown in a dialog instead of the log.
+const menuArgs = (input: string) => {
   try {
-    args = JSON.parse(input);
+    const a = JSON.parse(input) as {
+      category?: Category;
+      item_ids?: string[];
+      lang?: unknown;
+    };
+    const lang: Lang = a.lang === 'es' ? 'es' : 'en';
+    return {
+      lang,
+      full: !a.category && !a.item_ids?.length,
+      dishes: menuSelection(a.category, a.item_ids),
+    };
   } catch {
     return null;
   }
-  const lang: Lang = args.lang === 'es' ? 'es' : 'en';
+};
+
+// Dishes by category. With `onPick`, tapping an available dish puts an order
+// for it in the composer; without it the list is view only.
+function MenuList({
+  dishes,
+  lang,
+  onPick,
+}: {
+  dishes: Dish[];
+  lang: Lang;
+  onPick?: (draft: string) => void;
+}) {
   const x = CHAT[lang];
-  const dishes = menuSelection(args.category, args.item_ids);
   const groups = [...new Set(dishes.map((d) => d.category))];
-  if (!dishes.length) return null;
+  const row =
+    'flex w-full items-baseline justify-between gap-4 px-1 py-1.5 text-left';
+  return groups.map((g) => (
+    <div key={g} className="flex flex-col gap-1">
+      <span className={`${mono} text-muted text-[11px] uppercase`}>
+        {CATEGORY_LABEL[g][lang]}
+      </span>
+      <ul className="m-0 flex list-none flex-col p-0">
+        {dishes
+          .filter((d) => d.category === g)
+          .map((d) => {
+            const body = (
+              <>
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-ink">
+                    {d.name[lang]}
+                    {d.tags
+                      // Vegan already says vegetarian.
+                      .filter(
+                        (t) =>
+                          TAG_LABEL[t] &&
+                          !(t === 'vegetarian' && d.tags.includes('vegan')),
+                      )
+                      .map((t) => (
+                        <span
+                          key={t}
+                          className={`${mono} text-accent ml-2 text-[10px] uppercase`}
+                        >
+                          {TAG_LABEL[t][lang]}
+                        </span>
+                      ))}
+                  </span>
+                  <span className="text-muted text-[12px] leading-snug">
+                    {d.description[lang]}
+                  </span>
+                </span>
+                <span className={`${mono} text-ink shrink-0`}>
+                  {d.available ? usd(d.price) : x.order.soldOut}
+                </span>
+              </>
+            );
+            return (
+              <li key={d.id}>
+                {onPick ? (
+                  <button
+                    type="button"
+                    disabled={!d.available}
+                    onClick={() =>
+                      onPick(x.order.want.replace('{d}', d.name[lang]))
+                    }
+                    title={d.available ? x.order.tapHint : undefined}
+                    className={`${row} hover:bg-bg/40 cursor-pointer border-0 bg-transparent disabled:cursor-not-allowed disabled:opacity-50`}
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  <div className={`${row} ${d.available ? '' : 'opacity-50'}`}>
+                    {body}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+      </ul>
+    </div>
+  ));
+}
+
+// A filtered show_menu (a category or some dishes) goes in the log as a card
+// to order from; the whole menu leaves a button that reopens its dialog.
+function MenuCard({
+  input,
+  onPick,
+  onOpen,
+}: {
+  input: string;
+  onPick: (draft: string) => void;
+  onOpen: (lang: Lang) => void;
+}) {
+  const m = menuArgs(input);
+  if (!m || !m.dishes.length) return null;
+  const x = CHAT[m.lang];
+  if (m.full)
+    return (
+      <div className="pl-3">
+        <button
+          type="button"
+          onClick={() => onOpen(m.lang)}
+          className="border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[13px] transition-colors"
+        >
+          {x.order.openMenu}
+        </button>
+      </div>
+    );
   return (
     <section
       aria-label={x.order.menu}
@@ -2055,57 +2254,7 @@ function MenuCard({
       >
         {x.order.menu}
       </span>
-      {groups.map((g) => (
-        <div key={g} className="flex flex-col gap-1">
-          <span className={`${mono} text-muted text-[11px] uppercase`}>
-            {CATEGORY_LABEL[g][lang]}
-          </span>
-          <ul className="m-0 flex list-none flex-col p-0">
-            {dishes
-              .filter((d) => d.category === g)
-              .map((d) => (
-                <li key={d.id}>
-                  <button
-                    type="button"
-                    disabled={!d.available}
-                    onClick={() =>
-                      onPick(x.order.want.replace('{d}', d.name[lang]))
-                    }
-                    title={d.available ? x.order.tapHint : undefined}
-                    className="hover:bg-bg/40 flex w-full cursor-pointer items-baseline justify-between gap-4 border-0 bg-transparent px-1 py-1.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-ink">
-                        {d.name[lang]}
-                        {d.tags
-                          // Vegan already says vegetarian.
-                          .filter(
-                            (t) =>
-                              TAG_LABEL[t] &&
-                              !(t === 'vegetarian' && d.tags.includes('vegan')),
-                          )
-                          .map((t) => (
-                            <span
-                              key={t}
-                              className={`${mono} text-accent ml-2 text-[10px] uppercase`}
-                            >
-                              {TAG_LABEL[t][lang]}
-                            </span>
-                          ))}
-                      </span>
-                      <span className="text-muted text-[12px] leading-snug">
-                        {d.description[lang]}
-                      </span>
-                    </span>
-                    <span className={`${mono} text-ink shrink-0`}>
-                      {d.available ? usd(d.price) : x.order.soldOut}
-                    </span>
-                  </button>
-                </li>
-              ))}
-          </ul>
-        </div>
-      ))}
+      <MenuList dishes={m.dishes} lang={m.lang} onPick={onPick} />
       <p className="text-muted m-0 text-[11px]">{x.order.tapHint}</p>
     </section>
   );

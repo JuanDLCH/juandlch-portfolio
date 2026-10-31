@@ -64,6 +64,8 @@ const EN = {
     soldOut: 'Sold out',
     tapHint: 'Tap a dish to order it.',
     want: 'I’d like to order: {d}',
+    openMenu: 'See the menu',
+    menuNote: 'Tell the assistant what you’d like to order.',
   },
   meetingHint:
     'In the booking form, tell me briefly what it’s about (a freelance project, a job offer, technical consulting…). Optional, but it makes it more likely I accept.',
@@ -236,6 +238,8 @@ const ES: typeof EN = {
     soldOut: 'Agotado',
     tapHint: 'Toca un plato para pedirlo.',
     want: 'Quiero pedir: {d}',
+    openMenu: 'Ver el menú',
+    menuNote: 'Dile al asistente qué quieres pedir.',
   },
   meetingHint:
     'En el formulario de reserva cuéntame brevemente de qué se trata (un proyecto freelance, una oferta laboral, una asesoría técnica…). Es opcional, pero aumenta la probabilidad de que acepte.',
