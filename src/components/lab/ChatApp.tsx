@@ -43,6 +43,7 @@ import {
   COVERAGE,
   DAMAGE_AREA_LABEL,
   INCIDENT_LABEL,
+  INSURER,
   POLICY,
   describePolicy,
   type Claim,
@@ -301,6 +302,8 @@ export default function ChatApp({
   const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
   // Order assistant: the full menu dialog, in the conversation's language.
   const [menuLang, setMenuLang] = useState<Lang | null>(null);
+  // Auto insurance assistant: the policy dialog, likewise.
+  const [policyLang, setPolicyLang] = useState<Lang | null>(null);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   // Key input the keys dialog focuses when it opens.
   const [keyFocus, setKeyFocus] = useState<'anthropic' | 'openai'>('anthropic');
@@ -322,9 +325,11 @@ export default function ChatApp({
           ? 'cv'
           : menuLang
             ? 'menu'
-            : switchTo
-              ? 'switch'
-              : null;
+            : policyLang
+              ? 'policy'
+              : switchTo
+                ? 'switch'
+                : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
@@ -332,6 +337,7 @@ export default function ChatApp({
     setInfo(null);
     setCv(null);
     setMenuLang(null);
+    setPolicyLang(null);
     setSwitchTo(null);
   };
 
@@ -440,6 +446,13 @@ export default function ChatApp({
           menusOpened.add(m.id);
           const a = menuArgs(m.input);
           if (a?.full) setMenuLang(a.lang);
+        }
+        // Same for the policy, from each get_policy call.
+        for (const m of s.items) {
+          if (m.kind !== 'tool' || m.name !== 'get_policy') continue;
+          if (m.status !== 'done' || policiesOpened.has(m.id)) continue;
+          policiesOpened.add(m.id);
+          setPolicyLang(langArg(m.input));
         }
       },
       signal: ctrl.signal,
@@ -928,11 +941,16 @@ export default function ChatApp({
                     .get(i)
                     ?.slice(-1)
                     .map((input, k) => (
-                      <PolicyCard
-                        key={k}
-                        input={input}
-                        holder={session.claims?.holder ?? ''}
-                      />
+                      <div key={k} className="pl-3">
+                        <button
+                          type="button"
+                          onClick={() => setPolicyLang(langArg(input))}
+                          className="border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[13px] transition-colors"
+                        >
+                          <Icon d={I.file} size={14} />
+                          {CHAT[langArg(input)].insurance.viewPolicy}
+                        </button>
+                      </div>
                     ))}
                   {(
                     [
@@ -1677,6 +1695,78 @@ export default function ChatApp({
         </div>
       )}
 
+      {policyLang && (
+        <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={CHAT[policyLang].close}
+            onClick={() => setMenuLang(null)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jd-policy-title"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[560px] flex-col border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 mob:pt-5 flex min-h-0 flex-1 flex-col px-7 pt-6 pb-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
+                <div>
+                  <div
+                    className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                  >
+                    {CHAT[policyLang].insurance.policy}
+                  </div>
+                  <h2
+                    id="jd-policy-title"
+                    className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+                  >
+                    {INSURER}
+                  </h2>
+                  <p className="text-muted m-0 mt-1 text-[13px]">
+                    {CHAT[policyLang].insurance.policyNote}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMenuLang(null)}
+                  aria-label={CHAT[policyLang].close}
+                  className={`${iconBtn} size-9 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto text-[13px]">
+                <PolicyDetails
+                  lang={policyLang}
+                  holder={session.claims?.holder ?? ''}
+                />
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end border-t px-7 py-3">
+              <button
+                type="button"
+                data-autofocus
+                onClick={() => setMenuLang(null)}
+                className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {CHAT[policyLang].close}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {cv && (
         <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
           <button
@@ -2123,6 +2213,8 @@ const ORDER_TOOLS = ['update_order', 'place_order'];
 // show_menu calls already seen, by tool call id, so each full menu opens
 // once.
 const menusOpened = new Set<string>();
+// get_policy calls already seen, so each opens the policy dialog once.
+const policiesOpened = new Set<string>();
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
 // The Order assistant's order, as its tools left it. "Place order" sends the
@@ -2383,21 +2475,17 @@ const cardBox =
   'bg-panel border-line2 mob:max-w-full ml-3 flex max-w-[min(88%,440px)] flex-col gap-3 border p-4 text-[13px]';
 const cardRow = 'flex items-baseline justify-between gap-4';
 
-// get_policy: the account's policy, car and coverages.
-function PolicyCard({ input, holder }: { input: string; holder: string }) {
-  const lang = langArg(input);
+// get_policy: the account's policy, car and coverages, shown in a dialog.
+function PolicyDetails({ lang, holder }: { lang: Lang; holder: string }) {
   const x = CHAT[lang].insurance;
   const p = describePolicy(lang, holder);
   const v = POLICY.vehicle;
   return (
-    <section aria-label={x.policy} className={cardBox}>
-      <div className={cardRow}>
-        <span className={cardTitle}>{x.policy}</span>
-        <span className={`${mono} text-muted text-[11px]`}>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <span className={`${mono} text-accent text-[11px]`}>
           {p.policy_number}
         </span>
-      </div>
-      <div className="flex flex-col gap-0.5">
         <span className="text-ink font-semibold">
           {v.year} {v.make} {v.model} · {p.vehicle.color_label}
         </span>
@@ -2433,7 +2521,7 @@ function PolicyCard({ input, holder }: { input: string; holder: string }) {
           ))}
         </ul>
       </div>
-    </section>
+    </div>
   );
 }
 

@@ -69,6 +69,8 @@ const EN = {
   },
   insurance: {
     policy: 'Your policy',
+    viewPolicy: 'See the policy',
+    policyNote: 'Demo account: made-up policy, no end date.',
     vehicle: 'Insured vehicle',
     plate: 'Plate',
     start: 'Since',
@@ -291,6 +293,8 @@ const ES: typeof EN = {
   },
   insurance: {
     policy: 'Tu póliza',
+    viewPolicy: 'Ver póliza',
+    policyNote: 'Cuenta de demo: póliza ficticia, sin fecha de vencimiento.',
     vehicle: 'Vehículo asegurado',
     plate: 'Placa',
     start: 'Desde',
