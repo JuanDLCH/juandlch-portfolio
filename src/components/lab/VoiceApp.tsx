@@ -3,7 +3,7 @@
 // a live caption and the controls on the stage, and the transcript with live
 // metrics in a side panel (a sheet on narrow screens). Open to everyone (it
 // runs on my key), so the Worker (worker/) creates every call, checks
-// Turnstile and the daily quota and cuts it after 3 minutes; this island only
+// Turnstile and the daily quota and cuts it after 5 minutes; this island only
 // runs the WebRTC side (src/lab/voice/rtc.ts). On entry a recorded greeting
 // introduces Sophie; the live agent doesn't repeat it.
 import { useEffect, useRef, useState } from 'react';
@@ -192,8 +192,8 @@ export default function VoiceApp() {
   const [lines, setLines] = useState<Line[]>([]);
   const [contact, setContact] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
-  // Session budget (3 min) and how much of it is used, across resumes.
-  const [budget, setBudget] = useState(180);
+  // Session budget (5 min) and how much of it is used, across resumes.
+  const [budget, setBudget] = useState(300);
   const [used, setUsed] = useState(0);
   const usedRef = useRef(0);
   // Ended call with time left: Start resumes it instead of a new call.
@@ -361,6 +361,15 @@ export default function VoiceApp() {
         meta: x.toolShown,
       },
     ]);
+  };
+
+  /** A new conversation that keeps the time left: there's one call a day,
+   * so it goes on as a resume of it, just without the transcript. */
+  const startOver = () => {
+    setPhase({ at: 'idle' });
+    setLines([]);
+    setContact(null);
+    setMetrics({ connect: 0, turn: 0, bargeIns: 0 });
   };
 
   /** Back to a clean slate: no transcript, the whole budget. */
@@ -844,7 +853,7 @@ export default function VoiceApp() {
                   : phase.at === 'connecting'
                     ? x.connecting
                     : resumable
-                      ? `${x.resume} · ${mmss(left)}`
+                      ? `${lines.length ? x.resume : x.start} · ${mmss(left)}`
                       : ended
                         ? x.again
                         : x.start}
@@ -859,15 +868,18 @@ export default function VoiceApp() {
                 <Icon d='<path d="M4 6h16M4 11h16M4 16h10"/>' size={17} />
               </button>
             </div>
-            {resumable && !live && phase.at !== 'connecting' && (
-              <button
-                type="button"
-                onClick={reset}
-                className={`${mono} text-muted hover:text-ink cursor-pointer border-0 bg-transparent p-0 text-[11px] tracking-[0.06em] uppercase underline-offset-4 hover:underline`}
-              >
-                {x.startOver}
-              </button>
-            )}
+            {resumable &&
+              lines.length > 0 &&
+              !live &&
+              phase.at !== 'connecting' && (
+                <button
+                  type="button"
+                  onClick={startOver}
+                  className={`${mono} text-muted hover:text-ink cursor-pointer border-0 bg-transparent p-0 text-[11px] tracking-[0.06em] uppercase underline-offset-4 hover:underline`}
+                >
+                  {x.startOver}
+                </button>
+              )}
             {failed && (
               <a
                 href="/lab/cv"

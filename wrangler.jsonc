@@ -29,11 +29,11 @@
     "VOICE_MODEL": "gpt-realtime-2.1-mini",
     "VOICE_NAME": "coral",
     "VOICE_REASONING": "",
-    "MAX_PER_IP": "3",
-    "MAX_PER_DAY": "30",
-    "SESSION_S": "180",
+    "MAX_PER_IP": "1",
+    "MAX_PER_DAY": "20",
+    "SESSION_S": "300",
     // A voice call hangs up once it has cost this much (USD).
-    "VOICE_CALL_USD": "0.20",
+    "VOICE_CALL_USD": "0.30",
     // Chat on the site's key: messages per IP per day, and USD per IP and
     // per day for the whole site.
     "CHAT_MSGS_PER_IP": "40",

@@ -79,7 +79,7 @@ export const voiceInstructions = (profile: string, pageLang: 'en' | 'es') =>
     `When they show interest (a role, a project, wanting to talk or interview him), offer a short call with him once; if they decline, do not repeat it. When they want to reach him, call show_contact_options right away and say the buttons are on screen. ${MEETING} Never read out his email or links.`,
 
     '# Session',
-    `Each conversation lasts at most 3 minutes. If you get a time check, wrap up in one short sentence and offer the contact buttons.`,
+    `Each conversation lasts at most 5 minutes. If you get a time check, wrap up in one short sentence and offer the contact buttons.`,
 
     '# Rules',
     GUARDRAILS(

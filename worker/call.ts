@@ -34,8 +34,8 @@ interface Done {
 /** How long an ended call can be resumed. */
 const RESUME_MS = 30 * 60_000;
 
-/** Far more answers than 3 minutes of talk can take. */
-const MAX_RESPONSES = 30;
+/** Far more answers than 5 minutes of talk can take. */
+const MAX_RESPONSES = 50;
 
 const fingerprint = (s: Partial<RealtimeSessionCreateRequest>) =>
   JSON.stringify([

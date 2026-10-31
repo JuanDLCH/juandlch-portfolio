@@ -289,8 +289,8 @@ export async function connect(opts: {
 
   return {
     callId,
-    seconds: body.seconds ?? 180,
-    budget: body.budget ?? body.seconds ?? 180,
+    seconds: body.seconds ?? 300,
+    budget: body.budget ?? body.seconds ?? 300,
     resumed: !!body.resumed,
     mute: (m) => {
       track.enabled = !m;

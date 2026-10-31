@@ -43,19 +43,19 @@ const EN = {
     'The conversation will appear here as it happens, with tool calls and interruptions.',
   turns: 'turns',
   latency: 'Live metrics',
-  lastTurn: 'this call · max 3:00',
+  lastTurn: 'this call · max 5:00',
   metrics: ['CONNECT', 'LAST TURN', 'BARGE-INS', 'SESSION'],
   pipeline: ['Mic · WebRTC', 'OpenAI Realtime', 'Tool calls', 'Audio out'],
   bargeIn: 'visitor interrupted · Sophie stopped',
   toolShown: 'buttons shown',
   ended: {
-    time: 'That’s the 3 minutes. Thanks for talking with Sophie!',
+    time: 'That’s the 5 minutes. Thanks for talking with Sophie!',
     user: 'Call ended. Thanks for talking with Sophie!',
     dropped: 'The call dropped.',
   },
   errors: {
     limit_ip:
-      'You’ve used today’s 3 calls. Come back tomorrow, or keep asking in the text chat.',
+      'You’ve used today’s call. Come back tomorrow, or keep asking in the text chat.',
     limit_day:
       'Sophie has talked a lot today and is out of calls. Come back tomorrow, or ask in the text chat.',
     busy: 'You already have a call open, maybe in another tab. End it and try again.',
@@ -116,19 +116,19 @@ const ES: typeof EN = {
     'La conversación aparecerá aquí mientras ocurre, con llamadas a herramientas e interrupciones.',
   turns: 'turnos',
   latency: 'Métricas en vivo',
-  lastTurn: 'esta llamada · máx 3:00',
+  lastTurn: 'esta llamada · máx 5:00',
   metrics: ['CONEXIÓN', 'ÚLTIMO TURNO', 'INTERRUPC.', 'SESIÓN'],
   pipeline: ['Mic · WebRTC', 'OpenAI Realtime', 'Tool calls', 'Salida audio'],
   bargeIn: 'el visitante interrumpió · Sophie se detuvo',
   toolShown: 'botones visibles',
   ended: {
-    time: 'Se cumplieron los 3 minutos. ¡Gracias por hablar con Sophie!',
+    time: 'Se cumplieron los 5 minutos. ¡Gracias por hablar con Sophie!',
     user: 'Llamada terminada. ¡Gracias por hablar con Sophie!',
     dropped: 'Se cayó la llamada.',
   },
   errors: {
     limit_ip:
-      'Ya usaste las 3 llamadas de hoy. Vuelve mañana o sigue preguntando en el chat de texto.',
+      'Ya usaste tu llamada de hoy. Vuelve mañana o sigue preguntando en el chat de texto.',
     limit_day:
       'Sophie habló mucho hoy y se quedó sin llamadas. Vuelve mañana o pregunta en el chat de texto.',
     busy: 'Ya tienes una llamada abierta, quizá en otra pestaña. Ciérrala y vuelve a intentarlo.',
