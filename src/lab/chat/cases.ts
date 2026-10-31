@@ -103,10 +103,17 @@ const LUNA = { anthropic: 'claude-haiku-5-5', openai: 'gpt-6-luna' } as const;
 
 /** The case's model on the active provider. */
 export const caseModel = (c: ChatCase) => MODELS[c.models[PROVIDER]];
-/** Effort for the next turn: the case's, or `docs.effortMany` when the
- * Knowledge Base holds more than one document. */
+/** Effort for the next turn. Document agent: low with an empty Knowledge
+ * Base (sending is refused before any request then, so it only shows in the
+ * UI), the case's with one document, `docs.effortMany` with more. */
 export const caseEffort = (c: ChatCase, docs = 0): Effort =>
-  c.docs && docs > 1 ? c.docs.effortMany : c.effort;
+  !c.docs
+    ? c.effort
+    : docs === 0
+      ? 'low'
+      : docs > 1
+        ? c.docs.effortMany
+        : c.effort;
 /** Tools the case has on the active provider. */
 export const caseTools = (c: ChatCase) =>
   c.tools.filter((t) => !t.provider || t.provider === PROVIDER);
