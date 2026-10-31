@@ -12,6 +12,8 @@ interface Choice {
   label: L;
   price: number;
   available: boolean;
+  /** Allergens this choice adds to the dish. */
+  allergens?: string[];
 }
 
 interface Group {
@@ -31,6 +33,7 @@ export interface Dish {
   description: string;
   price: number;
   tags: string[];
+  /** Allergens of the dish itself; options add their own. */
   allergens: string[];
   available: boolean;
   groups: Group[];
@@ -42,11 +45,13 @@ const c = (
   es: string,
   price = 0,
   available = true,
-) => ({
+  allergens: string[] = [],
+): Choice => ({
   id,
   label: { en, es },
   price,
   available,
+  ...(allergens.length ? { allergens } : {}),
 });
 
 const burgerGroups: Group[] = [
@@ -80,7 +85,7 @@ const burgerGroups: Group[] = [
     min: 0,
     max: 3,
     choices: [
-      c('extra-cheese', 'Extra cheese', 'Queso extra', 1.5),
+      c('extra-cheese', 'Extra cheese', 'Queso extra', 1.5, true, ['dairy']),
       c('bacon', 'Bacon', 'Tocineta', 2),
       c('avocado', 'Avocado', 'Aguacate', 2),
     ],
@@ -115,8 +120,8 @@ const bowlGroups = (proteins: Choice[], protein: string): Group[] => [
     max: 1,
     default: 'tahini',
     choices: [
-      c('tahini', 'Lemon tahini', 'Tahini de limón'),
-      c('chipotle', 'Chipotle mayo', 'Mayonesa chipotle'),
+      c('tahini', 'Lemon tahini', 'Tahini de limón', 0, true, ['sesame']),
+      c('chipotle', 'Chipotle mayo', 'Mayonesa chipotle', 0, true, ['egg']),
       c('no-dressing', 'No dressing', 'Sin aderezo'),
     ],
   },
@@ -179,7 +184,7 @@ export const MENU: Dish[] = [
     description: 'Roasted vegetables, chickpeas, cucumber and herbs.',
     price: 11,
     tags: ['vegetarian', 'vegan', 'gluten-free'],
-    allergens: ['sesame'],
+    allergens: [],
     available: true,
     groups: bowlGroups(
       [
@@ -494,6 +499,14 @@ export function applyOps(start: Order, ops: OrderOp[]) {
   return { order: o, errors };
 }
 
+/** The dish's allergens plus those of the chosen options. */
+const allergensWith = (d: Dish, options: string[]) => [
+  ...new Set([
+    ...d.allergens,
+    ...options.flatMap((id) => choiceOf(d, id)?.ch.allergens ?? []),
+  ]),
+];
+
 /** The order as the model sees it: names instead of bare ids. */
 export const describeOrder = (o: Order) => ({
   status: o.status,
@@ -503,6 +516,7 @@ export const describeOrder = (o: Order) => ({
     name: dish(l.item_id)?.name.en,
     quantity: l.quantity,
     options: l.options.map((id) => `${optionLabel(l.item_id, id).en} (${id})`),
+    allergens: allergensWith(dish(l.item_id)!, l.options),
     ...(l.note ? { note: l.note } : {}),
     unit_price: l.unit_price,
     subtotal: l.subtotal,
@@ -522,7 +536,11 @@ export const describeDish = (d: Dish) => ({
   description: d.description,
   price: d.price,
   tags: d.tags,
-  allergens: d.allergens,
+  // As served with the default options; each choice lists what it adds.
+  allergens_with_defaults: allergensWith(
+    d,
+    d.groups.flatMap((g) => (g.default ? [g.default] : [])),
+  ),
   available: d.available,
   option_groups: d.groups.map((g) => ({
     id: g.id,
@@ -533,6 +551,7 @@ export const describeDish = (d: Dish) => ({
       id: x.id,
       name: x.label.en,
       ...(x.price ? { price: x.price } : {}),
+      ...(x.allergens ? { allergens: x.allergens } : {}),
       ...(x.available ? {} : { available: false }),
     })),
   })),

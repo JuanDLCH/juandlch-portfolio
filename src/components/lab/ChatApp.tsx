@@ -1047,7 +1047,7 @@ export default function ChatApp({
         {!only && (
           <aside
             aria-label={x.settings}
-            className={`border-line bg-panel narrow:absolute narrow:inset-y-0 narrow:right-0 narrow:z-20 narrow:w-[min(360px,92vw)] narrow:shadow-[-24px_0_48px_rgba(0,0,0,.35)] mob:inset-x-0 mob:top-auto mob:max-h-[86%] mob:w-auto mob:border-t mob:border-l-0 flex w-[272px] shrink-0 flex-col border-l ${side ? '' : 'narrow:hidden'}`}
+            className={`border-line bg-panel narrow:absolute narrow:inset-y-0 narrow:right-0 narrow:z-20 narrow:w-[min(360px,92vw)] narrow:shadow-[-24px_0_48px_rgba(0,0,0,.35)] mob:inset-x-0 mob:top-auto mob:max-h-[86%] mob:w-auto mob:border-t mob:border-l-0 flex w-[300px] shrink-0 flex-col border-l ${side ? '' : 'narrow:hidden'}`}
           >
             <div className="border-line mob:h-11 flex h-10 shrink-0 items-center justify-between border-b px-3.5">
               <span className={label}>{x.settings}</span>
@@ -1130,7 +1130,9 @@ export default function ChatApp({
                       >
                         {k}
                       </dt>
-                      <dd className="m-0 mt-0.5 text-[11px]">{v}</dd>
+                      <dd className="m-0 mt-0.5 text-[11px] whitespace-nowrap">
+                        {v}
+                      </dd>
                     </div>
                   ))}
                 </dl>

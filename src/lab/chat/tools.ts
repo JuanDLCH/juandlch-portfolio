@@ -37,7 +37,7 @@ const str = (v: unknown) => typeof v === 'string' && v.trim().length > 0;
 const searchMenu: ClientTool = {
   def: {
     name: 'search_menu',
-    description: `Search the ${DINER} menu. Returns dishes with price, tags (vegetarian, vegan, gluten-free, beef, chicken), allergens, availability and option groups (choice ids to pass to update_order). Empty query and no category list everything.`,
+    description: `Search the ${DINER} menu. Returns dishes with price, tags (vegetarian, vegan, gluten-free, beef, chicken), allergens (as served with default options, plus those each choice adds), availability and option groups (choice ids to pass to update_order). Empty query and no category list everything.`,
     input_schema: {
       type: 'object',
       properties: {
