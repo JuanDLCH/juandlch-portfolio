@@ -104,11 +104,14 @@ export function ContactActions({
   input,
   x: page,
   inset = true,
+  center = false,
 }: {
   input: string;
   x: ChatCopy;
   /** In the log the buttons line up with the answer above them. */
   inset?: boolean;
+  /** Centered under the content (the voice lab). */
+  center?: boolean;
 }) {
   const { options, topic, lang } = contactInput(input);
   const x = lang ? CHAT[lang] : page;
@@ -119,12 +122,12 @@ export function ContactActions({
   const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
   return (
     <div
-      className={`flex flex-col gap-1.5 ${inset ? 'mob:max-w-full max-w-[88%] pl-3' : ''}`}
+      className={`flex flex-col gap-1.5 ${inset ? 'mob:max-w-full max-w-[88%] pl-3' : ''} ${center ? 'max-w-[560px] items-center text-center' : ''}`}
     >
       <div
         role="group"
         aria-label={x.contactLabel}
-        className="mob:gap-1.5 flex flex-wrap gap-2"
+        className={`mob:gap-1.5 flex flex-wrap gap-2 ${center ? 'justify-center' : ''}`}
       >
         {options.map((o) =>
           o === 'email' ? (

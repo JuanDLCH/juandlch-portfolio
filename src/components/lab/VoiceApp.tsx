@@ -762,6 +762,7 @@ export default function VoiceApp() {
                     input={contact ?? ENDING_CONTACT}
                     x={CHAT[lang]}
                     inset={false}
+                    center
                   />
                 </div>
               )}
