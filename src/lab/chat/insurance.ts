@@ -2,7 +2,8 @@
 // insurer and account. The model reads the policy, describes the photo it
 // sees and passes the claim details; whether something is covered, whether
 // the photo matches the insured car and whether a claim can be filed is
-// decided here. Labels are bilingual and come back in the customer's
+// decided here. The account holder is whoever the customer says they are:
+// the model asks their name first (set_customer_name). Labels are bilingual and come back in the customer's
 // language (`lang`), like the order case.
 import type { Lang } from './order';
 
@@ -11,7 +12,6 @@ type L = { en: string; es: string };
 export const INSURER = 'Northlane Insurance';
 
 export const POLICY = {
-  holder: 'Alex Rivera',
   number: 'NL-AUTO-48213',
   status: 'active',
   start: '2024-03-01',
@@ -25,7 +25,6 @@ export const POLICY = {
     color_label: { en: 'Soul Red', es: 'Rojo Soul' },
     plate: 'JDR-482',
   },
-  drivers: ['Alex Rivera'],
 };
 
 export const COVERAGES = [
@@ -150,9 +149,9 @@ const NO_PHOTO: Incident[] = ['theft'];
 
 export const today = () => new Date().toLocaleDateString('en-CA');
 
-export const describePolicy = (lang: Lang) => ({
+export const describePolicy = (lang: Lang, holder: string) => ({
   insurer: INSURER,
-  holder: POLICY.holder,
+  holder,
   policy_number: POLICY.number,
   status: POLICY.status,
   start: POLICY.start,
@@ -162,7 +161,8 @@ export const describePolicy = (lang: Lang) => ({
     ...POLICY.vehicle,
     color_label: POLICY.vehicle.color_label[lang],
   },
-  drivers: POLICY.drivers,
+  // The holder is the only listed driver.
+  drivers: [holder],
   coverages: COVERAGES.map((id) => ({
     id,
     name: COVERAGE[id].label[lang],
@@ -342,6 +342,8 @@ export interface Claim {
 }
 
 export interface Claims {
+  /** The customer's name, given at the start; the policy is in it. */
+  holder?: string;
   /** The latest photo check; a claim needs it to be a match. */
   photo?: PhotoCheck;
   list: Claim[];

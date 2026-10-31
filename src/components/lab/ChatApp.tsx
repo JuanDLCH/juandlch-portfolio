@@ -892,7 +892,11 @@ export default function ChatApp({
                     .get(i)
                     ?.slice(-1)
                     .map((input, k) => (
-                      <PolicyCard key={k} input={input} />
+                      <PolicyCard
+                        key={k}
+                        input={input}
+                        holder={session.claims?.holder ?? ''}
+                      />
                     ))}
                   {photoAt
                     .get(i)
@@ -2327,10 +2331,10 @@ const cardBox =
 const cardRow = 'flex items-baseline justify-between gap-4';
 
 // get_policy: the account's policy, car and coverages.
-function PolicyCard({ input }: { input: string }) {
+function PolicyCard({ input, holder }: { input: string; holder: string }) {
   const lang = langArg(input);
   const x = CHAT[lang].insurance;
-  const p = describePolicy(lang);
+  const p = describePolicy(lang, holder);
   const v = POLICY.vehicle;
   return (
     <section aria-label={x.policy} className={cardBox}>

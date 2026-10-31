@@ -301,6 +301,56 @@ const INCIDENT_PROP = {
     'What happened. parking: hit while parking or parked; falling_object: a branch, rock or other object fell on the car; damage_to_others: damage the customer caused to other people or cars; breakdown: the car stopped working.',
 } as const;
 
+// Every insurance tool but set_customer_name needs the customer's name
+// first: the account is in it.
+const NO_NAME = {
+  error:
+    "The customer's name is not known yet: ask for it and call set_customer_name first.",
+};
+const named = (t: ClientTool): ClientTool => ({
+  ...t,
+  run: async (i, signal, s) =>
+    s.claims?.holder ? t.run(i, signal, s) : NO_NAME,
+  summary: (r, es) =>
+    (r as { error?: string }).error === NO_NAME.error
+      ? es
+        ? 'falta el nombre'
+        : 'name needed'
+      : t.summary(r, es),
+});
+
+const setCustomerName: ClientTool = {
+  def: {
+    name: 'set_customer_name',
+    description: `Sign the customer in to their ${INSURER} account with the name they gave (the demo account takes any name). Call it as soon as they say their name; call it again if they correct it.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Their name as they wrote it, e.g. "Laura Gómez".',
+        },
+        lang: LANG_PROP,
+      },
+      required: ['name', 'lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    str(i.name) && String(i.name).trim().length <= 60
+      ? null
+      : 'name must be a non-empty string of at most 60 characters',
+  run: async (i, _signal, s) => {
+    const holder = String(i.name).trim().replace(/\s+/g, ' ');
+    s.claims = { ...(s.claims ?? { list: [] }), holder };
+    return {
+      holder,
+      note: 'Signed in: the account and its policy are in this name. Greet them by their first name.',
+    };
+  },
+  summary: (r) => (r as { holder: string }).holder,
+};
+
 const getPolicy: ClientTool = {
   def: {
     name: 'get_policy',
@@ -313,7 +363,8 @@ const getPolicy: ClientTool = {
     eager_input_streaming: true,
   },
   validate: () => null,
-  run: async (i) => describePolicy(langOf(i.lang)),
+  run: async (i, _signal, s) =>
+    describePolicy(langOf(i.lang), s.claims!.holder!),
   summary: (r) => (r as { policy_number: string }).policy_number,
 };
 
@@ -430,7 +481,7 @@ const checkPhotoTool: ClientTool = {
       damage_visible: i.damage_visible as boolean,
       damage_areas: (i.damage_areas as string[]).slice(0, 8),
     });
-    s.claims = { list: s.claims?.list ?? [], photo: check };
+    s.claims = { ...s.claims!, photo: check };
     return { status: check.status, reasons: check.reasons };
   },
   summary: (r, es) => {
@@ -492,7 +543,7 @@ const fileClaimTool: ClientTool = {
     });
     if ('errors' in r) return { errors: r.errors };
     // The photo was used: a new claim needs a new one.
-    s.claims = { list: [...claims.list, r.claim] };
+    s.claims = { holder: claims.holder, list: [...claims.list, r.claim] };
     return {
       claim: describeClaim(r.claim),
       note: 'The customer sees the claim as a card under your reply. Simulated: no adjuster will call.',
@@ -801,12 +852,13 @@ export const CLIENT_TOOLS: Record<string, ClientTool> = {
   update_order: updateOrder,
   show_menu: showMenu,
   place_order: placeOrder,
-  get_policy: getPolicy,
-  check_coverage: checkCoverageTool,
-  request_photo: requestPhoto,
-  check_photo: checkPhotoTool,
-  file_claim: fileClaimTool,
-  get_claim_status: getClaimStatus,
+  set_customer_name: setCustomerName,
+  get_policy: named(getPolicy),
+  check_coverage: named(checkCoverageTool),
+  request_photo: named(requestPhoto),
+  check_photo: named(checkPhotoTool),
+  file_claim: named(fileClaimTool),
+  get_claim_status: named(getClaimStatus),
   get_weather: getWeather,
   get_time: getTime,
 };
