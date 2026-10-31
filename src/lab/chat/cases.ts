@@ -463,7 +463,12 @@ export const CASES: ChatCase[] = [
         'questions about the documents and images in the user\'s Knowledge Base: answering from them, summarizing, comparing, and extracting or organizing their data. General knowledge questions, even about the same topic as the documents ("what does the law usually say about…"), writing unrelated text, code, opinions and anything not answerable from the Knowledge Base are out of scope.',
       ),
       'Style: clear and concise. Answer in 2 to 5 sentences or at most 6 short bullets; summaries, comparisons and extracted data can use a longer list or a small Markdown table when it helps. No filler, no repeating the question.',
-      CITE.replace('at most 4', 'at most 6'),
+      // Every passage gets its own link, so the viewer highlights each one;
+      // the chat folds links with the same label (file and page) into one.
+      CITE.replace(
+        'at most 4, the most specific ones',
+        'every passage you actually used, each with its own link even when several come from the same page (up to 12)',
+      ),
       LANG,
     ].join('\n\n'),
     tools: [

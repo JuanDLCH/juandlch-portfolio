@@ -2347,6 +2347,21 @@ export default function ChatApp({
 const LINK =
   /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 type OnCv = (focus: string, ids: string[]) => void;
+/** The sources line with repeated links folded: passages of the same page
+ * share a label ("contract.pdf · p. 3"), so only the first of each shows.
+ * The viewer still highlights all of them (ids come from the full text).
+ * Lines with anything but links and separators are left as they are. */
+const foldSources = (line: string) => {
+  const links = [...line.matchAll(LINK)].filter((m) => m[1]);
+  if (links.length < 2) return line;
+  const head = line.slice(0, links[0].index);
+  let rest = line.slice(links[0].index);
+  for (const m of links) rest = rest.replace(m[0], '');
+  if (!/^[\s·,;|]*$/.test(rest)) return line;
+  const seen = new Set<string>();
+  const kept = links.filter((m) => !seen.has(m[1]) && !!seen.add(m[1]));
+  return head + kept.map((m) => m[0]).join(' · ');
+};
 /** Ids cited anywhere in the text, so the viewer highlights them all. */
 const cited = (text: string, linkId: (href: string) => string | null) => [
   ...new Set(
@@ -2834,17 +2849,19 @@ function KnowledgeBase({
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         {title}
-        {toggle}
-        {docs.length === 0 && reading === 0 && (
-          <button
-            type="button"
-            onClick={onSample}
-            disabled={busy}
-            className="text-accent hover:text-ink mob:min-h-9 cursor-pointer border-0 bg-transparent p-0 text-[12px] underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {x.sample}
-          </button>
-        )}
+        <div className="flex items-baseline gap-4">
+          {docs.length === 0 && reading === 0 && (
+            <button
+              type="button"
+              onClick={onSample}
+              disabled={busy}
+              className="text-accent hover:text-ink mob:min-h-9 cursor-pointer border-0 bg-transparent p-0 text-[12px] underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {x.sample}
+            </button>
+          )}
+          {toggle}
+        </div>
       </div>
       <p className="text-muted m-0 mt-0.5 text-[11px] leading-snug">
         {x.kbHint}
@@ -3427,7 +3444,8 @@ function Message({
   if (m.kind === 'tool') return <ToolRow m={m} />;
 
   if (m.kind === 'notice') return null;
-  const { body, sources } = splitSources(m.text);
+  const { body, sources: raw } = splitSources(m.text);
+  const sources = foldSources(raw);
   const ctx = {
     onCv,
     cvLabel,
