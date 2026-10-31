@@ -11,6 +11,7 @@ Personal portfolio: Astro 7 + React 19 + Tailwind 4 (via `@tailwindcss/vite`), p
 - `pnpm lint` / `pnpm lint:fix` — ESLint flat config (`eslint.config.js`)
 - `pnpm format` / `pnpm format:check` — Prettier (astro + tailwind class sorting plugins)
 - `pnpm exec astro check` — type check; requires `typescript@6` (TS 7 breaks both `astro check` and typescript-eslint, so don't bump it)
+- `pnpm dev:api` — the voice Worker (`wrangler dev` on :8787; `astro dev` proxies `/api` to it). Needs `.dev.vars` (see `.dev.vars.example`; `MOCK_OPENAI=1` fakes OpenAI). `pnpm check:worker` type-checks `worker/`; `pnpm deploy` builds and runs `wrangler deploy`.
 
 No test suite.
 
@@ -32,6 +33,14 @@ No test suite.
 - Errors are assistant messages (`notice` items with a code), typed out and ending in a fix button (`FIXES` in `ChatApp.tsx`). OpenAI's error responses carry no CORS header, so in the browser a rejected key surfaces as a connection error (`unreadable`), not a 401.
 - The chat header opens two dialogs: **Watch demo** has a case picker and plays `video` from the case (`{ src, captions }`, WebVTT captions required; without it a placeholder shows); **How I’d build it** shows one general architecture diagram and explanation (placeholder for now). Both size their 16:9 frame from the viewport height so the dialog never scrolls. On phones both buttons live in the settings sheet.
 
+## Voice lab
+
+- `/lab/voice` (`src/pages/lab/voice.astro` → `VoiceApp.tsx`): talk to **Sophie**, a GPT Realtime agent over WebRTC grounded in the same profile as "Meet my AI". Unlike the chat it's open (no BYOK) and runs on Juan Diego's key, so the browser never gets a key or token: it posts its SDP offer to the Worker, which creates the call server side.
+- **Worker** (`worker/`, `wrangler.jsonc`; serves `dist/` as static assets and runs first on `/api/*`). `POST /api/voice/session` checks `Origin` against `SITE_ORIGIN`, verifies Turnstile (fresh token per Start, `src/lab/voice/turnstile.ts`), reserves quota in `VoiceQuota` (one Durable Object per UTC day: `MAX_PER_IP` per IP as an HMAC with `IP_SALT`, `MAX_PER_DAY` in total, one active call per IP), builds the session (`worker/openai.ts`: model `VOICE_MODEL`, voice `VOICE_NAME`, `semantic_vad`, transcription for captions, the one tool) and calls `POST /v1/realtime/calls`. `VoiceCall` (one DO per call id) owns the hard cutoff: an alarm at `SESSION_S` + 5 s that calls `/v1/realtime/calls/{id}/hangup`, and a sideband WebSocket that hangs up if the client changes the session (instructions, tools, voice) or exceeds 60 responses. `POST /api/voice/end` hangs up (only from the IP that started it). Secrets: `OPENAI_API_KEY` (from an OpenAI project with a monthly budget cap), `TURNSTILE_SECRET`, `IP_SALT`; the sitekey goes in `PUBLIC_TURNSTILE_SITEKEY` at build time.
+- **Prompt** in `src/lab/voice/prompt.ts` (plain TS, imported by the Worker; shared blocks in `src/lab/chat/prompts.ts`). The profile goes inline (no retrieval tools, for latency): `profileText()` in `profile.ts` is written at build time to `/lab/voice-profile.txt` (`src/pages/lab/voice-profile.txt.ts`) and the Worker fetches it, since it can't import `cv.ts` (Vite `?url`). The only tool, `show_contact_options`, is answered by the client (`src/lab/voice/rtc.ts`) and drawn with the chat's `ContactActions` (`src/components/lab/ui.tsx`, shared with `ChatApp`).
+- The page opens with a **recorded greeting** (`src/assets/lab/voice/greeting-{en,es}.mp3`, from `greeting` in `src/i18n/voice.ts` via `scripts/voice-greeting.mjs`; regenerate when the text changes). It autoplays when the browser allows it (arriving from the landing through `ClientRouter`), otherwise a button plays it; Start stops it and the agent is told not to greet again. 20 s before the end the client asks Sophie to wrap up; at 0 it hangs up (the server cuts a few seconds later anyway). Leaving the page ends the call.
+- `SophieFace.tsx`: two eyes and a level meter animated by rAF (no React renders), following the pointer, the visitor's mic and Sophie's voice (`AnalyserNode`s); reduced motion keeps only the shape per state. Copy in `src/i18n/voice.ts`.
+
 ## Images
 
 - AWS icons are official SVGs in `src/assets/aws/` (sourced from the JuanDLCH profile repo; `sns.svg` from the design). `Stack.astro` resolves them via `import.meta.glob` to hashed URLs. Run `pnpm optimize:svg` (SVGO, `svgo.config.mjs`) after adding any SVG.
@@ -40,7 +49,7 @@ No test suite.
 
 ## Pending placeholders
 
-The CV link (`#cv`) and the `#voice`/`#chat`/`#case-*` anchors have no destination yet.
+The CV link (`#cv`) and the `#chat`/`#case-*` anchors have no destination yet.
 
 ## Development rules
 
