@@ -10,3 +10,6 @@ SITE_ORIGIN=http://localhost:4321
 # Dev: lift the daily limits (they override wrangler.jsonc).
 # MAX_PER_IP=100000
 # MAX_PER_DAY=100000
+# CHAT_MSGS_PER_IP=100000
+# CHAT_USD_PER_IP=100
+# CHAT_USD_PER_DAY=100

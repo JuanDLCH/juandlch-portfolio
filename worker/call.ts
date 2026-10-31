@@ -1,7 +1,8 @@
 // One voice call (named by its OpenAI call id). Owns the hard cutoff: an
 // alarm that hangs up at the end of the session whatever the browser does,
 // since a Durable Object has a single alarm and calls can overlap. It also
-// watches the call through the sideband and hangs up if the client tries to
+// watches the call through the sideband and hangs up past VOICE_CALL_USD
+// (priced from each response's usage), or if the client tries to
 // change the session (instructions, tools or voice) or keeps it
 // answering far beyond a normal conversation. Once over it remembers, for a
 // while, how much of the session budget was used, so the same visitor can
@@ -10,6 +11,7 @@ import { DurableObject } from 'cloudflare:workers';
 import type { RealtimeSessionCreateRequest } from 'openai/resources/realtime/realtime';
 import type { Env } from './env';
 import { hangup, sideband } from './openai';
+import { realtimeUsd, type RealtimeUsage } from './prices';
 
 interface Call {
   callId: string;
@@ -33,7 +35,7 @@ interface Done {
 const RESUME_MS = 30 * 60_000;
 
 /** Far more answers than 3 minutes of talk can take. */
-const MAX_RESPONSES = 60;
+const MAX_RESPONSES = 30;
 
 const fingerprint = (s: Partial<RealtimeSessionCreateRequest>) =>
   JSON.stringify([
@@ -46,6 +48,8 @@ export class VoiceCall extends DurableObject<Env> {
   private ws: WebSocket | null = null;
   private expected = '';
   private responses = 0;
+  /** What the call has cost so far (USD), from each response's usage. */
+  private spent = 0;
 
   async start(
     call: Call,
@@ -94,6 +98,7 @@ export class VoiceCall extends DurableObject<Env> {
     let event: {
       type?: string;
       session?: Partial<RealtimeSessionCreateRequest>;
+      response?: { usage?: RealtimeUsage };
     };
     try {
       event = JSON.parse(data);
@@ -106,7 +111,12 @@ export class VoiceCall extends DurableObject<Env> {
       fingerprint(event.session) !== this.expected
     )
       void this.finish('session changed');
-    if (event.type === 'response.done' && ++this.responses > MAX_RESPONSES)
+    if (event.type !== 'response.done') return;
+    if (event.response?.usage)
+      this.spent += realtimeUsd(this.env.VOICE_MODEL, event.response.usage);
+    if (this.spent > Number(this.env.VOICE_CALL_USD))
+      void this.finish(`cost cap ($${this.spent.toFixed(3)})`);
+    else if (++this.responses > MAX_RESPONSES)
       void this.finish('too many responses');
   }
 

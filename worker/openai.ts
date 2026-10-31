@@ -17,7 +17,7 @@ export const sessionConfig = (
   instructions: voiceInstructions(profile, lang),
   output_modalities: ['audio'],
   // Spoken answers are short; this caps a runaway one.
-  max_output_tokens: 1200,
+  max_output_tokens: 600,
   audio: {
     input: {
       noise_reduction: { type: 'near_field' },

@@ -1,59 +1,20 @@
-// Voice Lab backend. Serves /api/voice/* and, when deployed with the site,
-// the static build (ASSETS). The browser never gets an OpenAI key or token:
+// Lab backend: the voice lab (/api/voice/*, below) and the chat lab on the
+// site's key (/api/chat/*, chat.ts), and, when deployed with the site, the
+// static build (ASSETS). Voice: The browser never gets an OpenAI key or token:
 // it posts its WebRTC offer here and the call is created server side, with
 // the session fixed on the server, after a Turnstile check and the daily
 // quota. Every call is cut by its VoiceCall alarm after SESSION_S seconds.
 import type { Env } from './env';
+import { responses, startChat, transcription } from './chat';
+import { ipHash, json, origins, turnstileOk } from './http';
 import { createCall, hangup, sessionConfig } from './openai';
 
 export { VoiceCall } from './call';
-export { VoiceQuota } from './quota';
+export { Quota } from './quota';
 
 const CALL_ID = /^rtc_[\w-]{1,100}$/;
 /** Shorter remainders aren't worth a resume: a new call starts instead. */
 const MIN_RESUME_S = 10;
-
-const json = (body: unknown, status = 200) =>
-  Response.json(body, {
-    status,
-    headers: { 'Cache-Control': 'no-store' },
-  });
-
-const origins = (env: Env) => env.SITE_ORIGIN.split(',').map((o) => o.trim());
-
-/** Pseudonymous IP: an HMAC with a secret key, so it can't be reversed. */
-async function ipHash(env: Env, req: Request) {
-  const ip = req.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(env.IP_SALT),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(ip),
-  );
-  return [...new Uint8Array(sig).slice(0, 16)]
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-async function turnstileOk(env: Env, req: Request, token: string) {
-  const form = new FormData();
-  form.set('secret', env.TURNSTILE_SECRET);
-  form.set('response', token);
-  const ip = req.headers.get('CF-Connecting-IP');
-  if (ip) form.set('remoteip', ip);
-  const res = await fetch(
-    'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-    { method: 'POST', body: form },
-  );
-  const out = (await res.json()) as { success?: boolean };
-  return out.success === true;
-}
 
 // The profile text changes only with a deploy; keep it per isolate.
 let profile: { text: string; at: number } | null = null;
@@ -161,9 +122,10 @@ async function endSession(req: Request, env: Env) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
-    if (!url.pathname.startsWith('/api/voice/'))
+    const api = url.pathname.startsWith('/api/');
+    if (!api)
       return (
         env.ASSETS?.fetch(req) ?? new Response('Not found', { status: 404 })
       );
@@ -171,8 +133,18 @@ export default {
     // Same-origin only: the site's own pages.
     if (!origins(env).includes(req.headers.get('Origin') ?? ''))
       return json({ error: 'origin' }, 403);
-    if (url.pathname === '/api/voice/session') return startSession(req, env);
-    if (url.pathname === '/api/voice/end') return endSession(req, env);
+    switch (url.pathname) {
+      case '/api/voice/session':
+        return startSession(req, env);
+      case '/api/voice/end':
+        return endSession(req, env);
+      case '/api/chat/session':
+        return startChat(req, env);
+      case '/api/chat/v1/responses':
+        return responses(req, env, ctx);
+      case '/api/chat/v1/audio/transcriptions':
+        return transcription(req, env);
+    }
     return json({ error: 'not_found' }, 404);
   },
 } satisfies ExportedHandler<Env>;

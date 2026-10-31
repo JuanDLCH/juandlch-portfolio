@@ -17,13 +17,11 @@
   },
   "durable_objects": {
     "bindings": [
-      { "name": "QUOTA", "class_name": "VoiceQuota" },
+      { "name": "QUOTA", "class_name": "Quota" },
       { "name": "CALL", "class_name": "VoiceCall" },
     ],
   },
-  "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["VoiceQuota", "VoiceCall"] },
-  ],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Quota", "VoiceCall"] }],
   "vars": {
     // The production origin(s), comma-separated (dev: .dev.vars). Empty, every
     // session is refused.
@@ -32,8 +30,15 @@
     "VOICE_NAME": "coral",
     "VOICE_REASONING": "",
     "MAX_PER_IP": "3",
-    "MAX_PER_DAY": "40",
+    "MAX_PER_DAY": "30",
     "SESSION_S": "180",
+    // A voice call hangs up once it has cost this much (USD).
+    "VOICE_CALL_USD": "0.20",
+    // Chat on the site's key: messages per IP per day, and USD per IP and
+    // per day for the whole site.
+    "CHAT_MSGS_PER_IP": "40",
+    "CHAT_USD_PER_IP": "0.25",
+    "CHAT_USD_PER_DAY": "3",
     "MOCK_OPENAI": "",
   },
   "observability": { "enabled": true },
