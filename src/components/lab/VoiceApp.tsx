@@ -112,6 +112,10 @@ function useTypewriter(text: string) {
 const CONTACT_TALK =
   /\b(contact\w*|reach|hire|hiring|interview\w*|meet(ing)?|call|email|e-mail|mail|linkedin|github|book\w*|schedul\w*|contrat\w*|entrevist\w*|reuni[oó]n\w*|llamad\w*|agend\w*|correo|escrib\w*|hablar con [eé]l)\b/i;
 
+/** Thanks in English or Spanish: Sophie smiles back. */
+const THANKS =
+  /\b(gracias|grac[ií]as|thanks?|thank you|thx|ty|te lo agradezco|muy amable|agradecid[oa]|appreciate)\b/i;
+
 /** Shorter remainders start a new call instead (as the Worker does). */
 const MIN_RESUME_S = 10;
 
@@ -421,8 +425,11 @@ export default function VoiceApp() {
           activity: onActivity,
           user: (id, text) => {
             upsert('user', id, text);
-            // Talk of reaching him lights her up, once per turn.
-            if (CONTACT_TALK.test(text) && !cheered.current.has(id)) {
+            // Thanks, or talk of reaching him, lights her up (once a turn).
+            if (
+              (THANKS.test(text) || CONTACT_TALK.test(text)) &&
+              !cheered.current.has(id)
+            ) {
               cheered.current.add(id);
               emote('happy');
             }
