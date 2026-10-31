@@ -18,6 +18,7 @@ import {
 import {
   CASES,
   PROVIDER,
+  caseEffort,
   caseModel,
   caseTools,
   type ChatCase,
@@ -49,6 +50,10 @@ import {
   type Claim,
 } from '../../lab/chat/insurance';
 import CvViewer from './CvViewer';
+import DocViewer from './DocViewer';
+import { docLinkId, kbNote, pageId, type Doc } from '../../lab/chat/docs';
+import { readKbFile } from '../../lab/kb';
+import contractUrl from '../../assets/lab/documents/sample-contract.pdf?url';
 import insuredCarUrl from '../../assets/lab/insurance/sample-insured-car.jpg?url';
 import otherCarUrl from '../../assets/lab/insurance/sample-other-car.jpg?url';
 import invoiceUrl from '../../assets/lab/insurance/sample-invoice.pdf?url';
@@ -148,6 +153,7 @@ const I = {
   send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
   stop: '<rect x="6" y="6" width="12" height="12"/>',
   file: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   play: '<path d="M7 4.5v15l12-7.5z"/>',
@@ -181,6 +187,11 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   pdfPages: 'file',
   pdfSize: 'file',
   pdfUnreadable: 'file',
+  docFile: 'file',
+  docNone: 'addDoc',
+  docUnreadable: 'file',
+  docPages: 'file',
+  docSize: 'file',
 };
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -300,6 +311,19 @@ export default function ChatApp({
   // CV viewer opened from a citation: the answer's cited items and the one
   // clicked.
   const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
+  // Document viewer, likewise: the answer's cited passages and the one
+  // clicked (or a document's first page, from its chip).
+  const [docView, setDocView] = useState<{
+    ids: string[];
+    focus: string;
+  } | null>(null);
+  // Document agent: PDFs being read when attached; sending waits for them.
+  const [reading, setReading] = useState(0);
+  // The Knowledge Base box starts open and folds into one line once the
+  // conversation starts, so it doesn't take room all session; the visitor
+  // can open or fold it again (null: follow that default).
+  const [kbPick, setKbOpen] = useState<boolean | null>(null);
+  const readingRef = useRef(0);
   // Order assistant: the full menu dialog, in the conversation's language.
   const [menuLang, setMenuLang] = useState<Lang | null>(null);
   // Auto insurance assistant: the policy dialog, likewise.
@@ -323,19 +347,22 @@ export default function ChatApp({
         ? info
         : cv
           ? 'cv'
-          : menuLang
-            ? 'menu'
-            : policyLang
-              ? 'policy'
-              : switchTo
-                ? 'switch'
-                : null;
+          : docView
+            ? 'doc'
+            : menuLang
+              ? 'menu'
+              : policyLang
+                ? 'policy'
+                : switchTo
+                  ? 'switch'
+                  : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
     setIntro(false);
     setInfo(null);
     setCv(null);
+    setDocView(null);
     setMenuLang(null);
     setPolicyLang(null);
     setSwitchTo(null);
@@ -411,16 +438,26 @@ export default function ChatApp({
     });
   };
   const setDraft = (v: string) => $drafts.setKey(c.id, v);
+  // Clears the conversation; the Knowledge Base stays (switching cases
+  // clears it too).
+  const clearChat = () => {
+    const { docs, docSeq } = getSession(c.id);
+    setSession(c.id, { ...emptySession(), docs, docSeq });
+    setKbOpen(null);
+  };
   // A case starts from scratch: switching away from a started conversation
   // asks first, then clears it (and anything left in the new case).
   const pickCase = (k: ChatCase, confirmed = false) => {
     if ($busy.get()) return;
     setSide(false);
     if (k.id !== c.id) {
-      if (!confirmed && getSession(c.id).items.length > 0) {
+      const s = getSession(c.id);
+      // A filled Knowledge Base counts as started: switching clears it.
+      if (!confirmed && (s.items.length > 0 || s.docs?.length)) {
         setSwitchTo(k);
         return;
       }
+      kbGeneration++;
       setSession(c.id, emptySession());
       setSession(k.id, emptySession());
       $caseId.set(k.id);
@@ -467,7 +504,11 @@ export default function ChatApp({
   // log (partial answer, tool calls, the error) is dropped first.
   const retry = () => {
     const s = getSession(c.id);
-    if ($busy.get() || !s.turn) return;
+    if ($busy.get() || readingRef.current || !s.turn) return;
+    // The Knowledge Base may have changed since the turn failed.
+    const input = c.docs
+      ? { ...s.turn.input, context: kbNote(s.docs ?? []) }
+      : s.turn.input;
     void run(
       {
         ...s,
@@ -476,7 +517,7 @@ export default function ChatApp({
         order: s.turn.order,
         claims: s.turn.claims,
       },
-      s.turn.input,
+      input,
     );
   };
 
@@ -485,7 +526,7 @@ export default function ChatApp({
     else if (f === 'voiceKey' || f === 'voiceKeyReview') openKeys('openai');
     else if (f === 'billing') open(BILLING[PROVIDER], '_blank', 'noopener');
     else if (f === 'retry') retry();
-    else if (f === 'clear') setSession(c.id, emptySession());
+    else if (f === 'clear') clearChat();
     else fileRef.current?.click();
   };
 
@@ -493,7 +534,17 @@ export default function ChatApp({
     const text = (override ?? draft).trim();
     // Read the store, not the render's `busy`: a transcription finishing
     // after a turn ended calls this from an older closure.
-    if ((!text && files.length === 0) || $busy.get()) return;
+    // Nor while a Knowledge Base file is being read: the turn would start
+    // without it.
+    if ((!text && files.length === 0) || $busy.get() || readingRef.current)
+      return;
+    // Document agent: nothing to answer from until the Knowledge Base has
+    // something. Said here, without spending a request; the message stays.
+    if (c.docs && !getSession(c.id).docs?.length) {
+      if (override) setDraft(override);
+      notice('docNone');
+      return;
+    }
     // No key: the message stays in the composer and the assistant asks for
     // the key, so sending again after adding it just works.
     if (!chatKey) {
@@ -512,7 +563,11 @@ export default function ChatApp({
         src: `data:${f.mediaType};base64,${f.data}`,
       })),
     };
-    const input: UserInput = { text, files };
+    const input: UserInput = {
+      text,
+      files,
+      ...(c.docs && { context: kbNote(start.docs ?? []) }),
+    };
     setDraft('');
     $attachments.setKey(c.id, []);
     await run(
@@ -564,6 +619,70 @@ export default function ChatApp({
     }
   };
 
+  // Document agent: files go straight to the Knowledge Base (not to the
+  // composer), read in the browser. Not while a turn runs: it works on a
+  // copy of the session and would drop them when it ends.
+  // `gen`: the case-switch generation when the files were picked (see
+  // kbGeneration); files from an older one are dropped.
+  const addToKb = async (list: File[], gen = kbGeneration) => {
+    if (!c.docs) return;
+    for (const f of list) {
+      if ($busy.get() || gen !== kbGeneration) return;
+      const held = (getSession(c.id).docs?.length ?? 0) + readingRef.current;
+      if (held >= c.docs.maxFiles) {
+        notice('docLimit');
+        return;
+      }
+      setReading((readingRef.current += 1));
+      const r = await readKbFile(f, c.docs).finally(() =>
+        setReading((readingRef.current -= 1)),
+      );
+      // The visitor switched cases meanwhile: that Knowledge Base is gone.
+      if (gen !== kbGeneration) return;
+      if (typeof r === 'string') {
+        notice(r);
+        continue;
+      }
+      // A turn started meanwhile would overwrite the session: drop the file.
+      if ($busy.get()) return;
+      const s = getSession(c.id);
+      const docs = s.docs ?? [];
+      // Same file name twice: the second gets a number, so their sources
+      // can be told apart.
+      let name = r.name;
+      for (let k = 2; docs.some((d) => d.name === name); k++)
+        name = r.name.replace(/(\.[^.]+)?$/, ` ${k}$1`);
+      const seq = (s.docSeq ?? 0) + 1;
+      setSession(c.id, {
+        ...s,
+        docs: [...docs, { ...r, name, id: `d${seq}` }],
+        docSeq: seq,
+      });
+    }
+    composerRef.current?.focus();
+  };
+  const removeDoc = (id: string) => {
+    if ($busy.get()) return;
+    const s = getSession(c.id);
+    setSession(c.id, { ...s, docs: s.docs?.filter((d) => d.id !== id) });
+  };
+  const addSample = async () => {
+    // Taken before the download: a case switch during it drops the sample.
+    const gen = kbGeneration;
+    // The download shows as a slot being read (and hides the link).
+    setReading((readingRef.current += 1));
+    const blob = await fetch(contractUrl)
+      .then((r) => (r.ok ? r.blob() : null))
+      .catch(() => null)
+      .finally(() => setReading((readingRef.current -= 1)));
+    if (gen !== kbGeneration) return;
+    if (!blob) return notice('docUnreadable');
+    await addToKb(
+      [new File([blob], x.docs.sampleFile, { type: 'application/pdf' })],
+      gen,
+    );
+  };
+
   // Insurance examples: the sample file goes to the composer like an upload.
   const addExample = async (ex: Example, lang: Lang) => {
     const blob = await fetch(ex.src).then((r) => r.blob());
@@ -575,7 +694,7 @@ export default function ChatApp({
     if (!list || c.attachments === false) return;
     const picked = Array.from(list);
     if (fileRef.current) fileRef.current.value = '';
-    await addFiles(picked);
+    await (c.docs ? addToKb(picked) : addFiles(picked));
   };
 
   const onMic = async () => {
@@ -635,6 +754,8 @@ export default function ChatApp({
   );
 
   const model = caseModel(c);
+  const started = session.items.some((m) => m.kind === 'user');
+  const effort = caseEffort(c, session.docs?.length);
   const tools = caseTools(c);
   const ready = !!chatKey;
   // Copy placeholders: the provider and the case's model.
@@ -921,6 +1042,8 @@ export default function ChatApp({
                       m={m}
                       onCv={(focus, ids) => setCv({ focus, ids })}
                       cvLabel={x.cvOpen}
+                      onDoc={(focus, ids) => setDocView({ focus, ids })}
+                      docLabel={x.docs.open}
                     />
                   )}
                   {contactAt.get(i)?.map((input, k) => (
@@ -1018,7 +1141,7 @@ export default function ChatApp({
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}
               />
-              {session.items.length === 0 && (
+              {session.items.length === 0 && c.suggestions.length > 0 && (
                 <div
                   role="group"
                   aria-label={x.suggestions}
@@ -1044,6 +1167,22 @@ export default function ChatApp({
                     );
                   })}
                 </div>
+              )}
+              {c.docs && (
+                <KnowledgeBase
+                  open={kbPick ?? !started}
+                  canFold={started}
+                  onToggle={() => setKbOpen(!(kbPick ?? !started))}
+                  docs={session.docs ?? []}
+                  max={c.docs.maxFiles}
+                  reading={reading}
+                  busy={busy}
+                  x={x.docs}
+                  onAdd={() => fileRef.current?.click()}
+                  onSample={() => void addSample()}
+                  onOpen={(d) => setDocView({ ids: [], focus: pageId(d, 1) })}
+                  onRemove={removeDoc}
+                />
               )}
               <div className="border-line2 bg-panel border">
                 {files.length > 0 && (
@@ -1127,7 +1266,7 @@ export default function ChatApp({
                     />
                     <div className="mob:contents flex items-center justify-between gap-2 px-1 pb-1">
                       <div className="mob:contents flex gap-1">
-                        {c.attachments !== false && (
+                        {c.attachments !== false && !c.docs && (
                           <button
                             type="button"
                             onClick={() => fileRef.current?.click()}
@@ -1153,7 +1292,7 @@ export default function ChatApp({
                         <span
                           className={`${mono} text-muted narrow:hidden text-[10px]`}
                         >
-                          {model.name} · {c.effort}
+                          {model.name} · {effort}
                         </span>
                         {busy ? (
                           <button
@@ -1289,7 +1428,7 @@ export default function ChatApp({
                 <dl className="border-line bg-line m-0 grid grid-cols-3 gap-px border">
                   {[
                     [x.model, model.short],
-                    [x.effort, c.effort],
+                    [x.effort, effort],
                     [x.maxTokens, c.maxTokens.toLocaleString()],
                   ].map(([k, v]) => (
                     <div key={k} className="bg-bg px-2 py-1.5">
@@ -1370,7 +1509,7 @@ export default function ChatApp({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => setSession(c.id, emptySession())}
+                onClick={clearChat}
                 className={`${mono} border-line2 text-ink hover:border-accent mob:h-11 mt-1 h-7 cursor-pointer border bg-transparent text-[10px] tracking-[0.06em] uppercase transition-colors`}
               >
                 {x.clear}
@@ -1767,6 +1906,69 @@ export default function ChatApp({
         </div>
       )}
 
+      {docView ? (
+        <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={x.close}
+            onClick={() => setDocView(null)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jd-doc-title"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex h-[calc(100dvh-34px)] w-full max-w-[820px] flex-col border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 mob:pt-5 flex min-h-0 flex-1 flex-col px-7 pt-6 pb-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
+                <div
+                  className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                >
+                  {docView.ids.length ? x.docs.tag : x.docs.kb}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDocView(null)}
+                  aria-label={x.close}
+                  className={`${iconBtn} -mt-1.5 size-9 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-1.5 flex min-h-0 flex-1 flex-col">
+                <DocViewer
+                  key={docView.focus}
+                  docs={session.docs ?? []}
+                  ids={docView.ids}
+                  focus={docView.focus}
+                  x={x.docs}
+                />
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end gap-2 border-t px-7 py-3">
+              <button
+                type="button"
+                onClick={() => setDocView(null)}
+                className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {x.close}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {cv && (
         <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
           <button
@@ -2157,22 +2359,52 @@ export default function ChatApp({
 }
 
 // Markdown links and bare URLs in an answer become real links, so cited
-// sources can be opened. CV citations open the CV viewer on the cited items.
+// sources can be opened. CV citations open the CV viewer on the cited items,
+// document citations the document viewer on the cited passages.
 const LINK =
   /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 type OnCv = (focus: string, ids: string[]) => void;
-/** CV items cited anywhere in the text, so the viewer highlights them all. */
-const citedCv = (text: string) =>
-  [...text.matchAll(LINK)].flatMap((m) => {
-    const id = cvLinkId(m[2] ?? m[3]);
-    return id ? [id] : [];
-  });
+/** The sources line with repeated links folded: passages of the same page
+ * share a label ("contract.pdf · p. 3"), so only the first of each shows.
+ * The viewer still highlights all of them (ids come from the full text).
+ * Lines with anything but links and separators are left as they are. */
+const foldSources = (line: string) => {
+  const links = [...line.matchAll(LINK)].filter((m) => m[1]);
+  if (links.length < 2) return line;
+  const head = line.slice(0, links[0].index);
+  let rest = line.slice(links[0].index);
+  for (const m of links) rest = rest.replace(m[0], '');
+  if (!/^[\s·,;|]*$/.test(rest)) return line;
+  const seen = new Set<string>();
+  const kept = links.filter((m) => !seen.has(m[1]) && !!seen.add(m[1]));
+  return head + kept.map((m) => m[0]).join(' · ');
+};
+/** Ids cited anywhere in the text, so the viewer highlights them all. */
+const cited = (text: string, linkId: (href: string) => string | null) => [
+  ...new Set(
+    [...text.matchAll(LINK)].flatMap((m) => {
+      const id = linkId(m[2] ?? m[3]);
+      return id ? [id] : [];
+    }),
+  ),
+];
 interface LinkCtx {
   onCv: OnCv;
   cvLabel: string;
   cvIds: string[];
+  onDoc: OnCv;
+  docLabel: string;
+  docIds: string[];
 }
-function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
+function Linked({
+  text,
+  onCv,
+  cvLabel,
+  cvIds,
+  onDoc,
+  docLabel,
+  docIds,
+}: { text: string } & LinkCtx) {
   const matches = [...text.matchAll(LINK)];
   const out: (string | React.JSX.Element)[] = [];
   let last = 0;
@@ -2181,13 +2413,14 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
     if (i > last) out.push(text.slice(last, i));
     const href = match[2] ?? match[3];
     const cvId = cvLinkId(href);
+    const docId = cvId ? null : docLinkId(href);
     out.push(
       <a
         key={i}
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        title={cvId ? cvLabel : undefined}
+        title={cvId ? cvLabel : docId ? docLabel : undefined}
         onClick={
           cvId
             ? (e) => {
@@ -2196,7 +2429,13 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
                 e.preventDefault();
                 onCv(cvId, cvIds);
               }
-            : undefined
+            : docId
+              ? (e) => {
+                  // The document only lives in this tab: always the viewer.
+                  e.preventDefault();
+                  onDoc(docId, docIds);
+                }
+              : undefined
         }
         className="text-accent underline underline-offset-2"
       >
@@ -2210,6 +2449,10 @@ function Linked({ text, onCv, cvLabel, cvIds }: { text: string } & LinkCtx) {
 }
 
 const ORDER_TOOLS = ['update_order', 'place_order'];
+// Bumped when a case switch clears the sessions: Knowledge Base reads that
+// started before it are dropped instead of landing in the cleared one.
+// Module state, so it also holds across a remount of the island.
+let kbGeneration = 0;
 // show_menu calls already seen, by tool call id, so each full menu opens
 // once.
 const menusOpened = new Set<string>();
@@ -2522,6 +2765,198 @@ function PolicyDetails({ lang, holder }: { lang: Lang; holder: string }) {
         </ul>
       </div>
     </div>
+  );
+}
+
+// Document agent: the Knowledge Base the model answers from, as a row of
+// slots above the composer. A filled slot opens the document; an empty one
+// opens the file picker (PDFs and images).
+function KnowledgeBase({
+  open,
+  canFold,
+  onToggle,
+  docs,
+  max,
+  reading,
+  busy,
+  x,
+  onAdd,
+  onSample,
+  onOpen,
+  onRemove,
+}: {
+  open: boolean;
+  /** Only once the conversation started: before, it stays open. */
+  canFold: boolean;
+  onToggle: () => void;
+  docs: Doc[];
+  max: number;
+  reading: number;
+  busy: boolean;
+  x: ChatCopy['docs'];
+  onAdd: () => void;
+  onSample: () => void;
+  onOpen: (d: Doc) => void;
+  onRemove: (id: string) => void;
+}) {
+  const empty = Math.max(0, max - docs.length - reading);
+  const slot =
+    'mob:h-[68px] relative flex h-[76px] min-w-0 flex-col items-center justify-center gap-1 border';
+  const title = (
+    <h3
+      className={`${mono} text-accent m-0 shrink-0 text-[11px] font-normal tracking-[0.08em] uppercase`}
+    >
+      {x.kb}{' '}
+      <span className="text-muted">
+        {docs.length}/{max}
+      </span>
+    </h3>
+  );
+  const toggle = canFold && (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={open ? 'jd-kb-slots' : undefined}
+      className="text-muted hover:text-ink mob:min-h-9 inline-flex shrink-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px]"
+    >
+      {open ? x.hide : x.show}
+      <span aria-hidden="true" className={open ? 'rotate-180' : undefined}>
+        ▾
+      </span>
+    </button>
+  );
+  // Folded: one line with the documents, each still opens in the viewer.
+  if (!open)
+    return (
+      <section
+        aria-label={x.kb}
+        className="border-line2 bg-panel mb-2 flex items-center gap-3 border px-3 py-1.5"
+      >
+        {title}
+        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+          {docs.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => onOpen(d)}
+              title={`${x.openDoc} ${d.name}`}
+              className={`${mono} border-line2 text-chip hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 max-w-[180px] shrink-0 cursor-pointer items-center gap-1.5 border bg-transparent px-2 text-[10px] transition-colors`}
+            >
+              <Icon d={I.file} size={12} />
+              <span className="truncate">{d.name}</span>
+            </button>
+          ))}
+          {reading > 0 && (
+            <span
+              role="status"
+              className="text-muted inline-flex shrink-0 items-center gap-1.5 text-[10px]"
+            >
+              <span
+                aria-hidden="true"
+                className="jd-blink bg-accent size-1.5"
+              />
+              {x.reading}
+            </span>
+          )}
+        </div>
+        {toggle}
+      </section>
+    );
+  return (
+    <section
+      aria-label={x.kb}
+      className="border-line2 bg-panel mb-2 border px-3 pt-2.5 pb-3"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        {title}
+        <div className="flex items-baseline gap-4">
+          {docs.length === 0 && reading === 0 && (
+            <button
+              type="button"
+              onClick={onSample}
+              disabled={busy}
+              className="text-accent hover:text-ink mob:min-h-9 cursor-pointer border-0 bg-transparent p-0 text-[12px] underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {x.sample}
+            </button>
+          )}
+          {toggle}
+        </div>
+      </div>
+      <p className="text-muted m-0 mt-0.5 text-[11px] leading-snug">
+        {x.kbHint}
+      </p>
+      <ul
+        id="jd-kb-slots"
+        className="m-0 mt-2 grid list-none grid-cols-5 gap-2 p-0"
+      >
+        {docs.map((d) => (
+          <li key={d.id} className={`${slot} border-line2 bg-bg`}>
+            <button
+              type="button"
+              onClick={() => onOpen(d)}
+              title={`${x.openDoc} ${d.name}`}
+              className="hover:text-ink text-chip flex size-full min-w-0 cursor-pointer flex-col items-center justify-center gap-1 border-0 bg-transparent px-1.5 pt-1 pb-1.5"
+            >
+              {d.kind === 'image' ? (
+                <img
+                  src={`data:${d.type};base64,${d.data}`}
+                  alt=""
+                  className="h-8 min-h-0 w-full object-contain"
+                />
+              ) : (
+                <Icon d={I.file} size={20} />
+              )}
+              <span
+                className={`${mono} block w-full truncate text-center text-[10px]`}
+              >
+                {d.name}
+              </span>
+              <span className="text-muted text-[10px] leading-none">
+                {d.kind === 'image'
+                  ? x.image
+                  : `PDF · ${d.pages.length} ${x.pages}`}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(d.id)}
+              disabled={busy}
+              aria-label={`${x.remove} ${d.name}`}
+              className="text-muted hover:text-ink bg-bg absolute -top-px -right-px grid size-6 cursor-pointer place-items-center border-0 p-0 text-sm leading-none disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ×
+            </button>
+          </li>
+        ))}
+        {Array.from({ length: reading }, (_, i) => (
+          <li
+            key={`r${i}`}
+            role="status"
+            className={`${slot} border-line2 text-muted bg-bg text-[10px]`}
+          >
+            <span aria-hidden="true" className="jd-blink bg-accent size-1.5" />
+            {x.reading}
+          </li>
+        ))}
+        {Array.from({ length: empty }, (_, i) => (
+          <li key={`e${i}`} className="contents">
+            <button
+              type="button"
+              onClick={onAdd}
+              disabled={busy}
+              aria-label={x.add}
+              title={x.add}
+              className={`${slot} border-line2 text-muted hover:border-accent hover:text-accent cursor-pointer border-dashed bg-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              <Icon d={I.plus} size={16} />
+              <span className="mob:hidden text-[10px]">{x.addShort}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -2985,10 +3420,14 @@ function Message({
   m,
   onCv,
   cvLabel,
+  onDoc,
+  docLabel,
 }: {
   m: ChatItem;
   onCv: OnCv;
   cvLabel: string;
+  onDoc: OnCv;
+  docLabel: string;
 }) {
   if (m.kind === 'user') {
     return (
@@ -3026,8 +3465,16 @@ function Message({
   if (m.kind === 'tool') return <ToolRow m={m} />;
 
   if (m.kind === 'notice') return null;
-  const { body, sources } = splitSources(m.text);
-  const ctx = { onCv, cvLabel, cvIds: citedCv(m.text) };
+  const { body, sources: raw } = splitSources(m.text);
+  const sources = foldSources(raw);
+  const ctx = {
+    onCv,
+    cvLabel,
+    cvIds: cited(m.text, cvLinkId),
+    onDoc,
+    docLabel,
+    docIds: cited(m.text, docLinkId),
+  };
   return (
     <div className="mob:max-w-full flex max-w-[88%] flex-col gap-1">
       <div className="border-accent flex flex-col gap-1.5 border-l-2 py-0.5 pl-3 text-[13px] leading-[1.55] break-words">

@@ -2,7 +2,7 @@
 // Loaded through turn.ts on the first message.
 import type Anthropic from '@anthropic-ai/sdk';
 import type { ChatItem, ChatSession, UserInput } from '../store';
-import { MODELS, type ChatCase } from './cases';
+import { MODELS, caseEffort, type ChatCase } from './cases';
 import { CLIENT_TOOLS } from './tools';
 import {
   PAGES_DROPPED,
@@ -66,6 +66,7 @@ const userContent = (
             },
           ],
   ),
+  ...(input.context ? [{ type: 'text' as const, text: input.context }] : []),
   ...(input.text ? [{ type: 'text' as const, text: input.text }] : []),
 ];
 
@@ -108,7 +109,8 @@ export async function runTurn(
     ...(c.clientTools ?? []).map((n) => CLIENT_TOOLS[n].def),
     ...(c.anthropicTools ?? []),
   ];
-  const meta = `${model.name} · effort ${c.effort}`;
+  const effort = caseEffort(c, start.docs?.length);
+  const meta = `${model.name} · effort ${effort}`;
   let jsonRetries = 0;
 
   const push = (item: ChatItem) => {
@@ -134,7 +136,7 @@ export async function runTurn(
           system: c.system,
           messages: api,
           ...(tools.length ? { tools } : {}),
-          output_config: { effort: c.effort },
+          output_config: { effort },
           // Sonnet 5.5 on the Claude API: let the server re-run a declined
           // request on a suitable model instead of stopping.
           ...(modelId === 'claude-sonnet-5-5'

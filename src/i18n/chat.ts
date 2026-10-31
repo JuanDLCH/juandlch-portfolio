@@ -67,6 +67,33 @@ const EN = {
     openMenu: 'See the menu',
     menuNote: 'Tell the assistant what you’d like to order.',
   },
+  docs: {
+    tag: 'Cited source',
+    note: 'The parts the answer cites are highlighted.',
+    docs: 'Cited documents',
+    prev: 'Previous page',
+    next: 'Next page',
+    pageOf: 'Page {n} of {total}',
+    cited: 'Cited pages',
+    failed: 'This document couldn’t be displayed.',
+    removed: 'This document was removed from the Knowledge Base.',
+    download: 'Download',
+    open: 'Open the cited part in the document',
+    kb: 'Knowledge Base',
+    kbHint: 'Up to 5 PDFs (20 pages) or images. I answer only from these.',
+    kbTag: 'Document',
+    add: 'Add a PDF or image',
+    addShort: 'Add',
+    show: 'Show',
+    hide: 'Hide',
+    openDoc: 'Open',
+    remove: 'Remove',
+    sample: 'Try a sample contract',
+    sampleFile: 'sample-service-contract.pdf',
+    reading: 'Reading…',
+    image: 'image',
+    pages: 'p.',
+  },
   insurance: {
     policy: 'Your policy',
     viewPolicy: 'See the policy',
@@ -204,6 +231,17 @@ const EN = {
     pdfSize: 'That PDF is over 10 MB. Send a lighter copy of the invoice.',
     pdfUnreadable:
       'I couldn’t open that PDF: it may be damaged or password protected. Try another copy.',
+    docFile:
+      'The Knowledge Base takes PDFs and images (PNG, JPEG, GIF, WebP). That file isn’t one of them.',
+    docLimit:
+      'The Knowledge Base holds up to 5 documents. Remove one to add another.',
+    docPages:
+      'That PDF is over 20 pages. Add a shorter one, or just the part you want to ask about.',
+    docSize: 'That file is over 20 MB. Add a lighter copy.',
+    docNone:
+      'Add documents to the Knowledge Base first (PDFs or images, up to 5), and then I can answer about them.',
+    docUnreadable:
+      'I couldn’t open that file: it may be damaged or password protected. Try another copy.',
   },
   fixes: {
     key: 'Add {p} key',
@@ -214,6 +252,7 @@ const EN = {
     retry: 'Try again',
     clear: 'Clear conversation',
     file: 'Choose another file',
+    addDoc: 'Add a document',
   },
   switchTag: 'Example case',
   switchTitle: 'Switch case?',
@@ -290,6 +329,33 @@ const ES: typeof EN = {
     want: 'Quiero pedir: {d}',
     openMenu: 'Ver el menú',
     menuNote: 'Dile al asistente qué quieres pedir.',
+  },
+  docs: {
+    tag: 'Fuente citada',
+    note: 'Lo que cita la respuesta está resaltado.',
+    docs: 'Documentos citados',
+    prev: 'Página anterior',
+    next: 'Página siguiente',
+    pageOf: 'Página {n} de {total}',
+    cited: 'Páginas citadas',
+    failed: 'No se pudo mostrar este documento.',
+    removed: 'Este documento se quitó de la Knowledge Base.',
+    download: 'Descargar',
+    open: 'Abrir la parte citada en el documento',
+    kb: 'Knowledge Base',
+    kbHint: 'Hasta 5 PDFs (20 páginas) o imágenes. Solo respondo desde aquí.',
+    kbTag: 'Documento',
+    add: 'Agregar un PDF o imagen',
+    addShort: 'Agregar',
+    show: 'Mostrar',
+    hide: 'Ocultar',
+    openDoc: 'Abrir',
+    remove: 'Quitar',
+    sample: 'Prueba con un contrato de ejemplo',
+    sampleFile: 'contrato-servicios-ejemplo.pdf',
+    reading: 'Leyendo…',
+    image: 'imagen',
+    pages: 'pág.',
   },
   insurance: {
     policy: 'Tu póliza',
@@ -431,6 +497,17 @@ const ES: typeof EN = {
       'Ese PDF pesa más de 10 MB. Envía una copia más liviana de la factura.',
     pdfUnreadable:
       'No pude abrir ese PDF: puede estar dañado o protegido con contraseña. Prueba con otra copia.',
+    docFile:
+      'La Knowledge Base acepta PDFs e imágenes (PNG, JPEG, GIF, WebP). Ese archivo no es uno de ellos.',
+    docLimit:
+      'La Knowledge Base admite hasta 5 documentos. Quita uno para agregar otro.',
+    docPages:
+      'Ese PDF tiene más de 20 páginas. Agrega uno más corto, o solo la parte sobre la que quieres preguntar.',
+    docSize: 'Ese archivo pesa más de 20 MB. Agrega una copia más liviana.',
+    docNone:
+      'Primero agrega documentos a la Knowledge Base (PDFs o imágenes, hasta 5) y luego te respondo sobre ellos.',
+    docUnreadable:
+      'No pude abrir ese archivo: puede estar dañado o protegido con contraseña. Prueba con otra copia.',
   },
   fixes: {
     key: 'Agregar llave de {p}',
@@ -441,6 +518,7 @@ const ES: typeof EN = {
     retry: 'Intentar de nuevo',
     clear: 'Borrar conversación',
     file: 'Elegir otro archivo',
+    addDoc: 'Agregar un documento',
   },
   switchTag: 'Caso de ejemplo',
   switchTitle: '¿Cambiar de caso?',
