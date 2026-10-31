@@ -9,7 +9,8 @@ import { CASES } from './chat/cases';
 import type { Claims } from './chat/insurance';
 import type { Order } from './chat/order';
 
-/** A file as the log keeps it: images carry a data URL for their preview. */
+/** A file as the log keeps it, with a data URL: images preview from it,
+ * other files (PDFs) download from it. */
 export interface SentFile {
   name: string;
   type: string;

@@ -495,9 +495,8 @@ export default function ChatApp({
       files: files.map((f) => ({
         name: f.name,
         type: f.mediaType,
-        ...(IMAGE_TYPES.includes(f.mediaType)
-          ? { src: `data:${f.mediaType};base64,${f.data}` }
-          : {}),
+        // Images preview in the log, other files download from it.
+        src: `data:${f.mediaType};base64,${f.data}`,
       })),
     };
     const input: UserInput = { text, files };
@@ -2907,7 +2906,7 @@ function Message({
     return (
       <div className="mob:max-w-[85%] flex max-w-[80%] flex-col items-end gap-1.5 self-end">
         {m.files.map((f, i) =>
-          f.src ? (
+          f.src && IMAGE_TYPES.includes(f.type) ? (
             <img
               key={i}
               src={f.src}
@@ -2916,13 +2915,16 @@ function Message({
               className="border-line2 mob:max-w-[min(100%,200px)] block max-h-48 w-auto max-w-[240px] border object-contain"
             />
           ) : (
-            <span
+            <a
               key={i}
-              className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2 py-1 text-[10px]`}
+              href={f.src}
+              download={f.name}
+              title={f.name}
+              className={`${mono} border-line2 bg-panel text-chip hover:border-accent hover:text-ink mob:min-h-11 inline-flex items-center gap-2 border px-2 py-1 text-[10px] no-underline transition-colors`}
             >
               <Icon d={I.file} size={13} />
               {f.name}
-            </span>
+            </a>
           ),
         )}
         {m.text && (
