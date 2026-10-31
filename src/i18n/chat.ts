@@ -67,6 +67,51 @@ const EN = {
     openMenu: 'See the menu',
     menuNote: 'Tell the assistant what you’d like to order.',
   },
+  insurance: {
+    policy: 'Your policy',
+    viewPolicy: 'See the policy',
+    policyNote: 'Demo account: made-up policy, no end date.',
+    vehicle: 'Insured vehicle',
+    plate: 'Plate',
+    start: 'Since',
+    noEnd: 'No end date',
+    premium: '{n}/month',
+    coverages: 'Coverages',
+    deductible: 'Deductible',
+    noDeductible: 'No deductible',
+    upload: 'Upload a photo',
+    photoHint: 'One photo that shows the whole car and the damage.',
+    sent: 'Sent',
+    uploadDoc: 'Attach the invoice',
+    docHint: 'A repair invoice or quote (PDF) that shows the total.',
+    examples: 'Use an example or your own',
+    example: {
+      insured: {
+        title: 'Your insured car, damaged',
+        note: 'Red sedan with a dented side: it should match the policy.',
+      },
+      other: {
+        title: 'Another car',
+        note: 'A grey car: the claim should not apply.',
+      },
+      invoice: {
+        title: 'Body shop invoice',
+        note: 'Sample PDF for the red car’s repair.',
+      },
+    },
+    own: 'Upload my own file',
+    close: 'Close',
+    amount: 'Damage value',
+    amountPending: 'Pending (optional)',
+    annex: 'Annex',
+    claim: 'Claim',
+    inReview: 'In review',
+    incident: 'Incident',
+    date: 'Date',
+    filed: 'Filed',
+    damage: 'Damage',
+    claimNote: 'Simulated claim: an adjuster would contact you; no one will.',
+  },
   meetingHint:
     'In the booking form, tell me briefly what it’s about (a freelance project, a job offer, technical consulting…). Optional, but it makes it more likely I accept.',
   noKeyBanner: 'Add your {p} API key to run the chat. Nothing is stored.',
@@ -154,6 +199,11 @@ const EN = {
     transcribe:
       'I couldn’t transcribe that recording. Check your OpenAI key, or type the message instead.',
     file: 'I can read images (PNG, JPEG, GIF, WebP) and PDFs up to 20 MB. That file isn’t one of them.',
+    pdfPages:
+      'That PDF has more than 5 pages. Send just the invoice or quote, up to 5 pages.',
+    pdfSize: 'That PDF is over 10 MB. Send a lighter copy of the invoice.',
+    pdfUnreadable:
+      'I couldn’t open that PDF: it may be damaged or password protected. Try another copy.',
   },
   fixes: {
     key: 'Add {p} key',
@@ -240,6 +290,51 @@ const ES: typeof EN = {
     want: 'Quiero pedir: {d}',
     openMenu: 'Ver el menú',
     menuNote: 'Dile al asistente qué quieres pedir.',
+  },
+  insurance: {
+    policy: 'Tu póliza',
+    viewPolicy: 'Ver póliza',
+    policyNote: 'Cuenta de demo: póliza ficticia, sin fecha de vencimiento.',
+    vehicle: 'Vehículo asegurado',
+    plate: 'Placa',
+    start: 'Desde',
+    noEnd: 'Sin fecha de vencimiento',
+    premium: '{n}/mes',
+    coverages: 'Coberturas',
+    deductible: 'Deducible',
+    noDeductible: 'Sin deducible',
+    upload: 'Subir una foto',
+    photoHint: 'Una foto en la que se vea el auto completo y el daño.',
+    sent: 'Enviado',
+    uploadDoc: 'Anexar la factura',
+    docHint: 'Una factura o cotización del taller (PDF) que muestre el total.',
+    examples: 'Usa un ejemplo o el tuyo',
+    example: {
+      insured: {
+        title: 'Tu auto asegurado, chocado',
+        note: 'Sedán rojo con el costado golpeado: debería coincidir con la póliza.',
+      },
+      other: {
+        title: 'Otro auto',
+        note: 'Un auto gris: el reclamo no debería aplicar.',
+      },
+      invoice: {
+        title: 'Factura del taller',
+        note: 'PDF de ejemplo de la reparación del auto rojo.',
+      },
+    },
+    own: 'Subir mi archivo',
+    close: 'Cerrar',
+    amount: 'Valor del daño',
+    amountPending: 'Pendiente (opcional)',
+    annex: 'Anexo',
+    claim: 'Reclamo',
+    inReview: 'En trámite',
+    incident: 'Incidente',
+    date: 'Fecha',
+    filed: 'Registrado',
+    damage: 'Daños',
+    claimNote: 'Reclamo simulado: un ajustador te contactaría; nadie lo hará.',
   },
   meetingHint:
     'En el formulario de reserva cuéntame brevemente de qué se trata (un proyecto freelance, una oferta laboral, una asesoría técnica…). Es opcional, pero aumenta la probabilidad de que acepte.',
@@ -330,6 +425,12 @@ const ES: typeof EN = {
     transcribe:
       'No pude transcribir esa grabación. Revisa tu llave de OpenAI o escribe el mensaje.',
     file: 'Puedo leer imágenes (PNG, JPEG, GIF, WebP) y PDFs de hasta 20 MB. Ese archivo no es uno de ellos.',
+    pdfPages:
+      'Ese PDF tiene más de 5 páginas. Envía solo la factura o cotización, de hasta 5 páginas.',
+    pdfSize:
+      'Ese PDF pesa más de 10 MB. Envía una copia más liviana de la factura.',
+    pdfUnreadable:
+      'No pude abrir ese PDF: puede estar dañado o protegido con contraseña. Prueba con otra copia.',
   },
   fixes: {
     key: 'Agregar llave de {p}',

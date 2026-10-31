@@ -13,6 +13,7 @@ import {
   IMAGE_TYPES,
   MAX_BYTES,
   readAttachment,
+  type Attachment,
 } from '../../lab/attachments';
 import {
   CASES,
@@ -38,7 +39,19 @@ import {
   type Lang,
   type Order,
 } from '../../lab/chat/order';
+import {
+  COVERAGE,
+  DAMAGE_AREA_LABEL,
+  INCIDENT_LABEL,
+  INSURER,
+  POLICY,
+  describePolicy,
+  type Claim,
+} from '../../lab/chat/insurance';
 import CvViewer from './CvViewer';
+import insuredCarUrl from '../../assets/lab/insurance/sample-insured-car.jpg?url';
+import otherCarUrl from '../../assets/lab/insurance/sample-other-car.jpg?url';
+import invoiceUrl from '../../assets/lab/insurance/sample-invoice.pdf?url';
 import { transcribe } from '../../lab/chat/openai';
 import {
   $busy,
@@ -165,6 +178,9 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   unreadable: 'keyReview',
   api: 'clear',
   file: 'file',
+  pdfPages: 'file',
+  pdfSize: 'file',
+  pdfUnreadable: 'file',
 };
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -225,13 +241,17 @@ export default function ChatApp({
   const hasInput = draft.trim().length > 0 || files.length > 0;
   // Contact buttons go at the end of the turn they were shown in, below the
   // answer, wherever in the turn the tool was called.
-  // Same for the Order assistant's menu cards.
-  const endOfTurn = (name: string) => {
+  // Same for the Order assistant's menu cards and the insurance cards.
+  // `pick` reads what the card needs from the call (its input by default).
+  const endOfTurn = (
+    names: string[],
+    pick: (m: { input: string; result: string }) => string = (m) => m.input,
+  ) => {
     const at = new Map<number, string[]>();
     for (let i = 0, turn: string[] = []; i < session.items.length; i++) {
       const m = session.items[i];
-      if (m.kind === 'tool' && m.name === name && m.status === 'done')
-        turn.push(m.input);
+      if (m.kind === 'tool' && names.includes(m.name) && m.status === 'done')
+        turn.push(pick(m));
       const next = session.items[i + 1];
       if (turn.length && (!next || next.kind === 'user')) {
         at.set(i, turn);
@@ -240,8 +260,19 @@ export default function ChatApp({
     }
     return at;
   };
-  const contactAt = endOfTurn('show_contact_options');
-  const menuAt = endOfTurn('show_menu');
+  const contactAt = endOfTurn(['show_contact_options']);
+  const menuAt = endOfTurn(['show_menu']);
+  const policyAt = endOfTurn(['get_policy']);
+  const photoAt = endOfTurn(['request_photo']);
+  const docAt = endOfTurn(['request_document']);
+  // A claim card per claim the turn filed or looked up, found by the number
+  // in the call's result label.
+  const claimAt = endOfTurn(
+    ['file_claim', 'get_claim_status', 'attach_invoice'],
+    (m) => m.result.match(/CLM-\d{4}-\d{5}/)?.[0] ?? '',
+  );
+  const claim = (id: string) =>
+    session.claims?.list.find((k) => k.claim_id === id);
   // The order card goes once, at the end of the last turn that changed the
   // order, and always shows its current state.
   let orderAt = -1;
@@ -271,6 +302,8 @@ export default function ChatApp({
   const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
   // Order assistant: the full menu dialog, in the conversation's language.
   const [menuLang, setMenuLang] = useState<Lang | null>(null);
+  // Auto insurance assistant: the policy dialog, likewise.
+  const [policyLang, setPolicyLang] = useState<Lang | null>(null);
   const [keyDrafts, setKeyDrafts] = useState({ anthropic: '', openai: '' });
   // Key input the keys dialog focuses when it opens.
   const [keyFocus, setKeyFocus] = useState<'anthropic' | 'openai'>('anthropic');
@@ -292,9 +325,11 @@ export default function ChatApp({
           ? 'cv'
           : menuLang
             ? 'menu'
-            : switchTo
-              ? 'switch'
-              : null;
+            : policyLang
+              ? 'policy'
+              : switchTo
+                ? 'switch'
+                : null;
   const dialogOpen = dialog !== null;
   const closeDialogs = () => {
     setModal(false);
@@ -302,6 +337,7 @@ export default function ChatApp({
     setInfo(null);
     setCv(null);
     setMenuLang(null);
+    setPolicyLang(null);
     setSwitchTo(null);
   };
 
@@ -411,6 +447,13 @@ export default function ChatApp({
           const a = menuArgs(m.input);
           if (a?.full) setMenuLang(a.lang);
         }
+        // Same for the policy, from each get_policy call.
+        for (const m of s.items) {
+          if (m.kind !== 'tool' || m.name !== 'get_policy') continue;
+          if (m.status !== 'done' || policiesOpened.has(m.id)) continue;
+          policiesOpened.add(m.id);
+          setPolicyLang(langArg(m.input));
+        }
       },
       signal: ctrl.signal,
       es,
@@ -431,6 +474,7 @@ export default function ChatApp({
         items: s.items.slice(0, s.turn.items),
         api: s.api.slice(0, s.turn.api),
         order: s.turn.order,
+        claims: s.turn.claims,
       },
       s.turn.input,
     );
@@ -461,7 +505,12 @@ export default function ChatApp({
     const user: ChatItem = {
       kind: 'user',
       text,
-      files: files.map((f) => f.name),
+      files: files.map((f) => ({
+        name: f.name,
+        type: f.mediaType,
+        // Images preview in the log, other files download from it.
+        src: `data:${f.mediaType};base64,${f.data}`,
+      })),
     };
     const input: UserInput = { text, files };
     setDraft('');
@@ -475,6 +524,7 @@ export default function ChatApp({
           api: start.api.length,
           input,
           order: start.order,
+          claims: start.claims,
         },
       },
       input,
@@ -489,21 +539,43 @@ export default function ChatApp({
     }
   };
 
+  // A picked file as the composer keeps it, or the notice that rejects it.
+  // Cases that read PDFs page by page (c.pdf) get them as page images, and
+  // refuse big or long ones before any token is spent.
+  const attach = async (f: File): Promise<Attachment | NoticeCode> => {
+    const pdf = f.type === 'application/pdf';
+    if ((!IMAGE_TYPES.includes(f.type) && !pdf) || f.size > MAX_BYTES)
+      return 'file';
+    if (!pdf || !c.pdf) return readAttachment(f);
+    if (f.size > c.pdf.maxMB * 1024 * 1024) return 'pdfSize';
+    try {
+      const { pdfPages } = await import('../../lab/pdf');
+      const pages = await pdfPages(f, c.pdf.maxPages);
+      return { ...(await readAttachment(f)), pages };
+    } catch (e) {
+      return (e as { code?: NoticeCode }).code ?? 'pdfUnreadable';
+    }
+  };
+  const addFiles = async (list: File[]) => {
+    for (const f of list) {
+      const a = await attach(f);
+      if (typeof a === 'string') notice(a);
+      else $attachments.setKey(c.id, [...($attachments.get()[c.id] ?? []), a]);
+    }
+  };
+
+  // Insurance examples: the sample file goes to the composer like an upload.
+  const addExample = async (ex: Example, lang: Lang) => {
+    const blob = await fetch(ex.src).then((r) => r.blob());
+    await addFiles([new File([blob], ex.file[lang], { type: ex.type })]);
+    composerRef.current?.focus();
+  };
+
   const onFiles = async (list: FileList | null) => {
     if (!list || c.attachments === false) return;
-    const next = [...files];
-    for (const f of Array.from(list)) {
-      if (
-        (!IMAGE_TYPES.includes(f.type) && f.type !== 'application/pdf') ||
-        f.size > MAX_BYTES
-      ) {
-        notice('file');
-        continue;
-      }
-      next.push(await readAttachment(f));
-    }
-    $attachments.setKey(c.id, next);
+    const picked = Array.from(list);
     if (fileRef.current) fileRef.current.value = '';
+    await addFiles(picked);
   };
 
   const onMic = async () => {
@@ -865,6 +937,49 @@ export default function ChatApp({
                       onOpen={setMenuLang}
                     />
                   ))}
+                  {policyAt
+                    .get(i)
+                    ?.slice(-1)
+                    .map((input, k) => (
+                      <div key={k} className="pl-3">
+                        <button
+                          type="button"
+                          onClick={() => setPolicyLang(langArg(input))}
+                          className="border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[13px] transition-colors"
+                        >
+                          <Icon d={I.file} size={14} />
+                          {CHAT[langArg(input)].insurance.viewPolicy}
+                        </button>
+                      </div>
+                    ))}
+                  {(
+                    [
+                      ['photo', photoAt.get(i)?.at(-1)],
+                      ['document', docAt.get(i)?.at(-1)],
+                    ] as const
+                  ).map(
+                    ([kind, input]) =>
+                      input && (
+                        <AttachRequest
+                          key={kind}
+                          kind={kind}
+                          input={input}
+                          // Done once a later message carries a file.
+                          sent={session.items
+                            .slice(i + 1)
+                            .some(
+                              (n) => n.kind === 'user' && n.files.length > 0,
+                            )}
+                          busy={busy}
+                          onUpload={() => fileRef.current?.click()}
+                          onExample={(ex, lang) => void addExample(ex, lang)}
+                        />
+                      ),
+                  )}
+                  {[...new Set(claimAt.get(i))].map((id) => {
+                    const cl = claim(id);
+                    return cl && <ClaimCard key={id} claim={cl} />;
+                  })}
                   {i === orderAt && session.order && (
                     <OrderCard
                       order={session.order}
@@ -938,7 +1053,15 @@ export default function ChatApp({
                         key={i}
                         className={`${mono} border-line2 text-chip inline-flex items-center gap-2 border px-2 py-1 text-[11px]`}
                       >
-                        <Icon d={I.file} size={13} />
+                        {IMAGE_TYPES.includes(f.mediaType) ? (
+                          <img
+                            src={`data:${f.mediaType};base64,${f.data}`}
+                            alt=""
+                            className="size-6 object-cover"
+                          />
+                        ) : (
+                          <Icon d={I.file} size={13} />
+                        )}
                         {f.name}
                         <button
                           type="button"
@@ -1554,7 +1677,7 @@ export default function ChatApp({
                   ×
                 </button>
               </div>
-              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto text-[13px]">
+              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-3 text-[13px]">
                 <MenuList dishes={MENU} lang={menuLang} />
               </div>
             </div>
@@ -1566,6 +1689,78 @@ export default function ChatApp({
                 className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
               >
                 {CHAT[menuLang].close}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {policyLang && (
+        <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={CHAT[policyLang].close}
+            onClick={() => setPolicyLang(null)}
+            className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
+          />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jd-policy-title"
+            className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[560px] flex-col border"
+          >
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -top-px -left-px size-4 border-t-2 border-l-2"
+            />
+            <span
+              aria-hidden="true"
+              className="border-accent absolute -right-px -bottom-px size-4 border-r-2 border-b-2"
+            />
+            <div className="mob:px-4 mob:pt-5 flex min-h-0 flex-1 flex-col px-7 pt-6 pb-4">
+              <div className="flex shrink-0 items-start justify-between gap-3">
+                <div>
+                  <div
+                    className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
+                  >
+                    {CHAT[policyLang].insurance.policy}
+                  </div>
+                  <h2
+                    id="jd-policy-title"
+                    className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
+                  >
+                    {INSURER}
+                  </h2>
+                  <p className="text-muted m-0 mt-1 text-[13px]">
+                    {CHAT[policyLang].insurance.policyNote}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPolicyLang(null)}
+                  aria-label={CHAT[policyLang].close}
+                  className={`${iconBtn} size-9 text-lg`}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-3 text-[13px]">
+                <PolicyDetails
+                  lang={policyLang}
+                  holder={session.claims?.holder ?? ''}
+                />
+              </div>
+            </div>
+            <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end border-t px-7 py-3">
+              <button
+                type="button"
+                data-autofocus
+                onClick={() => setPolicyLang(null)}
+                className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+              >
+                {CHAT[policyLang].close}
               </button>
             </div>
           </div>
@@ -2018,6 +2213,8 @@ const ORDER_TOOLS = ['update_order', 'place_order'];
 // show_menu calls already seen, by tool call id, so each full menu opens
 // once.
 const menusOpened = new Set<string>();
+// get_policy calls already seen, so each opens the policy dialog once.
+const policiesOpened = new Set<string>();
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
 // The Order assistant's order, as its tools left it. "Place order" sends the
@@ -2258,6 +2455,264 @@ function MenuCard({
       </span>
       <MenuList dishes={m.dishes} lang={m.lang} onPick={onPick} />
       <p className="text-muted m-0 text-[11px]">{x.order.tapHint}</p>
+    </section>
+  );
+}
+
+// Auto insurance cards. Each renders in the language its tool was called
+// with (the conversation's), like the order cards.
+const langArg = (input: string): Lang => {
+  try {
+    return (JSON.parse(input) as { lang?: unknown }).lang === 'es'
+      ? 'es'
+      : 'en';
+  } catch {
+    return 'en';
+  }
+};
+const cardTitle = `${mono} text-accent text-[11px] tracking-wider uppercase`;
+const cardBox =
+  'bg-panel border-line2 mob:max-w-full ml-3 flex max-w-[min(88%,440px)] flex-col gap-3 border p-4 text-[13px]';
+const cardRow = 'flex items-baseline justify-between gap-4';
+
+// get_policy: the account's policy, car and coverages, shown in a dialog.
+function PolicyDetails({ lang, holder }: { lang: Lang; holder: string }) {
+  const x = CHAT[lang].insurance;
+  const p = describePolicy(lang, holder);
+  const v = POLICY.vehicle;
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <span className={`${mono} text-accent text-[11px]`}>
+          {p.policy_number}
+        </span>
+        <span className="text-ink font-semibold">
+          {v.year} {v.make} {v.model} · {p.vehicle.color_label}
+        </span>
+        <span className="text-muted text-[12px]">
+          {p.holder} · {x.plate} {v.plate}
+        </span>
+        <span className="text-muted text-[12px]">
+          {x.start} {p.start} · {x.noEnd} ·{' '}
+          {x.premium.replace('{n}', `$${POLICY.premium_month}`)}
+        </span>
+      </div>
+      <div className="border-line2 flex flex-col gap-1.5 border-t pt-2">
+        <span className={`${mono} text-muted text-[11px] uppercase`}>
+          {x.coverages}
+        </span>
+        <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+          {p.coverages.map((c) => (
+            <li key={c.id} className="flex flex-col gap-0.5">
+              <div className={cardRow}>
+                <span className="text-ink">{c.name}</span>
+                <span className={`${mono} text-ink shrink-0 text-[12px]`}>
+                  {c.deductible === null
+                    ? ''
+                    : c.deductible === 0
+                      ? x.noDeductible
+                      : `${x.deductible} $${c.deductible}`}
+                </span>
+              </div>
+              <span className="text-muted text-[12px] leading-snug">
+                {c.limit}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// Sample files offered next to "upload your own" when the assistant asks for
+// a photo or a document: the insured car damaged, another car, and a body
+// shop invoice for the first one.
+interface Example {
+  key: 'insured' | 'other' | 'invoice';
+  src: string;
+  type: string;
+  file: { en: string; es: string };
+}
+const EXAMPLES: Record<'photo' | 'document', Example[]> = {
+  photo: [
+    {
+      key: 'insured',
+      src: insuredCarUrl,
+      type: 'image/jpeg',
+      file: { en: 'insured-car-damaged.jpg', es: 'auto-asegurado-chocado.jpg' },
+    },
+    {
+      key: 'other',
+      src: otherCarUrl,
+      type: 'image/jpeg',
+      file: { en: 'other-car.jpg', es: 'otro-auto.jpg' },
+    },
+  ],
+  document: [
+    {
+      key: 'invoice',
+      src: invoiceUrl,
+      type: 'application/pdf',
+      file: { en: 'body-shop-invoice.pdf', es: 'factura-taller.pdf' },
+    },
+  ],
+};
+
+// request_photo and request_document: a button that opens a choice between
+// the examples and the file picker (the camera on phones), shown as sent once
+// a later message carries a file.
+function AttachRequest({
+  kind,
+  input,
+  sent,
+  busy,
+  onUpload,
+  onExample,
+}: {
+  kind: 'photo' | 'document';
+  input: string;
+  sent: boolean;
+  busy: boolean;
+  onUpload: () => void;
+  onExample: (ex: Example, lang: Lang) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const lang = langArg(input);
+  const x = CHAT[lang].insurance;
+  const ask = kind === 'photo' ? x.upload : x.uploadDoc;
+  const btn =
+    'mob:h-11 inline-flex h-9 cursor-pointer items-center gap-2 px-3 text-[13px] disabled:cursor-not-allowed disabled:opacity-60';
+  if (sent || !open)
+    return (
+      <div className="mob:pr-3 flex flex-col items-start gap-1.5 pl-3">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          disabled={busy || sent}
+          className={`${btn} bg-accent text-on-accent border-0 font-semibold`}
+        >
+          <Icon d={I.clip} size={14} />
+          {sent ? x.sent : ask}
+        </button>
+        {!sent && (
+          <span className="text-muted text-[12px] leading-snug">
+            {kind === 'photo' ? x.photoHint : x.docHint}
+          </span>
+        )}
+      </div>
+    );
+  return (
+    <section aria-label={ask} className={cardBox}>
+      <span className={cardTitle}>{x.examples}</span>
+      <ul className="m-0 flex list-none flex-wrap gap-3 p-0">
+        {EXAMPLES[kind].map((ex) => (
+          <li key={ex.key} className="mob:w-[calc(50%-6px)] w-[150px]">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setOpen(false);
+                onExample(ex, lang);
+              }}
+              className="border-line2 hover:border-accent flex w-full cursor-pointer flex-col gap-1.5 border bg-transparent p-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {ex.type.startsWith('image/') ? (
+                <img
+                  src={ex.src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  width={150}
+                  height={90}
+                  className="aspect-[5/3] h-auto w-full object-cover"
+                />
+              ) : (
+                <span className="bg-bg text-muted grid aspect-[5/3] w-full place-items-center">
+                  <Icon d={I.file} size={28} />
+                </span>
+              )}
+              <span className="text-ink text-[12px] leading-snug font-semibold">
+                {x.example[ex.key].title}
+              </span>
+              <span className="text-muted text-[11px] leading-snug">
+                {x.example[ex.key].note}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setOpen(false);
+            onUpload();
+          }}
+          className={`${btn} bg-accent text-on-accent border-0 font-semibold`}
+        >
+          <Icon d={I.clip} size={14} />
+          {x.own}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className={`${btn} border-line2 text-ink hover:border-accent border bg-transparent`}
+        >
+          {x.close}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+// file_claim and get_claim_status: the claim with its number. The status is
+// always "in review": the demo stops there.
+function ClaimCard({ claim }: { claim: Claim }) {
+  const x = CHAT[claim.lang].insurance;
+  const rows: [string, string][] = [
+    [x.incident, INCIDENT_LABEL[claim.incident][claim.lang]],
+    [x.date, claim.date],
+    [x.deductible, claim.deductible ? `$${claim.deductible}` : x.noDeductible],
+    [x.filed, claim.filed],
+    [x.amount, claim.amount ? `$${claim.amount.toFixed(2)}` : x.amountPending],
+    ...(claim.annex ? [[x.annex, claim.annex.name] as [string, string]] : []),
+  ];
+  return (
+    <section aria-label={`${x.claim} ${claim.claim_id}`} className={cardBox}>
+      <div className={cardRow}>
+        <span className={cardTitle}>{x.claim}</span>
+        <span
+          className={`${mono} border-warn text-warn border px-1.5 py-0.5 text-[10px] uppercase`}
+        >
+          {x.inReview}
+        </span>
+      </div>
+      <span className={`${mono} text-ink text-[15px] font-semibold`}>
+        {claim.claim_id}
+      </span>
+      <dl className="m-0 flex flex-col gap-1">
+        {rows.map(([k, v]) => (
+          <div key={k} className={cardRow}>
+            <dt className="text-muted">{k}</dt>
+            <dd className="text-ink m-0 text-right">{v}</dd>
+          </div>
+        ))}
+        {claim.damage_areas.length > 0 && (
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-muted">{x.damage}</dt>
+            <dd className="text-ink m-0">
+              {claim.damage_areas
+                .map((a) => DAMAGE_AREA_LABEL[a][claim.lang])
+                .join(' · ')}
+            </dd>
+          </div>
+        )}
+      </dl>
+      <p className="text-muted m-0 text-[11px] leading-normal">
+        {COVERAGE[claim.coverage].label[claim.lang]} · {x.claimNote}
+      </p>
     </section>
   );
 }
@@ -2538,15 +2993,28 @@ function Message({
   if (m.kind === 'user') {
     return (
       <div className="mob:max-w-[85%] flex max-w-[80%] flex-col items-end gap-1.5 self-end">
-        {m.files.map((f) => (
-          <span
-            key={f}
-            className={`${mono} border-line2 bg-panel text-chip inline-flex items-center gap-2 border px-2 py-1 text-[10px]`}
-          >
-            <Icon d={I.file} size={13} />
-            {f}
-          </span>
-        ))}
+        {m.files.map((f, i) =>
+          f.src && IMAGE_TYPES.includes(f.type) ? (
+            <img
+              key={i}
+              src={f.src}
+              alt={f.name}
+              title={f.name}
+              className="border-line2 mob:max-w-[min(100%,200px)] block max-h-48 w-auto max-w-[240px] border object-contain"
+            />
+          ) : (
+            <a
+              key={i}
+              href={f.src}
+              download={f.name}
+              title={f.name}
+              className={`${mono} border-line2 bg-panel text-chip hover:border-accent hover:text-ink mob:min-h-11 inline-flex items-center gap-2 border px-2 py-1 text-[10px] no-underline transition-colors`}
+            >
+              <Icon d={I.file} size={13} />
+              {f.name}
+            </a>
+          ),
+        )}
         {m.text && (
           <div className="bg-panel border-line2 border px-2.5 py-1.5 text-[13px] leading-normal whitespace-pre-wrap">
             {m.text}
