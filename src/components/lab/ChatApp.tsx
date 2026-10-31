@@ -481,6 +481,7 @@ export default function ChatApp({
         return;
       }
       kbGeneration++;
+      pickSeq++;
       setSession(c.id, emptySession());
       setSession(k.id, emptySession());
       $caseId.set(k.id);
@@ -665,7 +666,9 @@ export default function ChatApp({
   const addFiles = async (list: File[]) => {
     const f = list[0];
     if (!f) return;
+    const seq = ++pickSeq;
     const a = await attach(f);
+    if (seq !== pickSeq) return;
     if (typeof a === 'string') notice(a);
     else $attachments.setKey(c.id, [a]);
   };
@@ -2521,6 +2524,9 @@ const ORDER_TOOLS = ['update_order', 'place_order'];
 // started before it are dropped instead of landing in the cleared one.
 // Module state, so it also holds across a remount of the island.
 let kbGeneration = 0;
+// Bumped on every file pick (and case switch): a slow file still being read
+// when another is picked is dropped, so the latest pick always wins.
+let pickSeq = 0;
 // show_menu calls already seen, by tool call id, so each full menu opens
 // once.
 const menusOpened = new Set<string>();
