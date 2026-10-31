@@ -1,5 +1,6 @@
 ---
-// Floating "back to top" button, bottom right. Hidden (and inert, so Tab
+// Floating "back to top" button, bottom right, stacked above Sophie
+// (SophieDock: 60px tall, centered on her). Hidden (and inert, so Tab
 // skips it) until the visitor scrolls past most of the first screen. A link
 // to #top like the logo: smooth scrolling comes from global.css, which turns
 // it off for reduced motion.
@@ -16,7 +17,7 @@ const { x } = Astro.props;
   data-back-to-top
   inert
   {...attrs({ 'aria-label': x.backToTop, title: x.backToTop })}
-  class="bg-panel border-line2 text-ink hover:border-accent hover:text-accent pointer-events-none fixed right-[clamp(16px,3vw,32px)] bottom-[calc(clamp(16px,3vw,32px)+env(safe-area-inset-bottom))] z-40 grid size-11 translate-y-2 place-items-center border opacity-0 shadow-[0_12px_32px_-16px_var(--accent)] transition-[opacity,translate,border-color,color] duration-200 data-shown:pointer-events-auto data-shown:translate-y-0 data-shown:opacity-100 motion-reduce:transition-none"
+  class="bg-panel border-line2 text-ink hover:border-accent hover:text-accent pointer-events-none fixed right-[calc(clamp(16px,3vw,32px)+8px)] bottom-[calc(clamp(16px,3vw,32px)+72px+env(safe-area-inset-bottom))] z-40 grid size-11 translate-y-2 place-items-center border opacity-0 shadow-[0_12px_32px_-16px_var(--accent)] transition-[opacity,translate,border-color,color] duration-200 data-shown:pointer-events-auto data-shown:translate-y-0 data-shown:opacity-100 motion-reduce:transition-none"
 >
   <svg
     aria-hidden="true"

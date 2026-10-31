@@ -120,6 +120,12 @@ const EN = {
   toLight: 'Switch to light mode',
   toDark: 'Switch to dark mode',
   backToTop: 'Back to top',
+  sophieLabel: 'Talk to Sophie, my voice agent: ask her anything about me',
+  sophieEyebrow: 'Sophie · voice agent',
+  sophieCta: 'Talk to her',
+  // Lines Sophie types out in her bubble, one at a time ("|" separates them).
+  sophieLines:
+    'Ask me anything about Juan Diego. Out loud.|Hiring an AI engineer? I can tell you if he fits.|Psst… I know his whole CV by heart.|Which clouds does he use? Just ask me.|Curious what he builds? I’ll tell you in 5 minutes.',
 };
 
 const ES: typeof EN = {
@@ -235,6 +241,12 @@ const ES: typeof EN = {
   toLight: 'Cambiar a modo claro',
   toDark: 'Cambiar a modo oscuro',
   backToTop: 'Volver arriba',
+  sophieLabel:
+    'Habla con Sophie, mi agente de voz: pregúntale lo que quieras sobre mí',
+  sophieEyebrow: 'Sophie · agente de voz',
+  sophieCta: 'Habla con ella',
+  sophieLines:
+    'Pregúntame lo que quieras sobre Juan Diego. En voz alta.|¿Buscas un AI engineer? Te digo si encaja.|Psst… me sé su CV de memoria.|¿Qué nubes usa? Solo pregúntame.|¿Qué construye? Te lo cuento en 5 minutos.',
 };
 
 function build(isEs: boolean) {
