@@ -384,6 +384,9 @@ export interface Claim {
 export interface Claims {
   /** The customer's name, given at the start; the policy is in it. */
   holder?: string;
+  /** The latest PDF check_document looked at, and whether it is an invoice
+   * or quote (only those can back a damage value). */
+  doc?: { name: string; invoice: boolean };
   /** The latest photo check; a claim needs it to be a match. */
   photo?: PhotoCheck;
   list: Claim[];

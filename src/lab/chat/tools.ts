@@ -549,7 +549,11 @@ const fileClaimTool: ClientTool = {
     });
     if ('errors' in r) return { errors: r.errors };
     // The photo was used: a new claim needs a new one.
-    s.claims = { holder: claims.holder, list: [...claims.list, r.claim] };
+    s.claims = {
+      holder: claims.holder,
+      ...(claims.doc ? { doc: claims.doc } : {}),
+      list: [...claims.list, r.claim],
+    };
     return {
       claim: describeClaim(r.claim),
       note: 'The customer sees the claim as a card under your reply. Simulated: no adjuster will call.',
@@ -623,11 +627,67 @@ const requestDocument: ClientTool = {
   summary: (_r, es) => (es ? 'botón de documento' : 'document button'),
 };
 
+const DOC_KINDS = ['invoice', 'quote', 'other'] as const;
+const checkDocument: ClientTool = {
+  def: {
+    name: 'check_document',
+    description:
+      'Classify the PDF the customer sent in their latest message from its first page (the only one you see): a repair invoice, a repair quote, or something else. Something else is discarded without reading more. For an invoice or quote it returns the other pages (up to 5 in all) as images, so you can find the total.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: [...DOC_KINDS] },
+        what: {
+          type: 'string',
+          description: 'What the first page is, in a few words.',
+        },
+        lang: LANG_PROP,
+      },
+      required: ['kind', 'what', 'lang'],
+    },
+    eager_input_streaming: true,
+  },
+  validate: (i) =>
+    DOC_KINDS.includes(i.kind as (typeof DOC_KINDS)[number])
+      ? null
+      : `kind must be one of: ${DOC_KINDS.join(', ')}`,
+  run: async (i, _signal, s) => {
+    // Only a PDF sent in this turn: its pages are still at hand.
+    const pdf = s.turn?.input.files.filter((f) => f.pages).at(-1);
+    if (!pdf?.pages)
+      return {
+        error:
+          'The latest message has no PDF. Call request_document and wait for one.',
+      };
+    const invoice = i.kind !== 'other';
+    s.claims = { ...s.claims!, doc: { name: pdf.name, invoice } };
+    if (!invoice)
+      return {
+        status: 'discarded',
+        note: 'Not an invoice or quote: no more pages were read. Tell the customer and ask for the repair invoice or quote.',
+      };
+    const rest = pdf.pages.slice(1);
+    return {
+      status: 'accepted',
+      pages: pdf.pages.length,
+      note: rest.length
+        ? `Pages 2 to ${pdf.pages.length} follow as images. Find the total that matches the amount the customer declared.`
+        : 'It has one page, the one you already saw.',
+      images: rest,
+    };
+  },
+  summary: (r, es) => {
+    const c = r as { status?: string; pages?: number };
+    if (c.status === 'discarded') return es ? 'descartado' : 'discarded';
+    return es ? `factura · ${c.pages} pág.` : `invoice · ${c.pages} p.`;
+  },
+};
+
 const attachInvoiceTool: ClientTool = {
   def: {
     name: 'attach_invoice',
     description:
-      'Add the damage value to a filed claim, with the PDF the customer sent (the latest one in the conversation) as its annex. Read the document yourself and pass its total and plate: the code checks that they support the amount the customer declared. Optional step: claims can stay without a value.',
+      'Add the damage value to a filed claim, with the invoice or quote that check_document accepted as its annex. Pass the total you read on the document and its plate: the code checks that the amount the customer declared is within $1 of that total and the plate is the insured car. Optional step: claims can stay without a value.',
     input_schema: {
       type: 'object',
       properties: {
@@ -673,15 +733,16 @@ const attachInvoiceTool: ClientTool = {
           ? `No claim ${id}. Claims: ${list.map((k) => k.claim_id).join(', ')}.`
           : 'There is no claim yet: file it first.',
       };
-    // The annex is the latest PDF the customer sent.
-    const doc = s.items
-      .flatMap((m) => (m.kind === 'user' ? m.files : []))
-      .filter((f) => f.type === 'application/pdf')
-      .at(-1);
+    // The annex is the latest PDF check_document accepted.
+    const doc = s.claims?.doc;
     if (!doc)
       return {
         error:
-          'The customer has not sent a PDF: call request_document and wait for it.',
+          'No document was checked: call request_document, and check_document when the PDF arrives.',
+      };
+    if (!doc.invoice)
+      return {
+        error: `${doc.name} is not an invoice or quote: ask for one.`,
       };
     const r = attachInvoice(c, doc.name, {
       amount: i.amount as number,
@@ -969,6 +1030,7 @@ export const CLIENT_TOOLS: Record<string, ClientTool> = {
   file_claim: named(fileClaimTool),
   get_claim_status: named(getClaimStatus),
   request_document: named(requestDocument),
+  check_document: named(checkDocument),
   attach_invoice: named(attachInvoiceTool),
   get_weather: getWeather,
   get_time: getTime,

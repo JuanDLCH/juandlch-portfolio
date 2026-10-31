@@ -197,6 +197,11 @@ const EN = {
     transcribe:
       'I couldn’t transcribe that recording. Check your OpenAI key, or type the message instead.',
     file: 'I can read images (PNG, JPEG, GIF, WebP) and PDFs up to 20 MB. That file isn’t one of them.',
+    pdfPages:
+      'That PDF has more than 5 pages. Send just the invoice or quote, up to 5 pages.',
+    pdfSize: 'That PDF is over 10 MB. Send a lighter copy of the invoice.',
+    pdfUnreadable:
+      'I couldn’t open that PDF: it may be damaged or password protected. Try another copy.',
   },
   fixes: {
     key: 'Add {p} key',
@@ -416,6 +421,12 @@ const ES: typeof EN = {
     transcribe:
       'No pude transcribir esa grabación. Revisa tu llave de OpenAI o escribe el mensaje.',
     file: 'Puedo leer imágenes (PNG, JPEG, GIF, WebP) y PDFs de hasta 20 MB. Ese archivo no es uno de ellos.',
+    pdfPages:
+      'Ese PDF tiene más de 5 páginas. Envía solo la factura o cotización, de hasta 5 páginas.',
+    pdfSize:
+      'Ese PDF pesa más de 10 MB. Envía una copia más liviana de la factura.',
+    pdfUnreadable:
+      'No pude abrir ese PDF: puede estar dañado o protegido con contraseña. Prueba con otra copia.',
   },
   fixes: {
     key: 'Agregar llave de {p}',

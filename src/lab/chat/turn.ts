@@ -52,7 +52,17 @@ export const clone = (s: ChatSession): ChatSession => ({
   usage: { ...s.usage },
 });
 
-/** Validates and runs a client tool the model called; never throws. */
+/** What the model reads next to the first page of a PDF sent as pages
+ * (ChatCase.pdf). */
+export const pdfNote = (f: UserInput['files'][number]) =>
+  `[PDF "${f.name}", ${f.pages!.length} ${f.pages!.length === 1 ? 'page' : 'pages'}. Only page 1 is shown, as an image below. Call check_document to say what it is; for an invoice it returns the other pages.]`;
+
+/** Marks page images dropped from the history once their turn is over. */
+export const PAGES_DROPPED =
+  '[Page images from an earlier turn were removed; use what you read then.]';
+
+/** Validates and runs a client tool the model called; never throws. Tools
+ * can return `images` (base64 JPEG) for the model to see, e.g. PDF pages. */
 export async function runClientTool(
   name: string,
   input: Record<string, unknown>,
@@ -65,12 +75,15 @@ export async function runClientTool(
     return {
       content: JSON.stringify({ error: invalid }),
       summary: invalid,
+      images: [],
       failed: true,
     };
   try {
-    const out = await tool.run(input, cb.signal, s);
+    const raw = await tool.run(input, cb.signal, s);
+    const { images, ...out } = (raw ?? {}) as { images?: string[] };
     return {
       content: JSON.stringify(out),
+      images: images ?? [],
       summary: tool.summary(out, cb.es),
       // A tool that answers with an error failed too: its card isn't drawn.
       failed: typeof (out as { error?: unknown } | null)?.error === 'string',
@@ -80,6 +93,7 @@ export async function runClientTool(
     return {
       content: JSON.stringify({ error: summary }),
       summary,
+      images: [],
       failed: true,
     };
   }

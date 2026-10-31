@@ -5,7 +5,9 @@ import type { ChatItem, ChatSession, UserInput } from '../store';
 import { MODELS, type ChatCase } from './cases';
 import { CLIENT_TOOLS } from './tools';
 import {
+  PAGES_DROPPED,
   clone,
+  pdfNote,
   runClientTool,
   type TurnCallbacks,
   type TurnError,
@@ -29,24 +31,40 @@ async function getClient(key: string) {
 const userContent = (
   input: UserInput,
 ): Anthropic.Beta.BetaContentBlockParam[] => [
-  ...input.files.map((f) =>
-    f.mediaType === 'application/pdf'
-      ? ({
-          type: 'document',
-          source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data: f.data,
+  ...input.files.flatMap((f): Anthropic.Beta.BetaContentBlockParam[] =>
+    f.pages
+      ? [
+          { type: 'text' as const, text: pdfNote(f) },
+          {
+            type: 'image' as const,
+            source: {
+              type: 'base64' as const,
+              media_type: 'image/jpeg' as const,
+              data: f.pages[0],
+            },
           },
-        } as const)
-      : ({
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: f.mediaType as 'image/png',
-            data: f.data,
-          },
-        } as const),
+        ]
+      : f.mediaType === 'application/pdf'
+        ? [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: f.data,
+              },
+            },
+          ]
+        : [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: f.mediaType as 'image/png',
+                data: f.data,
+              },
+            },
+          ],
   ),
   ...(input.text ? [{ type: 'text' as const, text: input.text }] : []),
 ];
@@ -66,6 +84,25 @@ export async function runTurn(
   const s = clone(start);
   // The session history is in this provider's format (see ChatSession.api).
   const api = s.api as Anthropic.Beta.BetaMessageParam[];
+  // Page images tools returned in earlier turns are not sent again.
+  for (const [k, m] of api.entries())
+    if (m.role === 'user' && Array.isArray(m.content))
+      api[k] = {
+        ...m,
+        content: m.content.map((b) =>
+          b.type === 'tool_result' &&
+          Array.isArray(b.content) &&
+          b.content.some((x) => x.type === 'image')
+            ? {
+                ...b,
+                content: [
+                  ...b.content.filter((x) => x.type !== 'image'),
+                  { type: 'text' as const, text: PAGES_DROPPED },
+                ],
+              }
+            : b,
+        ),
+      };
   api.push({ role: 'user', content: userContent(input) });
   const tools: Anthropic.Beta.BetaToolUnion[] = [
     ...(c.clientTools ?? []).map((n) => CLIENT_TOOLS[n].def),
@@ -261,7 +298,7 @@ export async function runTurn(
         await Promise.all(
           calls.map(async (call) => {
             const t0 = started[call.id] ?? performance.now();
-            const { content, summary, failed } = await runClientTool(
+            const { content, images, summary, failed } = await runClientTool(
               call.name,
               (call.input ?? {}) as Record<string, unknown>,
               cb,
@@ -279,7 +316,19 @@ export async function runTurn(
             return {
               type: 'tool_result' as const,
               tool_use_id: call.id,
-              content,
+              content: images.length
+                ? [
+                    { type: 'text' as const, text: content },
+                    ...images.map((data) => ({
+                      type: 'image' as const,
+                      source: {
+                        type: 'base64' as const,
+                        media_type: 'image/jpeg' as const,
+                        data,
+                      },
+                    })),
+                  ]
+                : content,
               ...(failed ? { is_error: true } : {}),
             };
           }),

@@ -7,7 +7,9 @@ import type { ChatItem, ChatSession, UserInput } from '../store';
 import { MODELS, type ChatCase } from './cases';
 import { CLIENT_TOOLS } from './tools';
 import {
+  PAGES_DROPPED,
   clone,
+  pdfNote,
   runClientTool,
   type TurnCallbacks,
   type TurnError,
@@ -37,18 +39,19 @@ const dataUrl = (f: UserInput['files'][number]) =>
 const userMessage = (input: UserInput): Item => ({
   role: 'user',
   content: [
-    ...input.files.map((f) =>
-      f.mediaType === 'application/pdf'
-        ? ({
-            type: 'input_file',
-            filename: f.name,
-            file_data: dataUrl(f),
-          } as const)
-        : ({
-            type: 'input_image',
-            image_url: dataUrl(f),
-            detail: 'auto',
-          } as const),
+    ...input.files.flatMap((f): OpenAI.Responses.ResponseInputContent[] =>
+      f.pages
+        ? [
+            { type: 'input_text' as const, text: pdfNote(f) },
+            {
+              type: 'input_image' as const,
+              image_url: `data:image/jpeg;base64,${f.pages[0]}`,
+              detail: 'auto' as const,
+            },
+          ]
+        : f.mediaType === 'application/pdf'
+          ? [{ type: 'input_file', filename: f.name, file_data: dataUrl(f) }]
+          : [{ type: 'input_image', image_url: dataUrl(f), detail: 'auto' }],
     ),
     ...(input.text ? [{ type: 'input_text' as const, text: input.text }] : []),
   ],
@@ -123,6 +126,13 @@ export async function runTurn(
   const s = clone(start);
   // The session history is in this provider's format (see ChatSession.api).
   const api = s.api as Item[];
+  // Page images tools returned in earlier turns are not sent again.
+  for (const [k, it] of api.entries())
+    if (it.type === 'function_call_output' && Array.isArray(it.output))
+      api[k] = {
+        ...it,
+        output: `${it.output.map((o) => (o.type === 'input_text' ? o.text : '')).join('')} ${PAGES_DROPPED}`,
+      };
   api.push(userMessage(input));
   const tools: OpenAI.Responses.Tool[] = [
     ...(c.clientTools ?? []).map(functionTool),
@@ -318,6 +328,7 @@ export async function runTurn(
                   error: 'arguments are not valid JSON',
                 }),
                 summary: 'invalid JSON',
+                images: [],
                 failed: true,
               };
           patchTool(call.call_id, (i) => ({
@@ -329,7 +340,16 @@ export async function runTurn(
           return {
             type: 'function_call_output' as const,
             call_id: call.call_id,
-            output: r.content,
+            output: r.images.length
+              ? [
+                  { type: 'input_text' as const, text: r.content },
+                  ...r.images.map((d) => ({
+                    type: 'input_image' as const,
+                    image_url: `data:image/jpeg;base64,${d}`,
+                    detail: 'auto' as const,
+                  })),
+                ]
+              : r.content,
           };
         }),
       );

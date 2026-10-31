@@ -13,6 +13,7 @@ import {
   IMAGE_TYPES,
   MAX_BYTES,
   readAttachment,
+  type Attachment,
 } from '../../lab/attachments';
 import {
   CASES,
@@ -176,6 +177,9 @@ const FIXES: Partial<Record<NoticeCode, Fix>> = {
   unreadable: 'keyReview',
   api: 'clear',
   file: 'file',
+  pdfPages: 'file',
+  pdfSize: 'file',
+  pdfUnreadable: 'file',
 };
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -523,30 +527,43 @@ export default function ChatApp({
     }
   };
 
+  // A picked file as the composer keeps it, or the notice that rejects it.
+  // Cases that read PDFs page by page (c.pdf) get them as page images, and
+  // refuse big or long ones before any token is spent.
+  const attach = async (f: File): Promise<Attachment | NoticeCode> => {
+    const pdf = f.type === 'application/pdf';
+    if ((!IMAGE_TYPES.includes(f.type) && !pdf) || f.size > MAX_BYTES)
+      return 'file';
+    if (!pdf || !c.pdf) return readAttachment(f);
+    if (f.size > c.pdf.maxMB * 1024 * 1024) return 'pdfSize';
+    try {
+      const { pdfPages } = await import('../../lab/pdf');
+      const pages = await pdfPages(f, c.pdf.maxPages);
+      return { ...(await readAttachment(f)), pages };
+    } catch (e) {
+      return (e as { code?: NoticeCode }).code ?? 'pdfUnreadable';
+    }
+  };
+  const addFiles = async (list: File[]) => {
+    for (const f of list) {
+      const a = await attach(f);
+      if (typeof a === 'string') notice(a);
+      else $attachments.setKey(c.id, [...($attachments.get()[c.id] ?? []), a]);
+    }
+  };
+
   // Insurance examples: the sample file goes to the composer like an upload.
   const addExample = async (ex: Example, lang: Lang) => {
     const blob = await fetch(ex.src).then((r) => r.blob());
-    const file = new File([blob], ex.file[lang], { type: ex.type });
-    const now = $attachments.get()[c.id] ?? [];
-    $attachments.setKey(c.id, [...now, await readAttachment(file)]);
+    await addFiles([new File([blob], ex.file[lang], { type: ex.type })]);
     composerRef.current?.focus();
   };
 
   const onFiles = async (list: FileList | null) => {
     if (!list || c.attachments === false) return;
-    const next = [...files];
-    for (const f of Array.from(list)) {
-      if (
-        (!IMAGE_TYPES.includes(f.type) && f.type !== 'application/pdf') ||
-        f.size > MAX_BYTES
-      ) {
-        notice('file');
-        continue;
-      }
-      next.push(await readAttachment(f));
-    }
-    $attachments.setKey(c.id, next);
+    const picked = Array.from(list);
     if (fileRef.current) fileRef.current.value = '';
+    await addFiles(picked);
   };
 
   const onMic = async () => {

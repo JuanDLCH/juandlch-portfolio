@@ -6,6 +6,9 @@ export interface Attachment {
   mediaType: string;
   /** Base64 without the data: prefix. */
   data: string;
+  /** PDFs of cases that read them page by page (ChatCase.pdf): each page as
+   * a JPEG, base64. Only the first goes with the message. */
+  pages?: string[];
 }
 
 export const IMAGE_TYPES = [
