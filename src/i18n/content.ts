@@ -17,7 +17,7 @@ const EN = {
   mobileNote: 'Best experienced on desktop',
   navAbout: 'About',
   navContact: 'Contact',
-  navCv: 'CV ↓',
+  navCv: 'My CV ↓',
   talkCv: 'Chat with my CV',
   bookCall: 'Book a call with me',
   langGroup: 'Language',
@@ -32,7 +32,7 @@ const EN = {
   heroC: ' — inside real software.',
   heroSub:
     'Software engineer first. I design and ship agents, realtime voice and document pipelines for companies, from the first discovery call to the AWS infrastructure they run on.',
-  ctaLab: 'Try the live demos',
+  ctaLab: 'Try my live demos',
   ctaWork: 'Selected work',
   agentSpeaking: 'Agent speaking',
   turnLabel: 'voice.turn 04 · illustrative',
@@ -43,7 +43,7 @@ const EN = {
   stAgent: 'AGENT',
   stTool: 'TOOL',
   figCaption:
-    'One conversational turn — speech in, transcription, reasoning, a tool call, speech out — interruptible at every step. A live version is on its way to the Lab.',
+    'One conversational turn — speech in, transcription, reasoning, a tool call, speech out — interruptible at every step.',
   aboutTitle: 'From full stack to AI lead',
   aboutA:
     'I spent my first years shipping ERP systems, cloud backends and integrations. That is why the AI I build today comes with ',
@@ -96,7 +96,7 @@ const EN = {
   awsLeadA: 'Most of what I ship runs on AWS. ',
   awsLeadB: ' is my default for production GenAI.',
   awsBody:
-    'Model choice across providers, Bedrock AgentCore to run agents and Amazon Nova among the options — wired into serverless pipelines with Lambda, Step Functions and EventBridge. I also gave technical support to my company’s AWS Generative AI Competency process.',
+    'Model choice across providers with Claude models as my go-to, and Bedrock AgentCore to run agents — wired into serverless pipelines with Lambda, Step Functions and EventBridge. I also gave technical support to my company’s AWS Generative AI Competency process.',
   awsFlex:
     'AWS is my focus, not my limit — I work with whichever cloud or model provider a project requires.',
   awsIconsLabel: 'AWS services I work with',
@@ -131,7 +131,7 @@ const ES: typeof EN = {
   mobileNote: 'Se disfruta mejor en escritorio',
   navAbout: 'Sobre mí',
   navContact: 'Contacto',
-  navCv: 'CV ↓',
+  navCv: 'Mi CV ↓',
   talkCv: 'Chatea con mi CV',
   bookCall: 'Agenda una llamada conmigo',
   langGroup: 'Idioma',
@@ -146,7 +146,7 @@ const ES: typeof EN = {
   heroC: ' — dentro de software real.',
   heroSub:
     'Ingeniero de software ante todo. Diseño y llevo a producción agentes, voz en tiempo real y procesamiento de documentos para empresas, desde la primera reunión de descubrimiento hasta la infraestructura en AWS donde corren.',
-  ctaLab: 'Prueba las demos en vivo',
+  ctaLab: 'Prueba mis demos en vivo',
   ctaWork: 'Trabajo seleccionado',
   agentSpeaking: 'Agente hablando',
   turnLabel: 'voice.turn 04 · ilustrativo',
@@ -157,7 +157,7 @@ const ES: typeof EN = {
   stAgent: 'AGENTE',
   stTool: 'HERRAMIENTA',
   figCaption:
-    'Un turno de conversación — voz de entrada, transcripción, razonamiento, una llamada a herramienta, voz de salida — interrumpible en cada paso. La versión en vivo está en camino al Lab.',
+    'Un turno de conversación — voz de entrada, transcripción, razonamiento, una llamada a herramienta, voz de salida — interrumpible en cada paso.',
   aboutTitle: 'De full stack a líder de IA',
   aboutA:
     'Mis primeros años los pasé construyendo ERPs, backends en la nube e integraciones. Por eso la IA que construyo hoy viene con ',
@@ -210,7 +210,7 @@ const ES: typeof EN = {
   awsLeadA: 'Casi todo lo que llevo a producción corre en AWS. ',
   awsLeadB: ' es mi opción por defecto para GenAI en producción.',
   awsBody:
-    'Elección de modelos entre proveedores, Bedrock AgentCore para ejecutar agentes y Amazon Nova entre las opciones — integrado en pipelines serverless con Lambda, Step Functions y EventBridge. También di soporte técnico al proceso de AWS Generative AI Competency de la compañía.',
+    'Elección de modelos entre proveedores con los modelos de Claude como mi opción principal, y Bedrock AgentCore para ejecutar agentes — integrado en pipelines serverless con Lambda, Step Functions y EventBridge. También di soporte técnico al proceso de AWS Generative AI Competency de la compañía.',
   awsFlex:
     'AWS es mi enfoque, no mi límite — trabajo con la nube o el proveedor de modelos que cada proyecto requiera.',
   awsIconsLabel: 'Servicios de AWS con los que trabajo',
