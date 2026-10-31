@@ -1677,7 +1677,7 @@ export default function ChatApp({
                   ×
                 </button>
               </div>
-              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto text-[13px]">
+              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-3 text-[13px]">
                 <MenuList dishes={MENU} lang={menuLang} />
               </div>
             </div>
@@ -1701,7 +1701,7 @@ export default function ChatApp({
             type="button"
             tabIndex={-1}
             aria-label={CHAT[policyLang].close}
-            onClick={() => setMenuLang(null)}
+            onClick={() => setPolicyLang(null)}
             className="absolute inset-0 cursor-default border-0 bg-transparent p-0"
           />
           <div
@@ -1739,14 +1739,14 @@ export default function ChatApp({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setMenuLang(null)}
+                  onClick={() => setPolicyLang(null)}
                   aria-label={CHAT[policyLang].close}
                   className={`${iconBtn} size-9 text-lg`}
                 >
                   ×
                 </button>
               </div>
-              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto text-[13px]">
+              <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-3 text-[13px]">
                 <PolicyDetails
                   lang={policyLang}
                   holder={session.claims?.holder ?? ''}
@@ -1757,7 +1757,7 @@ export default function ChatApp({
               <button
                 type="button"
                 data-autofocus
-                onClick={() => setMenuLang(null)}
+                onClick={() => setPolicyLang(null)}
                 className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
               >
                 {CHAT[policyLang].close}
