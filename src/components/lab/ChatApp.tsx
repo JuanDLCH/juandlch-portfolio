@@ -622,16 +622,17 @@ export default function ChatApp({
   // Document agent: files go straight to the Knowledge Base (not to the
   // composer), read in the browser. Not while a turn runs: it works on a
   // copy of the session and would drop them when it ends.
-  const addToKb = async (list: File[]) => {
+  // `gen`: the case-switch generation when the files were picked (see
+  // kbGeneration); files from an older one are dropped.
+  const addToKb = async (list: File[], gen = kbGeneration) => {
     if (!c.docs) return;
     for (const f of list) {
-      if ($busy.get()) return;
+      if ($busy.get() || gen !== kbGeneration) return;
       const held = (getSession(c.id).docs?.length ?? 0) + readingRef.current;
       if (held >= c.docs.maxFiles) {
         notice('docLimit');
         return;
       }
-      const gen = kbGeneration;
       setReading((readingRef.current += 1));
       const r = await readKbFile(f, c.docs).finally(() =>
         setReading((readingRef.current -= 1)),
@@ -666,10 +667,20 @@ export default function ChatApp({
     setSession(c.id, { ...s, docs: s.docs?.filter((d) => d.id !== id) });
   };
   const addSample = async () => {
-    const blob = await fetch(contractUrl).then((r) => r.blob());
-    await addToKb([
-      new File([blob], x.docs.sampleFile, { type: 'application/pdf' }),
-    ]);
+    // Taken before the download: a case switch during it drops the sample.
+    const gen = kbGeneration;
+    // The download shows as a slot being read (and hides the link).
+    setReading((readingRef.current += 1));
+    const blob = await fetch(contractUrl)
+      .then((r) => (r.ok ? r.blob() : null))
+      .catch(() => null)
+      .finally(() => setReading((readingRef.current -= 1)));
+    if (gen !== kbGeneration) return;
+    if (!blob) return notice('docUnreadable');
+    await addToKb(
+      [new File([blob], x.docs.sampleFile, { type: 'application/pdf' })],
+      gen,
+    );
   };
 
   // Insurance examples: the sample file goes to the composer like an upload.
