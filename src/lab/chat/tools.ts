@@ -991,8 +991,9 @@ const showContactOptions: ClientTool = {
           description:
             'Short email subject in the language of the user, e.g. "Senior AI Engineer role at Acme"',
         },
+        lang: LANG_PROP,
       },
-      required: ['options'],
+      required: ['options', 'lang'],
     },
     eager_input_streaming: true,
   },

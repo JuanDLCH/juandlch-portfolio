@@ -1123,7 +1123,7 @@ export default function ChatApp({
                         <button
                           type="button"
                           onClick={() => setPolicyLang(langArg(input))}
-                          className="border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[13px] transition-colors"
+                          className="border-line2 text-ink hover:border-accent mob:h-8 mob:gap-1.5 mob:px-2 mob:text-xs inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[13px] transition-colors"
                         >
                           <Icon d={I.file} size={14} />
                           {CHAT[langArg(input)].insurance.viewPolicy}
@@ -2623,7 +2623,7 @@ function OrderCard({
             type="button"
             onClick={onPlace}
             disabled={busy}
-            className="bg-accent text-on-accent mob:h-11 inline-flex h-9 items-center justify-center px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-accent text-on-accent mob:h-8 mob:gap-1.5 mob:px-2 mob:text-xs inline-flex h-9 items-center justify-center px-3 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
             {x.order.place} · {usd(order.total)}
           </button>
@@ -2754,7 +2754,7 @@ function MenuCard({
         <button
           type="button"
           onClick={() => onOpen(m.lang)}
-          className="border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[13px] transition-colors"
+          className="border-line2 text-ink hover:border-accent mob:h-8 mob:gap-1.5 mob:px-2 mob:text-xs inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[13px] transition-colors"
         >
           {x.order.openMenu}
         </button>
@@ -3091,7 +3091,7 @@ function AttachRequest({
   const x = CHAT[lang].insurance;
   const ask = kind === 'photo' ? x.upload : x.uploadDoc;
   const btn =
-    'mob:h-11 inline-flex h-9 cursor-pointer items-center gap-2 px-3 text-[13px] disabled:cursor-not-allowed disabled:opacity-60';
+    'mob:h-8 mob:gap-1.5 mob:px-2 mob:text-xs inline-flex h-9 cursor-pointer items-center gap-2 px-3 text-[13px] disabled:cursor-not-allowed disabled:opacity-60';
   if (sent || !open)
     return (
       <div className="mob:pr-3 flex flex-col items-start gap-1.5 pl-3">
@@ -3228,10 +3228,12 @@ function ClaimCard({ claim }: { claim: Claim }) {
 
 // Contact buttons from show_contact_options. The booking page can't be
 // prefilled, so the meeting button comes with a hint to describe the meeting
-// in its form.
+// in its form. They render in the language the tool was called with (the
+// conversation's), like the order and insurance cards; without one (the CV
+// intro), in the page's.
 function ContactActions({
   input,
-  x,
+  x: page,
   inset = true,
 }: {
   input: string;
@@ -3239,10 +3241,11 @@ function ContactActions({
   /** In the log the buttons line up with the answer above them. */
   inset?: boolean;
 }) {
-  const { options, topic } = contactInput(input);
+  const { options, topic, lang } = contactInput(input);
+  const x = lang ? CHAT[lang] : page;
   if (!options.length) return null;
   const btn =
-    'border-line2 text-ink hover:border-accent mob:h-11 inline-flex h-8 items-center gap-2 border bg-transparent px-3 text-[13px] no-underline transition-colors';
+    'border-line2 text-ink hover:border-accent mob:h-8 mob:gap-1.5 mob:px-2 mob:text-xs inline-flex h-8 items-center gap-2 border bg-transparent px-3 text-[13px] no-underline transition-colors';
   const subject = encodeURIComponent(topic || x.contactSubject);
   const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
   return (
@@ -3252,7 +3255,7 @@ function ContactActions({
       <div
         role="group"
         aria-label={x.contactLabel}
-        className="flex flex-wrap gap-2"
+        className="mob:gap-1.5 flex flex-wrap gap-2"
       >
         {options.map((o) =>
           o === 'email' ? (
@@ -3274,7 +3277,7 @@ function ContactActions({
               key={o}
               href={CONTACT.booking}
               {...external}
-              className="bg-accent text-on-accent mob:h-11 inline-flex h-8 items-center gap-2 px-3 text-[13px] font-semibold no-underline"
+              className="bg-accent text-on-accent mob:h-8 mob:gap-1.5 mob:px-2 mob:text-xs inline-flex h-8 items-center gap-2 px-3 text-[13px] font-semibold no-underline"
             >
               <Icon d={I.calendar} size={15} />
               {x.contactMeeting}
@@ -3521,7 +3524,7 @@ function Message({
               href={f.src}
               download={f.name}
               title={f.name}
-              className={`${mono} border-line2 bg-panel text-chip hover:border-accent hover:text-ink mob:min-h-11 inline-flex items-center gap-2 border px-2 py-1 text-[10px] no-underline transition-colors`}
+              className={`${mono} border-line2 bg-panel text-chip hover:border-accent hover:text-ink mob:min-h-9 inline-flex items-center gap-2 border px-2 py-1 text-[10px] no-underline transition-colors`}
             >
               <Icon d={I.file} size={13} />
               {f.name}
@@ -3630,7 +3633,7 @@ function Notice({
         <button
           type="button"
           onClick={() => onFix(fix)}
-          className={`jd-rise ${mono} border-accent text-accent hover:bg-accent hover:text-on-accent mob:h-11 ml-3.5 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.06em] uppercase transition-colors`}
+          className={`jd-rise ${mono} border-accent text-accent hover:bg-accent hover:text-on-accent mob:h-9 ml-3.5 inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[10px] tracking-[0.06em] uppercase transition-colors`}
         >
           {fixLabel(labels[fix])}
           <span aria-hidden="true">→</span>
