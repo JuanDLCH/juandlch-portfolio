@@ -112,6 +112,13 @@
   [id] {
     scroll-margin-top: calc(var(--header-h) + 8px);
   }
+  /* Sections start with a border and their top padding: skip that padding
+     too, so a nav link lands with the heading right under the header and
+     more of the section in view. */
+  [id].py-section,
+  [id].pt-section {
+    scroll-margin-top: calc(var(--header-h) + 8px - var(--spacing-section));
+  }
   body {
     margin: 0;
     background-color: var(--bg);
