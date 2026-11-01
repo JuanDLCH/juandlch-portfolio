@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { setTheme } from '../scripts/prefs';
 
 type Label = { en: string; es: string };
 
@@ -23,13 +24,7 @@ export default function ThemeToggle({ toLight, toDark }: Props) {
   const es = useSyncExternalStore(subscribe, isEs, () => false);
 
   const toggle = () => {
-    const next = dark ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem('theme', next);
-    } catch {
-      /* storage unavailable */
-    }
+    setTheme(dark ? 'light' : 'dark');
   };
 
   const label = (dark ? toLight : toDark)[es ? 'es' : 'en'];
