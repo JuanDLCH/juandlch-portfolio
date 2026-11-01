@@ -3,10 +3,11 @@ import { ClientRouter } from 'astro:transitions';
 import '../styles/global.css';
 
 interface Props {
-  title: string;
+  title: string | { en: string; es: string };
   description: string;
 }
 const { title, description } = Astro.props;
+const titles = typeof title === 'string' ? { en: title, es: title } : title;
 ---
 
 <html lang="en" data-lang="en">
@@ -15,15 +16,14 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" data-icon />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <title>{title}</title>
+    <title data-title={JSON.stringify(titles)}>{titles.en}</title>
     <!-- Same-tab navigation between pages keeps JS state alive (Lab demos). -->
     <ClientRouter />
     <script is:inline>
@@ -44,8 +44,18 @@ const { title, description } = Astro.props;
             return null;
           }
         };
-        const theme = get('theme');
-        root.dataset.theme = theme === 'light' ? 'light' : 'dark';
+        let theme = get('theme');
+        if (theme !== 'light' && theme !== 'dark') {
+          theme =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark';
+        }
+        root.dataset.theme = theme;
+        const ic = document.querySelector('link[data-icon]');
+        if (ic && theme === 'light')
+          ic.setAttribute('href', '/favicon-light.svg');
 
         const param = new URLSearchParams(location.search).get('lang');
         let lang = param === 'en' || param === 'es' ? param : get('lang');
@@ -61,6 +71,8 @@ const { title, description } = Astro.props;
         }
         root.dataset.lang = lang;
         root.lang = lang;
+        const t = document.querySelector('title[data-title]');
+        if (t) document.title = JSON.parse(t.dataset.title)[lang];
       })();
     </script>
   </head>

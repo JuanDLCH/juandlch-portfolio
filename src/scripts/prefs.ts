@@ -34,6 +34,12 @@ export const setLang = (lang: Lang, persist = true) => {
   root.dataset.lang = lang;
   root.lang = lang;
   applyAttrs(lang);
+  const t = document.querySelector<HTMLElement>('title[data-title]');
+  if (t) {
+    document.title = (
+      JSON.parse(t.dataset.title ?? '{}') as Record<Lang, string>
+    )[lang];
+  }
   if (!persist) return;
   save('lang', lang);
   // A ?lang= in the URL wins on load, so keep it in step with the choice.
@@ -44,8 +50,19 @@ export const setLang = (lang: Lang, persist = true) => {
   }
 };
 
+// The tab icon follows the site's theme (not the OS one).
+const iconFor = (theme: Theme) =>
+  theme === 'light' ? '/favicon-light.svg' : '/favicon.svg';
+
 export const setTheme = (theme: Theme, persist = true) => {
   root.dataset.theme = theme;
+  // Replace the element: some browsers ignore a changed href on a live link.
+  const old = document.querySelector('link[data-icon]');
+  if (old && !old.getAttribute('href')?.endsWith(iconFor(theme))) {
+    const link = old.cloneNode() as HTMLLinkElement;
+    link.setAttribute('href', iconFor(theme));
+    old.replaceWith(link);
+  }
   if (persist) save('theme', theme);
 };
 
@@ -59,6 +76,9 @@ if (browser) {
   document.addEventListener('astro:before-swap', (e) => {
     const next = e.newDocument.documentElement;
     next.dataset.theme = root.dataset.theme ?? 'dark';
+    next
+      .querySelector('link[data-icon]')
+      ?.setAttribute('href', iconFor(next.dataset.theme as Theme));
     next.dataset.lang = current();
     next.lang = current();
   });
@@ -68,6 +88,19 @@ if (browser) {
     const btn = (e.target as Element).closest<HTMLElement>('[data-set-lang]');
     if (btn) setLang(btn.dataset.setLang === 'es' ? 'es' : 'en');
   });
+
+  // Without a saved choice the site follows the system and its changes.
+  matchMedia('(prefers-color-scheme: light)').addEventListener(
+    'change',
+    (e) => {
+      try {
+        if (localStorage.getItem('theme')) return;
+      } catch {
+        /* storage unavailable */
+      }
+      setTheme(e.matches ? 'light' : 'dark', false);
+    },
+  );
 
   // Keep other open tabs of the site in sync.
   window.addEventListener('storage', (e) => {
