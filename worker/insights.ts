@@ -44,7 +44,7 @@ const SAMPLES = 8;
 
 export const bogotaDay = (ms: number) =>
   new Date(ms - BOGOTA_MS).toISOString().slice(0, 10);
-const windowOf = (day: string) => {
+export const windowOf = (day: string) => {
   const start = Date.parse(`${day}T00:00:00Z`) + BOGOTA_MS;
   return [
     new Date(start).toISOString(),

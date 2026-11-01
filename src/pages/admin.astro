@@ -1,0 +1,18 @@
+---
+// Insights dashboard. Cloudflare Access guards /admin on juandlch.dev and the
+// Worker checks its JWT on every /admin/api request (worker/admin.ts); this
+// page itself holds no data.
+import AdminApp from '../components/admin/AdminApp';
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title={{
+    en: 'Insights — JuanDLCH',
+    es: 'Insights — JuanDLCH',
+  }}
+  description="Private dashboard."
+  noindex
+>
+  <AdminApp client:only="react" />
+</Layout>

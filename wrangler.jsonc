@@ -13,7 +13,7 @@
     // Pages are linked without a trailing slash (/lab/voice).
     "html_handling": "drop-trailing-slash",
     // The API is the Worker's; everything else is the static build.
-    "run_worker_first": ["/api/*"],
+    "run_worker_first": ["/api/*", "/admin/api/*"],
   },
   "durable_objects": {
     "bindings": [
@@ -59,6 +59,10 @@
     "INSIGHTS_REPORT_MODEL": "gpt-6.1-sol",
     "INSIGHTS_MAX_CONVS": "150",
     "INSIGHTS_USD_PER_DAY": "1",
+    // Cloudflare Access app on juandlch.dev/admin (the dashboard). Not secret:
+    // the Worker checks every /admin/api request's Access JWT against them.
+    "ACCESS_TEAM": "divine-band-0b8a.cloudflareaccess.com",
+    "ACCESS_AUD": "728d29e20226b2cfd54f48717e91b5a5fd2498b8fe5915ba9d162aa1ca653e12",
     "MOCK_OPENAI": "",
   },
   "observability": { "enabled": true },

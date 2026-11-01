@@ -5,6 +5,7 @@
 // the session fixed on the server, after a Turnstile check and the daily
 // quota. Every call is cut by its VoiceCall alarm after SESSION_S seconds.
 import type { Env } from './env';
+import { admin } from './admin';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, turnstileOk } from './http';
 import { runInsights } from './insights';
@@ -150,6 +151,8 @@ async function endSession(req: Request, env: Env) {
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
+    // The insights dashboard's API, behind Cloudflare Access (worker/admin.ts).
+    if (url.pathname.startsWith('/admin/api/')) return admin(req, env);
     const api = url.pathname.startsWith('/api/');
     if (!api)
       return (
