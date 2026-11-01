@@ -11,14 +11,17 @@
 import { CASES } from '../src/lab/chat/cases';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
-import { chatUsd, chatWorstUsd, type TextUsage } from './prices';
+import { chatUsd, chatWorstUsd, noteUsd, type TextUsage } from './prices';
 
 const OPENAI = 'https://api.openai.com/v1';
 const TOKEN_MS = 2 * 3_600_000;
 const MAX_BODY = 16 * 1024 * 1024;
 const MAX_AUDIO = 2 * 1024 * 1024;
 /** Flat price of a voice note (≤ 60 s with gpt-4o-mini-transcribe ≈ $0.003). */
-const NOTE_USD = 0.01;
+/** What a voice note can cost at most: the transcription model takes up to
+ * ~25 minutes of audio, about $0.003 a minute. Settled to its usage. */
+const NOTE_USD = 0.1;
+const NOTE_MODEL = 'gpt-4o-mini-transcribe';
 
 const quotaOf = (env: Env) =>
   env.QUOTA.get(env.QUOTA.idFromName(new Date().toISOString().slice(0, 10)));
@@ -263,16 +266,32 @@ export async function transcription(req: Request, env: Env) {
   }
   const out = new FormData();
   out.set('file', file, file.name || 'voice.webm');
-  out.set('model', 'gpt-4o-mini-transcribe');
+  out.set('model', NOTE_MODEL);
   out.set('language', lang);
   const res = await fetch(`${OPENAI}/audio/transcriptions`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: out,
   }).catch(() => null);
-  await quota.chatSettle(ip, r.id, NOTE_USD, res?.ok ? NOTE_USD : 0);
-  if (!res) return json({ error: 'upstream' }, 502);
-  return new Response(res.body, {
+  if (!res) {
+    await quota.chatSettle(ip, r.id, NOTE_USD, 0);
+    return json({ error: 'upstream' }, 502);
+  }
+  // Priced from its usage; without one the whole reservation stays.
+  const text = await res.text();
+  let usage = null;
+  try {
+    usage = (JSON.parse(text) as { usage?: unknown }).usage ?? null;
+  } catch {
+    /* not JSON */
+  }
+  await quota.chatSettle(
+    ip,
+    r.id,
+    NOTE_USD,
+    !res.ok ? 0 : usage ? noteUsd(usage) : null,
+  );
+  return new Response(text, {
     status: res.status,
     headers: { 'Content-Type': 'application/json' },
   });

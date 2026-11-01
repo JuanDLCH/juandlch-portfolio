@@ -84,3 +84,16 @@ export function realtimeUsd(model: string, u: RealtimeUsage) {
     1e6
   );
 }
+
+/** Transcription usage (`usage` of a gpt-4o-mini-transcribe response). */
+interface NoteUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+}
+
+/** What a voice note cost: every input token at the audio price ($3/M, above
+ * the text one), output at $5/M. */
+export function noteUsd(u: unknown) {
+  const { input_tokens = 0, output_tokens = 0 } = (u ?? {}) as NoteUsage;
+  return (input_tokens * 3 + output_tokens * 5) / 1e6;
+}
