@@ -63,6 +63,9 @@ const EN = {
     mic: 'Sophie needs your microphone to hear you. Allow it in your browser and try again.',
     network: 'No connection. Check your network and try again.',
   },
+  // Under Start, before a call. Keep in sync with MAX_PER_IP and SESSION_S
+  // (wrangler.jsonc) and the 30 min a resume is kept (worker/call.ts).
+  limits: '1 call a day · up to 5 min · pause and resume within 30 min',
   resume: 'Resume',
   startOver: 'Start over',
   resumedNote: 'call resumed · left',
@@ -136,6 +139,7 @@ const ES: typeof EN = {
     mic: 'Sophie necesita tu micrófono para escucharte. Permítelo en el navegador y vuelve a intentarlo.',
     network: 'Sin conexión. Revisa tu red y vuelve a intentarlo.',
   },
+  limits: '1 llamada al día · hasta 5 min · pausa y reanuda en 30 min',
   resume: 'Reanudar',
   startOver: 'Empezar de cero',
   resumedNote: 'llamada reanudada · quedan',

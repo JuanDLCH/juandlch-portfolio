@@ -8,7 +8,14 @@
 import type OpenAI from 'openai';
 import type { ChatItem, ChatSession, UserInput } from '../store';
 import { MODELS, caseEffort, type ChatCase } from './cases';
-import { CaptchaError, LAB_API, dropLabToken, labToken } from './lab';
+import {
+  CaptchaError,
+  LAB_API,
+  dropLabToken,
+  labFetch,
+  labToken,
+  setChatLeft,
+} from './lab';
 import { CLIENT_TOOLS } from './tools';
 import {
   PAGES_DROPPED,
@@ -33,7 +40,11 @@ async function getClient(key: string) {
   const client = new OpenAISdk({
     ...(key
       ? { apiKey: key }
-      : { apiKey: labToken, baseURL: `${location.origin}${LAB_API}` }),
+      : {
+          apiKey: labToken,
+          baseURL: `${location.origin}${LAB_API}`,
+          fetch: labFetch,
+        }),
     dangerouslyAllowBrowser: true,
     maxRetries: 1,
   });
@@ -390,7 +401,10 @@ export async function runTurn(
     if (err instanceof CaptchaError) return 'captcha';
     // The site's Worker: daily limits, and a token for another IP.
     if (err instanceof OpenAISdk.APIError) {
-      if (err.code === 'chat_limit_ip') return 'chatLimitIp';
+      if (err.code === 'chat_limit_ip') {
+        setChatLeft(0);
+        return 'chatLimitIp';
+      }
       if (err.code === 'chat_limit_day') return 'chatLimitDay';
       if (err.code === 'chat_busy') return 'rate';
       if (err.code === 'session') {

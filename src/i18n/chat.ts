@@ -11,7 +11,7 @@ const EN = {
   introTag: 'Live demo · your key',
   introTagSite: 'Live demo',
   introBodySite:
-    'A real agent grounded in my CV, case studies and portfolio, that cites its sources. It runs on my key, with a daily limit of 40 messages per visitor: plenty to try it. Want to see more? Book a call and I’ll show it to you live.',
+    'A real agent grounded in my CV, case studies and portfolio, that cites its sources. It runs on my key, with a daily limit of 60 messages per visitor: plenty to try it. Want to see more? Book a call and I’ll show it to you live.',
   introStart: 'Start chatting',
   introTitle: 'Chat with an AI that knows my work',
   introBody:
@@ -29,9 +29,17 @@ const EN = {
   keysBtn: 'API keys',
   settings: 'Settings',
   close: 'Close',
-  watchDemo: 'Watch demo',
-  videoTag: 'Demo video',
-  videoTitle: 'Watch the demo',
+  bookBtn: 'Book a call',
+  bookTag: 'Live demo',
+  bookTitle: 'Book a call',
+  bookBody:
+    'The lab runs on my API key with a daily limit, enough to try every case. Want to see it go further, with your own use case or data? Book a call and I’ll show it to you live, or write to me.',
+  bookEmail: 'Or write to',
+  // Usage meter under the composer (on the site's key), always shown. {n}:
+  // messages left, {max}: the limit.
+  limitDay: 'Today: {max} messages across every case',
+  limitLeft: 'Today: {n} of {max} messages left',
+  limitConv: 'This chat: {n} of {max} left',
   videoSoon: 'The recording for this case is on its way.',
   buildBtn: 'How I’d build it',
   buildTag: 'Architecture',
@@ -39,8 +47,6 @@ const EN = {
   diagramSoon: 'Architecture diagram on its way.',
   buildSoon:
     'A short walkthrough of the architecture behind these cases (services, data flow and the trade-offs between them) comes next.',
-  caseLabel: 'Case',
-  tryCase: 'Try this case',
   cvTag: 'Cited source',
   cvTitle: 'Juan Diego’s CV',
   cvNote: 'Web version of the PDF. The parts the answer cites are highlighted.',
@@ -151,6 +157,8 @@ const EN = {
   emptyTitle: 'Pick a case, then start talking.',
   emptyBody:
     'Each case loads its own tools and model. Text, images, PDFs and voice input, with tool calls shown as they happen. Runs on your own keys.',
+  emptyBodySite:
+    'Each case loads its own tools and model. Text, images, PDFs and voice input, with tool calls shown as they happen. Runs on my key, with a daily message limit.',
   inputLabel: 'Message',
   placeholder: 'Write a message — attach an image or PDF, or use the mic…',
   placeholderShort: 'Message',
@@ -236,7 +244,7 @@ const EN = {
     convLimit:
       'This conversation reached 30 messages, the most it takes. Clear it to keep going.',
     chatLimitIp:
-      'That’s today’s 40 messages on my key. Want to keep going? Book a call with Juan Diego, or talk to Sophie in the Voice Lab.',
+      'That’s today’s 60 messages on my key. Want to keep going? Book a call with Juan Diego, or talk to Sophie in the Voice Lab.',
     chatLimitDay:
       'The demo has run out of messages for today. Come back tomorrow, or book a call with Juan Diego and he’ll show it to you live.',
     captcha: 'I couldn’t check that you’re not a bot. Try again.',
@@ -291,7 +299,7 @@ const ES: typeof EN = {
   introTag: 'Demo en vivo · tu llave',
   introTagSite: 'Demo en vivo',
   introBodySite:
-    'Un agente real que responde desde mi CV, mis casos de estudio y mi portafolio, citando sus fuentes. Corre con mi llave, con un límite diario de 40 mensajes por visitante: suficiente para probarlo. ¿Quieres ver más? Agenda una llamada y te lo muestro en vivo.',
+    'Un agente real que responde desde mi CV, mis casos de estudio y mi portafolio, citando sus fuentes. Corre con mi llave, con un límite diario de 60 mensajes por visitante: suficiente para probarlo. ¿Quieres ver más? Agenda una llamada y te lo muestro en vivo.',
   introStart: 'Empezar a chatear',
   introTitle: 'Chatea con una IA que conoce mi trabajo',
   introBody:
@@ -309,9 +317,15 @@ const ES: typeof EN = {
   keysBtn: 'API keys',
   settings: 'Configuración',
   close: 'Cerrar',
-  watchDemo: 'Ver demo',
-  videoTag: 'Video de la demo',
-  videoTitle: 'Mira la demo',
+  bookBtn: 'Agenda una llamada',
+  bookTag: 'Demo en vivo',
+  bookTitle: 'Agenda una llamada',
+  bookBody:
+    'El lab corre con mi API key y un límite diario, suficiente para probar cada caso. ¿Quieres verlo ir más allá, con tu propio caso o tus datos? Agenda una llamada y te lo muestro en vivo, o escríbeme.',
+  bookEmail: 'O escribe a',
+  limitDay: 'Hoy: {max} mensajes entre todos los casos',
+  limitLeft: 'Hoy: te quedan {n} de {max} mensajes',
+  limitConv: 'Este chat: quedan {n} de {max}',
   videoSoon: 'La grabación de este caso viene en camino.',
   buildBtn: '¿Cómo lo construiría?',
   buildTag: 'Arquitectura',
@@ -319,8 +333,6 @@ const ES: typeof EN = {
   diagramSoon: 'El diagrama de arquitectura viene en camino.',
   buildSoon:
     'Pronto, un recorrido breve por la arquitectura detrás de estos casos: servicios, flujo de datos y las decisiones que hay detrás.',
-  caseLabel: 'Caso',
-  tryCase: 'Probar este caso',
   cvTag: 'Fuente citada',
   cvTitle: 'CV de Juan Diego',
   cvNote: 'Versión web del PDF. Lo que cita la respuesta está resaltado.',
@@ -431,6 +443,8 @@ const ES: typeof EN = {
   emptyTitle: 'Elige un caso y empieza a conversar.',
   emptyBody:
     'Cada caso carga sus propias herramientas y su modelo. Texto, imágenes, PDFs y entrada de voz, con las llamadas a herramientas visibles mientras ocurren. Corre con tus propias llaves.',
+  emptyBodySite:
+    'Cada caso carga sus propias herramientas y su modelo. Texto, imágenes, PDFs y entrada de voz, con las llamadas a herramientas visibles mientras ocurren. Corre con mi llave, con un límite diario de mensajes.',
   inputLabel: 'Mensaje',
   placeholder:
     'Escribe un mensaje — adjunta una imagen o PDF, o usa el micrófono…',
@@ -518,7 +532,7 @@ const ES: typeof EN = {
     convLimit:
       'Esta conversación llegó a 30 mensajes, el máximo que admite. Bórrala para seguir.',
     chatLimitIp:
-      'Ya usaste los 40 mensajes de hoy con mi llave. ¿Quieres seguir? Agenda una llamada con Juan Diego o habla con Sophie en el Voice Lab.',
+      'Ya usaste los 60 mensajes de hoy con mi llave. ¿Quieres seguir? Agenda una llamada con Juan Diego o habla con Sophie en el Voice Lab.',
     chatLimitDay:
       'La demo se quedó sin mensajes por hoy. Vuelve mañana, o agenda una llamada con Juan Diego y te la muestra en vivo.',
     captcha: 'No pude comprobar que no eres un bot. Inténtalo de nuevo.',

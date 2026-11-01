@@ -92,7 +92,12 @@ import {
   usePhone,
 } from './ui';
 import { CONTACT } from '../../lab/chat/contact';
-import { CaptchaError } from '../../lab/chat/lab';
+import {
+  $chatLeft,
+  CHAT_MSGS_PER_DAY,
+  CaptchaError,
+  setChatLeft,
+} from '../../lab/chat/lab';
 
 const pick = (v: { en: string; es: string }, es: boolean) => (es ? v.es : v.en);
 
@@ -139,6 +144,10 @@ const BILLING: Record<Provider, string> = {
 const KEYS_URL = 'https://platform.openai.com/api-keys';
 const INTRO_CONTACT = JSON.stringify({
   options: ['meeting', 'email', 'linkedin'],
+});
+// The "Book a call" dialog's buttons (the email address shows as text).
+const BOOK_CONTACT = JSON.stringify({
+  options: ['meeting', 'linkedin', 'github'],
 });
 // Keys the dialog asks for: the chat provider's, plus OpenAI for voice input.
 const KEY_FIELDS: Provider[] =
@@ -230,18 +239,31 @@ export default function ChatApp({
       }
     }
   const chatKey = keys[PROVIDER];
+  // Usage on the site's key: messages left today (as the Worker last said;
+  // the limit until the first answer) and in this conversation.
+  const chatLeft = live(useStore($chatLeft), null);
+  const sent = session.items.filter((m) => m.kind === 'user').length;
+  const count = (t: string, n: number, max: number) =>
+    t.replace('{n}', String(n)).replace('{max}', String(max));
+  const usage = `${
+    chatLeft
+      ? count(x.limitLeft, chatLeft.left, chatLeft.max)
+      : count(x.limitDay, 0, CHAT_MSGS_PER_DAY)
+  } · ${count(x.limitConv, MAX_MESSAGES - sent, MAX_MESSAGES)}`;
+  // Nearly out, today or in this conversation.
+  const usageLow =
+    (!!chatLeft && chatLeft.left <= 5) || MAX_MESSAGES - sent <= 5;
 
   const [side, setSide] = useState(false);
   const [modal, setModal] = useState(false);
-  // "Watch demo" and "How I'd build it" dialogs, each with its own case pick.
-  const [info, setInfo] = useState<'video' | 'build' | null>(null);
+  // "Book a call" and "How I'd build it" dialogs.
+  const [info, setInfo] = useState<'book' | 'build' | null>(null);
   // CV chat only: what the demo is, how to run it and how to reach me. Until
   // the visitor opens or closes it (null), it shows while there's no key.
   const [introPick, setIntro] = useState<boolean | null>(null);
   // With the visitor's own keys (BYOK) the CV chat opens on it while there's
   // no key; on the site's key it only opens from its button.
   const intro = introPick ?? (BYOK && !!only && !chatKey);
-  const [infoCase, setInfoCase] = useState(CASES[0].id);
   // CV viewer opened from a citation: the answer's cited items and the one
   // clicked.
   const [cv, setCv] = useState<{ ids: string[]; focus: string } | null>(null);
@@ -367,8 +389,7 @@ export default function ChatApp({
     return () => clearInterval(id);
   }, [rec]);
 
-  const openInfo = (kind: 'video' | 'build') => {
-    setInfoCase(c.id);
+  const openInfo = (kind: 'book' | 'build') => {
     setInfo(kind);
     setSide(false);
   };
@@ -478,8 +499,7 @@ export default function ChatApp({
     else if (f === 'billing') open(BILLING[PROVIDER], '_blank', 'noopener');
     else if (f === 'retry') retry();
     else if (f === 'clear') clearChat();
-    else if (f === 'book' && CONTACT.booking)
-      open(CONTACT.booking, '_blank', 'noopener');
+    else if (f === 'book') openInfo('book');
     else fileRef.current?.click();
   };
 
@@ -705,6 +725,7 @@ export default function ChatApp({
         } catch (err) {
           setRec('off');
           const why = err instanceof Error ? err.message : '';
+          if (why === 'chat_limit_ip') setChatLeft(0);
           notice(
             err instanceof CaptchaError
               ? 'captcha'
@@ -812,7 +833,7 @@ export default function ChatApp({
                 {x.title}
               </h1>
               <span className={`${label} narrow:hidden text-[11px]`}>
-                Lab 02 · BYOK
+                Lab 02 · {BYOK ? 'BYOK' : 'Live'}
               </span>
             </div>
           )}
@@ -851,6 +872,24 @@ export default function ChatApp({
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Book a call: an icon that grows leftwards into its label on
+              hover or keyboard focus (the group sits at the right edge). On
+              phones it lives in the settings sheet, except in the CV chat. */}
+          <button
+            type="button"
+            onClick={() => openInfo('book')}
+            aria-label={x.bookBtn}
+            title={x.bookBtn}
+            className={`group border-accent text-accent hover:bg-accent hover:text-on-accent focus-visible:bg-accent focus-visible:text-on-accent inline-flex h-9 shrink-0 cursor-pointer items-center border bg-transparent px-[10px] text-[13px] font-medium transition-colors ${only ? 'mob:h-11 mob:px-[14px]' : 'mob:hidden'}`}
+          >
+            <span
+              aria-hidden="true"
+              className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-[max-width,opacity,margin] duration-300 ease-out group-hover:mr-2 group-hover:max-w-40 group-hover:opacity-100 group-focus-visible:mr-2 group-focus-visible:max-w-40 group-focus-visible:opacity-100 motion-reduce:transition-none"
+            >
+              {x.bookBtn}
+            </span>
+            <Icon d={I.calendar} size={14} />
+          </button>
           {only && (
             <button
               type="button"
@@ -864,15 +903,6 @@ export default function ChatApp({
           )}
           {!only && (
             <>
-              <button
-                type="button"
-                onClick={() => openInfo('video')}
-                aria-label={x.watchDemo}
-                className="border-accent text-accent hover:bg-accent hover:text-on-accent mob:hidden narrow:px-0 narrow:w-9 narrow:justify-center inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 border bg-transparent px-3.5 text-[13px] font-medium transition-colors"
-              >
-                <Icon d={I.play} size={14} />
-                <span className="narrow:hidden">{x.watchDemo}</span>
-              </button>
               <button
                 type="button"
                 onClick={() => openInfo('build')}
@@ -983,7 +1013,11 @@ export default function ChatApp({
                     {only ? pick(c.label, es) : x.emptyTitle}
                   </h2>
                   <p className="text-body mt-2 mb-0 max-w-[560px] text-sm leading-[1.55]">
-                    {only ? pick(c.desc, es) : x.emptyBody}
+                    {only
+                      ? pick(c.desc, es)
+                      : BYOK
+                        ? x.emptyBody
+                        : x.emptyBodySite}
                   </p>
                   {!only && (
                     <div className="mt-[clamp(12px,3svh,24px)] grid grid-cols-[repeat(auto-fit,minmax(min(170px,100%),1fr))] gap-2">
@@ -1346,10 +1380,23 @@ export default function ChatApp({
                 )}
               </div>
               <div
-                className={`${mono} text-muted mob:hidden mt-1.5 flex flex-wrap justify-between gap-x-4 gap-y-1.5 text-[10px] tracking-[0.04em]`}
+                className={`${mono} text-muted mt-1.5 flex flex-wrap justify-between gap-x-4 gap-y-1.5 text-[10px] tracking-[0.04em] ${BYOK ? 'mob:hidden' : ''}`}
               >
-                <span>{x.enterHint}</span>
-                <span>{x.privacyLine}</span>
+                <span className="mob:hidden">{x.enterHint}</span>
+                {BYOK ? (
+                  <span>{x.privacyLine}</span>
+                ) : (
+                  <span
+                    role="status"
+                    className={`inline-flex items-center gap-1.5 ${usageLow ? 'text-warn' : ''}`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`size-1.5 shrink-0 ${usageLow ? 'bg-warn' : 'bg-ok'}`}
+                    />
+                    {usage}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -1394,11 +1441,11 @@ export default function ChatApp({
               <div className="mob:grid hidden grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => openInfo('video')}
+                  onClick={() => openInfo('book')}
                   className="border-accent text-accent inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm font-medium"
                 >
-                  <Icon d={I.play} size={14} />
-                  {x.watchDemo}
+                  <Icon d={I.calendar} size={14} />
+                  <span className="truncate">{x.bookBtn}</span>
                 </button>
                 <button
                   type="button"
@@ -2229,11 +2276,10 @@ export default function ChatApp({
 
       {info &&
         (() => {
-          const ic = CASES.find((k) => k.id === infoCase) ?? CASES[0];
-          const video = info === 'video';
-          // Height taken by everything around the 16:9 frame (dialog margin,
-          // header, case picker or text, footer).
-          const chrome = video ? (phone ? 300 : 280) : phone ? 320 : 300;
+          const book = info === 'book';
+          // Height taken by everything around the 16:9 diagram frame (dialog
+          // margin, header, text, footer).
+          const chrome = phone ? 320 : 300;
           const frameWidth = `min(100%, calc((100dvh - ${chrome}px) * 16 / 9))`;
           return (
             <div className="bg-scrim mob:place-items-stretch mob:p-0 absolute inset-0 z-30 grid place-items-center p-4">
@@ -2249,7 +2295,7 @@ export default function ChatApp({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="jd-info-title"
-                className="bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full max-w-[760px] flex-col border"
+                className={`bg-panel border-line2 mob:h-dvh mob:max-h-dvh mob:max-w-none mob:border-0 relative flex max-h-[calc(100dvh-34px)] w-full flex-col border ${book ? 'max-w-[520px]' : 'max-w-[760px]'}`}
               >
                 <span
                   aria-hidden="true"
@@ -2262,20 +2308,20 @@ export default function ChatApp({
                 {/* Build dialog: title and diagram stay put; only the text below
                     scrolls once it outgrows the space left. */}
                 <div
-                  className={`mob:px-4 mob:pt-5 min-h-0 flex-1 px-7 pt-6 pb-4 ${video ? 'overflow-y-auto' : 'flex flex-col'}`}
+                  className={`mob:px-4 mob:pt-5 min-h-0 flex-1 px-7 pt-6 pb-4 ${book ? 'overflow-y-auto' : 'flex flex-col'}`}
                 >
                   <div className="flex shrink-0 items-start justify-between gap-3">
                     <div>
                       <div
                         className={`${mono} text-accent text-[11px] tracking-[0.08em] uppercase`}
                       >
-                        {video ? x.videoTag : x.buildTag}
+                        {book ? x.bookTag : x.buildTag}
                       </div>
                       <h2
                         id="jd-info-title"
                         className="mt-1.5 mb-0 text-[clamp(20px,4svh,24px)] font-medium tracking-[-0.03em]"
                       >
-                        {video ? x.videoTitle : x.buildTitle}
+                        {book ? x.bookTitle : x.buildTitle}
                       </h2>
                     </div>
                     <button
@@ -2287,97 +2333,63 @@ export default function ChatApp({
                       ×
                     </button>
                   </div>
-                  {video && (
-                    <div
-                      role="group"
-                      aria-label={x.caseLabel}
-                      className="mt-4 flex flex-wrap gap-1.5"
-                    >
-                      {CASES.map((k) => {
-                        const on = k.id === ic.id;
-                        return (
-                          <button
-                            key={k.id}
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() => setInfoCase(k.id)}
-                            className={`mob:min-h-11 min-h-9 cursor-pointer border px-3 text-[13px] transition-colors ${on ? 'border-accent bg-accent text-on-accent' : 'border-line2 text-ink hover:border-accent bg-transparent'}`}
-                          >
-                            {pick(k.label, es)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {/* 16:9 frame sized from the viewport height too, so the
-                      whole dialog fits without scrolling on short screens. */}
-                  {video && ic.video ? (
-                    <video
-                      key={ic.id}
-                      src={ic.video.src}
-                      controls
-                      preload="metadata"
-                      style={{ width: frameWidth }}
-                      className="border-line2 bg-bg mx-auto mt-4 block aspect-video max-w-full border"
-                    >
-                      <track
-                        kind="captions"
-                        src={ic.video.captions}
-                        srcLang={es ? 'es' : 'en'}
-                        label={es ? 'Español' : 'English'}
-                        default
-                      />
-                    </video>
-                  ) : (
-                    <div
-                      style={{ width: frameWidth }}
-                      className="border-line2 bg-bg dots text-muted mx-auto mt-4 flex aspect-video max-w-full shrink-0 flex-col items-center justify-center gap-3 border border-dashed p-4 text-center text-sm"
-                    >
-                      <span className="border-line2 grid size-12 place-items-center border">
-                        <Icon d={video ? I.play : I.diagram} size={20} />
-                      </span>
-                      {video ? x.videoSoon : x.diagramSoon}
-                    </div>
-                  )}
-                  {!video && (
-                    <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                  {book ? (
+                    <div className="mt-4 flex flex-col gap-4">
                       <p className="text-body m-0 text-sm leading-[1.55]">
-                        {x.buildSoon}
+                        {x.bookBody}
                       </p>
+                      <ContactActions
+                        input={BOOK_CONTACT}
+                        x={x}
+                        inset={false}
+                      />
+                      <p className="text-muted m-0 text-[13px]">
+                        {x.bookEmail}{' '}
+                        <a
+                          href={`mailto:${CONTACT.email}?subject=${encodeURIComponent(x.contactSubject)}`}
+                          className="text-accent"
+                        >
+                          {CONTACT.email}
+                        </a>
+                      </p>
+                      {!BYOK && (
+                        <p
+                          className={`${mono} text-muted border-line2 m-0 border-t pt-3 text-[11px] tracking-[0.04em]`}
+                        >
+                          {usage}
+                        </p>
+                      )}
                     </div>
+                  ) : (
+                    <>
+                      {/* 16:9 frame sized from the viewport height too, so
+                          the whole dialog fits without scrolling on short
+                          screens. */}
+                      <div
+                        style={{ width: frameWidth }}
+                        className="border-line2 bg-bg dots text-muted mx-auto mt-4 flex aspect-video max-w-full shrink-0 flex-col items-center justify-center gap-3 border border-dashed p-4 text-center text-sm"
+                      >
+                        <span className="border-line2 grid size-12 place-items-center border">
+                          <Icon d={I.diagram} size={20} />
+                        </span>
+                        {x.diagramSoon}
+                      </div>
+                      <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+                        <p className="text-body m-0 text-sm leading-[1.55]">
+                          {x.buildSoon}
+                        </p>
+                      </div>
+                    </>
                   )}
                 </div>
-                <div
-                  className={`border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center gap-2.5 border-t px-7 py-3 ${video ? 'justify-between' : 'justify-end'}`}
-                >
-                  {video && (
-                    <span className={`${mono} text-muted truncate text-[11px]`}>
-                      {caseModel(ic).short} · {caseTools(ic).length}{' '}
-                      {x.toolsWord}
-                    </span>
-                  )}
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setInfo(null)}
-                      className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
-                    >
-                      {x.close}
-                    </button>
-                    {video && (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => {
-                          setInfo(null);
-                          pickCase(ic);
-                        }}
-                        className="bg-accent text-on-accent mob:h-11 h-10 cursor-pointer border-0 px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {x.tryCase}
-                      </button>
-                    )}
-                  </div>
+                <div className="border-line2 mob:px-4 mob:pb-[calc(12px+env(safe-area-inset-bottom))] flex shrink-0 items-center justify-end gap-2.5 border-t px-7 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setInfo(null)}
+                    className="border-line2 text-ink mob:h-11 h-10 cursor-pointer border bg-transparent px-4 text-sm"
+                  >
+                    {x.close}
+                  </button>
                 </div>
               </div>
             </div>
