@@ -217,9 +217,10 @@ if (!batchId) {
 } else {
   try {
     // The report covers what the batch was sent with, not this run's query.
-    ({ since, events, convs } = JSON.parse(
-      await readFile(snapshotOf(batchId), 'utf8'),
-    ));
+    // Older snapshots are just the conversations: this run's scope is kept.
+    const snap = JSON.parse(await readFile(snapshotOf(batchId), 'utf8'));
+    if (Array.isArray(snap)) convs = snap;
+    else ({ since, events, convs } = snap);
   } catch {
     throw new Error(
       `No snapshot for ${batchId} in analysis/: it must be resumed where it was sent`,
