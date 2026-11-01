@@ -32,6 +32,13 @@ export interface Env {
   CHAT_MSGS_PER_IP: string;
   CHAT_USD_PER_IP: string;
   CHAT_USD_PER_DAY: string;
+  /** Daily insights (worker/insights.ts): the model that labels messages and
+   * the one that writes the report (either empty: off), conversations labeled
+   * per day, and the most a day's labeling may cost (USD, estimated). */
+  INSIGHTS_LABEL_MODEL: string;
+  INSIGHTS_REPORT_MODEL: string;
+  INSIGHTS_MAX_CONVS: string;
+  INSIGHTS_USD_PER_DAY: string;
   /** "1": fake OpenAI (no calls, no cost), to test limits and cutoffs. */
   MOCK_OPENAI?: string;
 }
