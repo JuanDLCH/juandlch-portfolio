@@ -409,18 +409,18 @@ function build(isEs: boolean) {
     ? [
         {
           href: '#case-voice',
-          tag: 'Caso 01 · Restaurantes de comida rápida · IA de voz',
+          tag: 'Caso 01 · Comida rápida · Drive-thru · IA de voz',
           title: 'Agentes de voz que toman pedidos en tiempo real',
           problem:
-            'Los clientes llaman para pedir y preguntar. La operación necesitaba atender esas llamadas de forma natural, con volumen, y conectadas a sus sistemas de pedidos.',
-          role: 'Trabajé en el pipeline de voz en tiempo real: STT y TTS en streaming, detección de turnos e interrupciones, estado de la conversación y llamadas a herramientas hacia los sistemas del negocio.',
-          stack: ['Deepgram', 'ElevenLabs', 'WebSockets', 'OpenAI', 'AWS'],
+            'En el drive-thru, el cliente llega al parlante y habla: pide, cambia de opinión, pregunta por el menú y las promociones, y espera respuesta al instante. La operación necesitaba un agente que atendiera esas conversaciones con naturalidad en horas pico, entendiera pedidos con ruido de fondo e interrupciones, y los registrara directo en sus sistemas.',
+          role: 'Desarrollé la integración de voz en tiempo real con ElevenLabs usando modelos de Claude: streaming de audio, detección de turnos e interrupciones, estado de la conversación y llamadas a herramientas hacia las APIs de menú y pedidos.',
+          stack: ['ElevenLabs', 'Claude', 'Deepgram', 'WebSockets', 'AWS'],
           figTag: 'Fig. 01 · turno de voz',
           figLabel: 'Diagrama del pipeline de voz',
           flow: mkFlow([
-            ['Audio del cliente', 'stream'],
+            ['Cliente en el drive-thru', 'audio en vivo'],
             ['STT en streaming', 'parciales'],
-            ['*Agente de voz', 'estado · tools'],
+            ['*Agente de voz', 'Claude · tools'],
             ['APIs de menú y pedidos', 'tool call'],
             ['TTS en streaming', 'interrumpible'],
           ]),
@@ -445,10 +445,10 @@ function build(isEs: boolean) {
         },
         {
           href: '#case-whatsapp',
-          tag: 'Caso 03 · Restaurantes y retail · IA conversacional',
-          title: 'Asistentes de WhatsApp conectados al negocio',
+          tag: 'Caso 03 · Seguros · IA conversacional',
+          title: 'Un asistente de seguros en WhatsApp',
           problem:
-            'Los clientes ya escriben por WhatsApp. Los negocios necesitaban asistentes que respondieran ahí, siguieran sus reglas y actuaran sobre sus sistemas existentes — no un chatbot aislado.',
+            'Los asegurados ya escriben por WhatsApp. La aseguradora necesitaba que ahí mismo pudieran consultar su póliza, validar si un caso está cubierto y abrir una reclamación, con respuestas basadas en sus datos reales y sus reglas — no un chatbot aislado.',
           role: 'Construí y evolucioné flujos conversacionales sobre la API de WhatsApp de Meta: manejo de webhooks y eventos, orquestación y lógica de negocio, integración con servicios existentes y migración de flujos heredados.',
           stack: [
             'WhatsApp Business Platform',
@@ -463,7 +463,7 @@ function build(isEs: boolean) {
             ['Mensaje de WhatsApp', 'Meta Cloud API'],
             ['Webhook', 'eventos'],
             ['*Orquestador conversacional', 'estado · reglas'],
-            ['APIs del negocio', 'pedidos · CRM'],
+            ['APIs de la aseguradora', 'pólizas · reclamos'],
             ['Respuesta en WhatsApp', 'texto · plantillas'],
           ]),
         },
@@ -474,13 +474,7 @@ function build(isEs: boolean) {
           problem:
             'Revisar grabaciones de clases a mano no escala. La plataforma necesitaba evaluaciones estructuradas y consistentes que pudiera usar dentro de su propia aplicación.',
           role: 'Participé en la arquitectura y el desarrollo: procesamiento de audio, transcripción, evaluación basada en agentes y reportes JSON integrados con el software del cliente.',
-          stack: [
-            'Amazon Transcribe',
-            'Step Functions',
-            'Aurora Serverless',
-            'LLMs',
-            'RAG',
-          ],
+          stack: ['Amazon Transcribe', 'Step Functions', 'LLMs', 'RAG'],
           figTag: 'Fig. 04 · flujo de evaluación',
           figLabel: 'Diagrama del flujo de evaluación',
           flow: mkFlow([
@@ -495,18 +489,18 @@ function build(isEs: boolean) {
     : [
         {
           href: '#case-voice',
-          tag: 'Case 01 · Quick-service restaurants · Voice AI',
+          tag: 'Case 01 · Quick-service · Drive-thru · Voice AI',
           title: 'Voice agents that take orders in real time',
           problem:
-            'Customers call to order and ask questions. The operation needed those calls handled naturally, at volume, and connected to its ordering systems.',
-          role: 'Worked on the realtime voice pipeline: streaming STT and TTS, turn detection and interruptions, conversation state, and tool calls into business systems.',
-          stack: ['Deepgram', 'ElevenLabs', 'WebSockets', 'OpenAI', 'AWS'],
+            'At the drive-thru, customers pull up to the speaker and talk: they order, change their minds, ask about the menu and deals, and expect an answer right away. The operation needed an agent that handles those conversations naturally at rush hour, understands orders through background noise and interruptions, and puts them straight into its systems.',
+          role: 'Built the realtime voice integration with ElevenLabs on Claude models: audio streaming, turn detection and interruptions, conversation state, and tool calls into the menu and ordering APIs.',
+          stack: ['ElevenLabs', 'Claude', 'Deepgram', 'WebSockets', 'AWS'],
           figTag: 'Fig. 01 · voice turn',
           figLabel: 'Voice pipeline diagram',
           flow: mkFlow([
-            ['Caller audio', 'stream'],
+            ['Drive-thru customer', 'live audio'],
             ['Streaming STT', 'partials'],
-            ['*Voice agent', 'state · tools'],
+            ['*Voice agent', 'Claude · tools'],
             ['Menu & order APIs', 'tool call'],
             ['Streaming TTS', 'interruptible'],
           ]),
@@ -531,10 +525,10 @@ function build(isEs: boolean) {
         },
         {
           href: '#case-whatsapp',
-          tag: 'Case 03 · Restaurants & retail · Conversational AI',
-          title: 'WhatsApp assistants wired into the business',
+          tag: 'Case 03 · Insurance · Conversational AI',
+          title: 'An insurance assistant on WhatsApp',
           problem:
-            'Customers already write on WhatsApp. Businesses needed assistants that answer there, follow their rules and act on their existing systems — not a disconnected chatbot.',
+            'Policyholders already write on WhatsApp. The insurer needed them to check their policy, confirm whether something is covered and file a claim right there, answered from its real data and rules — not a disconnected chatbot.',
           role: 'Built and evolved conversational flows on Meta’s WhatsApp Cloud API: webhook and event handling, orchestration and business logic, integrations with existing services, and migration of legacy flows.',
           stack: [
             'WhatsApp Business Platform',
@@ -549,7 +543,7 @@ function build(isEs: boolean) {
             ['WhatsApp message', 'Meta Cloud API'],
             ['Webhook', 'events'],
             ['*Conversation orchestrator', 'state · rules'],
-            ['Business APIs', 'orders · CRM'],
+            ['Insurer APIs', 'policies · claims'],
             ['WhatsApp reply', 'text · templates'],
           ]),
         },
@@ -560,13 +554,7 @@ function build(isEs: boolean) {
           problem:
             'Reviewing class recordings by hand doesn’t scale. The platform needed structured, consistent evaluations it could use inside its own app.',
           role: 'Took part in the architecture and development: audio processing, transcription, agent-based evaluation and JSON reports integrated with the client’s software.',
-          stack: [
-            'Amazon Transcribe',
-            'Step Functions',
-            'Aurora Serverless',
-            'LLMs',
-            'RAG',
-          ],
+          stack: ['Amazon Transcribe', 'Step Functions', 'LLMs', 'RAG'],
           figTag: 'Fig. 04 · evaluation flow',
           figLabel: 'Evaluation flow diagram',
           flow: mkFlow([
