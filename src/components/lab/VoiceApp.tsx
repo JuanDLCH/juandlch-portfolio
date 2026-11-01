@@ -213,6 +213,8 @@ export default function VoiceApp() {
   const captchaRef = useRef<HTMLDivElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const callRef = useRef<Call | null>(null);
+  /** The visitor left while a call was starting: it must not go on. */
+  const goneRef = useRef(false);
   const audioCtx = useRef<AudioContext | null>(null);
   const meters = useRef<{
     mic: AnalyserNode | null;
@@ -384,6 +386,7 @@ export default function VoiceApp() {
   };
 
   const start = async (resume: string | null = null) => {
+    goneRef.current = false;
     stopGreeting();
     if (!resume) reset();
     setPhase({ at: 'connecting' });
@@ -416,6 +419,12 @@ export default function VoiceApp() {
       setPhase({ at: 'ended', why: 'mic' });
       return;
     }
+    const abandon = () => {
+      for (const t of mic.getTracks()) t.stop();
+      void ctx.close();
+      if (audioCtx.current === ctx) audioCtx.current = null;
+    };
+    if (goneRef.current) return abandon();
     try {
       const token = await getToken(captchaRef.current!, lang).catch(() => {
         throw new VoiceError('captcha');
@@ -454,6 +463,11 @@ export default function VoiceApp() {
           },
         },
       });
+      // Left while it connected: end it here, nobody else will.
+      if (goneRef.current) {
+        call.close();
+        return abandon();
+      }
       callRef.current = call;
       // A resume the server refused (expired) is a new call.
       if (resume && !call.resumed) {
@@ -481,9 +495,8 @@ export default function VoiceApp() {
       setPhase({ at: 'live' });
       emote('happy');
     } catch (err) {
-      for (const t of mic.getTracks()) t.stop();
-      void audioCtx.current?.close();
-      audioCtx.current = null;
+      abandon();
+      if (goneRef.current) return;
       setPhase({
         at: 'ended',
         why: err instanceof VoiceError ? err.code : 'unavailable',
@@ -519,7 +532,10 @@ export default function VoiceApp() {
   // Leaving the page (or this island) ends the call.
   useEffect(() => {
     // close() tells the server too, with a request that survives unloads.
-    const leave = () => callRef.current?.close();
+    const leave = () => {
+      goneRef.current = true;
+      callRef.current?.close();
+    };
     window.addEventListener('pagehide', leave);
     document.addEventListener('astro:before-swap', leave);
     return () => {
