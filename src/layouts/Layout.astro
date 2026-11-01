@@ -8,8 +8,10 @@ interface Props {
   description: string;
   /** Title of link previews; defaults to the English tab title. */
   shareTitle?: string;
+  /** Private pages (the dashboard): not indexed and not counted. */
+  noindex?: boolean;
 }
-const { title, description, shareTitle } = Astro.props;
+const { title, description, shareTitle, noindex = false } = Astro.props;
 const titles = typeof title === 'string' ? { en: title, es: title } : title;
 // Link previews (Open Graph, Twitter card) need absolute URLs.
 const url = new URL(Astro.url.pathname, Astro.site);
@@ -18,7 +20,7 @@ const imageAlt =
   'Juan Diego Londoño, AI Engineer: “I build AI that listens, reasons and acts — inside real software.”';
 // Cloudflare Web Analytics (cookieless page views). Set only in production
 // builds, so dev and previews don't count.
-const beacon = import.meta.env.PUBLIC_CF_BEACON_TOKEN;
+const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
 ---
 
 <html lang="en" data-lang="en">
@@ -27,6 +29,7 @@ const beacon = import.meta.env.PUBLIC_CF_BEACON_TOKEN;
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="canonical" href={url} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="JuanDLCH" />

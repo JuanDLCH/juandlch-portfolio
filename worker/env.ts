@@ -39,6 +39,12 @@ export interface Env {
   INSIGHTS_REPORT_MODEL: string;
   INSIGHTS_MAX_CONVS: string;
   INSIGHTS_USD_PER_DAY: string;
+  /** Cloudflare Access in front of /admin: team domain and the application's
+   * AUD tag (worker/admin.ts checks its JWT). */
+  ACCESS_TEAM: string;
+  ACCESS_AUD: string;
+  /** "1" (dev only, on localhost): the dashboard API without Access. */
+  ADMIN_DEV?: string;
   /** "1": fake OpenAI (no calls, no cost), to test limits and cutoffs. */
   MOCK_OPENAI?: string;
 }
