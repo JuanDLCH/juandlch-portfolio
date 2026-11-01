@@ -1183,6 +1183,13 @@ export default function AdminApp({ map }: { map: WorldMap }) {
       r: lastDays(n, today),
     })),
   ];
+  const single = range.from === range.to;
+  // One day back or forward; from a longer range, it starts at its last day.
+  const stepDay = (n: number) => {
+    const base = single ? shiftDay(range.from, n) : range.to;
+    const day = base > today ? today : base;
+    setRange({ from: day, to: day });
+  };
   const pickDay = (day: string) => {
     setRange({ from: day, to: day });
     scrollTo({ top: 0, behavior: 'smooth' });
@@ -1330,6 +1337,39 @@ export default function AdminApp({ map }: { map: WorldMap }) {
             onPick={(m) => setRange(monthRange(m, today))}
           />
         </div>
+        <div className="flex flex-col gap-1.5">
+          <span className={label}>{x.day}</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label={x.prevDay}
+              className={`${iconBtn} size-8`}
+              onClick={() => stepDay(-1)}
+            >
+              ‹
+            </button>
+            <input
+              type="date"
+              aria-label={x.day}
+              className={field}
+              max={today}
+              value={single ? range.from : ''}
+              onChange={(e) =>
+                e.target.value &&
+                setRange({ from: e.target.value, to: e.target.value })
+              }
+            />
+            <button
+              type="button"
+              aria-label={x.nextDay}
+              disabled={single && range.from >= today}
+              className={`${iconBtn} size-8 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => stepDay(1)}
+            >
+              ›
+            </button>
+          </div>
+        </div>
         <label className="flex flex-col gap-1.5">
           <span className={label}>{x.fromDay}</span>
           <input
@@ -1399,17 +1439,21 @@ export default function AdminApp({ map }: { map: WorldMap }) {
             <Activity data={data} x={x} lang={lang} onPick={pickDay} />
           </Section>
 
-          {traffic?.enabled && (
-            <TrafficView
-              t={traffic}
-              data={data}
-              x={x}
-              lang={lang}
-              countryName={countryName}
-              onPick={pickDay}
-              map={map}
-            />
-          )}
+          {/* Only with the overview of the same range: the conversion table
+              and the day grouping use both. */}
+          {traffic?.enabled &&
+            data.from === range.from &&
+            data.to === range.to && (
+              <TrafficView
+                t={traffic}
+                data={data}
+                x={x}
+                lang={lang}
+                countryName={countryName}
+                onPick={pickDay}
+                map={map}
+              />
+            )}
           {trafficErr && (
             <p className={`${note} mt-gutter`}>{x.trafficError}</p>
           )}
