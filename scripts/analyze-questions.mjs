@@ -27,7 +27,7 @@ const { values: args } = parseArgs({
     batch: { type: 'string' },
   },
 });
-const since = args.since ?? '1970-01-01';
+let since = args.since ?? '1970-01-01';
 if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) throw new Error('--since YYYY-MM-DD');
 
 const need = (name) => {
@@ -82,7 +82,7 @@ const questions = await query(
   'SELECT at, source, conv, lang, text FROM questions WHERE at >= ? ORDER BY conv, at',
   [since],
 );
-const events = await query(
+let events = await query(
   `SELECT substr(at, 1, 10) AS day, kind, subject, count(*) AS n
    FROM events WHERE at >= ? GROUP BY day, kind, subject ORDER BY day`,
   [since],
@@ -204,15 +204,22 @@ if (!batchId) {
     })
   ).json();
   batchId = batch.id;
-  // The batch's c0, c1… are positions in this list: keep it, since D1 can
-  // change before a resumed run reads the results.
-  await writeFile(snapshotOf(batchId), JSON.stringify(convs));
+  // The batch's c0, c1… are positions in this list: keep it, with the scope
+  // and usage of this run, since D1 can change before a resumed run reads the
+  // results.
+  await writeFile(
+    snapshotOf(batchId),
+    JSON.stringify({ since, events, convs }),
+  );
   console.log(
     `Batch ${batchId} sent. If this stops waiting, run again with --batch ${batchId}.`,
   );
 } else {
   try {
-    convs = JSON.parse(await readFile(snapshotOf(batchId), 'utf8'));
+    // The report covers what the batch was sent with, not this run's query.
+    ({ since, events, convs } = JSON.parse(
+      await readFile(snapshotOf(batchId), 'utf8'),
+    ));
   } catch {
     throw new Error(
       `No snapshot for ${batchId} in analysis/: it must be resumed where it was sent`,
