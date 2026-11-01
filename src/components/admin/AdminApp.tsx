@@ -24,6 +24,8 @@ interface Overview {
   intent: Row[];
   goal: Row[];
   topic: Row[];
+  /** Per Bogotá hour ('00'…'23') when the range is a single day. */
+  hours: { messages: Row[]; calls: Row[]; costs: Row[] } | null;
   /** Messages and conversations per demo (every case, from the events). */
   demos: Row[];
   /** USD per day and part (chat case, voice_note, voice). */
@@ -92,6 +94,11 @@ const monthRange = (month: string, today: string): Range => {
   const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
   return { from: `${month}-01`, to: last > today ? today : last };
 };
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+/** Bogotá hour ('00'…'23') of a moment. */
+const bogotaHour = (ms: number) =>
+  new Date(ms - 5 * 3_600_000).toISOString().slice(11, 13);
 
 const num = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
 const fmtDay = (day: string, lang: Lang, long = false) =>
@@ -213,9 +220,9 @@ function Bars({
   );
 }
 
-/** One value per day as columns over a light grid, a date under every few
- * columns (every one in a week), and a tooltip beside the hovered column,
- * kept inside the chart. */
+/** One value per day (or per hour of a single day) as columns over a light
+ * grid, a date under every few columns (every one in a week), and a tooltip
+ * beside the hovered column, kept inside the chart. */
 const TIP_W = 200;
 function DayColumns({
   days,
@@ -224,7 +231,9 @@ function DayColumns({
   lang,
   tip,
   onPick,
+  hourly = false,
 }: {
+  /** Days (YYYY-MM-DD), or hours ('00'…'23') when `hourly`. */
   days: string[];
   values: number[];
   /** What a value counts, for screen readers. */
@@ -234,6 +243,7 @@ function DayColumns({
   tip: (i: number) => ReactNode;
   /** Clicking a column filters the dashboard to that day. */
   onPick?: (day: string) => void;
+  hourly?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const [width, setWidth] = useState(0);
@@ -242,14 +252,19 @@ function DayColumns({
   const peak = Math.max(0, ...values);
   const top = peak <= 4 ? 4 : Math.ceil(peak / 4) * 4;
   const n = days.length;
-  const step = n <= 7 ? 1 : Math.ceil(n / 10);
+  const step = hourly ? 3 : n <= 7 ? 1 : Math.ceil(n / 10);
+  const pick = hourly ? undefined : onPick;
+  const long = (d: string) =>
+    hourly ? `${d}:00 – ${d}:59` : fmtDay(d, lang, true);
   const short = (day: string) =>
-    new Intl.DateTimeFormat(lang, {
-      timeZone: 'UTC',
-      ...(n <= 7
-        ? { weekday: 'short', day: 'numeric' }
-        : { day: 'numeric', month: 'short' }),
-    }).format(new Date(`${day}T12:00:00Z`));
+    hourly
+      ? `${Number(day)}h`
+      : new Intl.DateTimeFormat(lang, {
+          timeZone: 'UTC',
+          ...(n <= 7
+            ? { weekday: 'short', day: 'numeric' }
+            : { day: 'numeric', month: 'short' }),
+        }).format(new Date(`${day}T12:00:00Z`));
   const show = (i: number) => {
     setWidth(plot.current?.clientWidth ?? 0);
     setHover(i);
@@ -294,12 +309,12 @@ function DayColumns({
             <button
               key={day}
               type="button"
-              aria-label={`${fmtDay(day, lang, true)}: ${values[i]} ${unit}`}
+              aria-label={`${long(day)}: ${values[i]} ${unit}`}
               onMouseEnter={() => show(i)}
               onFocus={() => show(i)}
               onBlur={() => setHover(null)}
-              onClick={() => onPick?.(day)}
-              className={`flex h-full min-w-0 items-end border-0 p-0 ${onPick ? 'cursor-pointer' : 'cursor-default'} ${at === i ? 'bg-chip' : 'bg-transparent'}`}
+              onClick={() => pick?.(day)}
+              className={`flex h-full min-w-0 items-end border-0 p-0 ${pick ? 'cursor-pointer' : 'cursor-default'} ${at === i ? 'bg-chip' : 'bg-transparent'}`}
             >
               <span
                 className={`block w-full rounded-t-[4px] ${at === i ? 'bg-ink' : 'bg-accent'}`}
@@ -319,7 +334,7 @@ function DayColumns({
             style={{ left, width: TIP_W }}
           >
             <div className="text-ink mb-1.5 font-semibold first-letter:uppercase">
-              {fmtDay(days[at], lang, true)}
+              {long(days[at])}
             </div>
             {tip(at)}
           </div>
@@ -378,6 +393,20 @@ function Activity({
   lang: Lang;
   onPick: (day: string) => void;
 }) {
+  // A single day goes by hour.
+  const hrs = data.hours;
+  if (hrs) {
+    const per = HOURS.map((h) => {
+      const msgs = hrs.messages.filter((m) => m.h === h);
+      return {
+        total: msgs.reduce((s, m) => s + num(m.n), 0),
+        by: msgs.map((m) => ({ source: String(m.source), n: num(m.n) })),
+        calls: num(hrs.calls.find((c) => c.h === h)?.n),
+        cost: num(hrs.costs.find((c) => c.h === h)?.usd),
+      };
+    });
+    return <ActivityChart days={HOURS} hourly per={per} x={x} lang={lang} />;
+  }
   const days = daysBetween(data.from, data.to);
   const per = days.map((day) => {
     const msgs = data.messages.filter((m) => m.day === day);
@@ -396,8 +425,35 @@ function Activity({
     };
   });
   return (
+    <ActivityChart days={days} per={per} x={x} lang={lang} onPick={onPick} />
+  );
+}
+
+interface ActivityBucket {
+  total: number;
+  by: { source: string; n: number }[];
+  calls: number;
+  cost: number;
+}
+function ActivityChart({
+  days,
+  per,
+  x,
+  lang,
+  onPick,
+  hourly = false,
+}: {
+  days: string[];
+  per: ActivityBucket[];
+  x: AdminCopy;
+  lang: Lang;
+  onPick?: (day: string) => void;
+  hourly?: boolean;
+}) {
+  return (
     <DayColumns
       days={days}
+      hourly={hourly}
       values={per.map((p) => p.total)}
       unit={x.kpi.messages}
       lang={lang}
@@ -434,6 +490,170 @@ const SHADES = [
   'color-mix(in oklab, var(--accent) 40%, black)',
 ];
 
+/** Closes a popover on a click outside `ref` or Escape. */
+function useDismiss(
+  open: boolean,
+  ref: { current: HTMLElement | null },
+  close: () => void,
+) {
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    addEventListener('mousedown', onDown);
+    addEventListener('keydown', onKey);
+    return () => {
+      removeEventListener('mousedown', onDown);
+      removeEventListener('keydown', onKey);
+    };
+  }, [open, ref, close]);
+}
+
+/** A day picker in the dashboard's look (the native one can't be styled):
+ * a month grid, weeks from Monday, days outside [min, max] disabled. */
+function DatePicker({
+  value,
+  min = '2000-01-01',
+  max,
+  lang,
+  x,
+  label: name,
+  onPick,
+}: {
+  /** YYYY-MM-DD, or '' for none. */
+  value: string;
+  min?: string;
+  max: string;
+  lang: Lang;
+  x: AdminCopy;
+  label: string;
+  onPick: (day: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState((value || max).slice(0, 7));
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useMemo(() => () => setOpen(false), []);
+  useDismiss(open, ref, close);
+  const [y, m] = month.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const length = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  // Monday first: blanks before the 1st.
+  const lead = (first.getUTCDay() + 6) % 7;
+  const cells = [
+    ...Array.from({ length: lead }, () => ''),
+    ...Array.from(
+      { length },
+      (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`,
+    ),
+  ];
+  const weekdays = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(lang, {
+      weekday: 'narrow',
+      timeZone: 'UTC',
+    }).format(new Date(Date.UTC(2024, 0, 1 + i))),
+  );
+  const title = new Intl.DateTimeFormat(lang, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(first);
+  const shift = (n: number) =>
+    setMonth(new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7));
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={name}
+        onClick={() => {
+          setMonth((value || max).slice(0, 7));
+          setOpen((o) => !o);
+        }}
+        className={`${field} flex min-w-36 cursor-pointer items-center justify-between gap-3 text-left`}
+      >
+        <span className={value ? '' : 'text-muted'}>
+          {value ? fmtDay(value, lang) + ` ${value.slice(0, 4)}` : x.pickDate}
+        </span>
+        <Icon d={I.calendar} size={14} />
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-label={name}
+          className="border-line2 bg-bg absolute top-full left-0 z-20 mt-1 w-72 border p-3 shadow-lg"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label={x.prevMonth}
+              disabled={month <= min.slice(0, 7)}
+              className={`${iconBtn} size-7 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => shift(-1)}
+            >
+              ‹
+            </button>
+            <span className="text-ink text-[13px] font-semibold first-letter:uppercase">
+              {title}
+            </span>
+            <button
+              type="button"
+              aria-label={x.nextMonth}
+              disabled={month >= max.slice(0, 7)}
+              className={`${iconBtn} size-7 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => shift(1)}
+            >
+              ›
+            </button>
+          </div>
+          <div
+            className={`${mono} text-muted grid grid-cols-7 gap-1 text-center text-[10px] uppercase`}
+            aria-hidden="true"
+          >
+            {weekdays.map((d, i) => (
+              <span key={i} className="py-1">
+                {d}
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((d, i) =>
+              d ? (
+                <button
+                  key={d}
+                  type="button"
+                  disabled={d < min || d > max}
+                  aria-pressed={d === value}
+                  aria-label={fmtDay(d, lang, true)}
+                  onClick={() => {
+                    onPick(d);
+                    setOpen(false);
+                  }}
+                  className={`${mono} h-8 cursor-pointer border text-[12px] disabled:cursor-not-allowed disabled:opacity-30 ${
+                    d === value
+                      ? 'border-accent bg-accent text-on-accent'
+                      : d === max
+                        ? 'border-accent text-accent bg-transparent'
+                        : 'text-body hover:border-accent border-transparent bg-transparent'
+                  }`}
+                >
+                  {Number(d.slice(8))}
+                </button>
+              ) : (
+                <span key={`b${i}`} />
+              ),
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Month and year picker (Firefox has no native one): the year with arrows
  * and its twelve months; months after `max` are disabled. */
 function MonthPicker({
@@ -453,23 +673,8 @@ function MonthPicker({
   const [open, setOpen] = useState(false);
   const [year, setYear] = useState(Number((value || max).slice(0, 4)));
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (
-        e instanceof KeyboardEvent
-          ? e.key === 'Escape'
-          : !ref.current?.contains(e.target as Node)
-      )
-        setOpen(false);
-    };
-    addEventListener('mousedown', close);
-    addEventListener('keydown', close);
-    return () => {
-      removeEventListener('mousedown', close);
-      removeEventListener('keydown', close);
-    };
-  }, [open]);
+  const close = useMemo(() => () => setOpen(false), []);
+  useDismiss(open, ref, close);
   const name = (m: number, style: 'short' | 'long') =>
     new Intl.DateTimeFormat(lang, { month: style, timeZone: 'UTC' }).format(
       new Date(Date.UTC(2000, m, 15)),
@@ -661,11 +866,14 @@ function TrafficView({
   onPick: (day: string) => void;
   map: WorldMap;
 }) {
-  const days = daysBetween(data.from, data.to);
-  // Hours to Bogotá days (UTC-5), like every other count here.
+  // A single day goes by hour; longer ranges by Bogotá day (UTC-5), like
+  // every other count here.
+  const hourly = data.from === data.to;
+  const days = hourly ? HOURS : daysBetween(data.from, data.to);
   const byDay = new Map<string, { views: number; visits: number }>();
   for (const h of t.hours) {
-    const day = bogota(Date.parse(h.k));
+    const ms = Date.parse(h.k);
+    const day = hourly ? bogotaHour(ms) : bogota(ms);
     const d = byDay.get(day) ?? { views: 0, visits: 0 };
     byDay.set(day, { views: d.views + h.views, visits: d.visits + h.visits });
   }
@@ -696,6 +904,7 @@ function TrafficView({
     >
       <DayColumns
         days={days}
+        hourly={hourly}
         values={per.map((p) => p.visits)}
         unit={x.visits}
         lang={lang}
@@ -1348,16 +1557,13 @@ export default function AdminApp({ map }: { map: WorldMap }) {
             >
               ‹
             </button>
-            <input
-              type="date"
-              aria-label={x.day}
-              className={field}
+            <DatePicker
+              label={x.day}
               max={today}
               value={single ? range.from : ''}
-              onChange={(e) =>
-                e.target.value &&
-                setRange({ from: e.target.value, to: e.target.value })
-              }
+              lang={lang}
+              x={x}
+              onPick={(d) => setRange({ from: d, to: d })}
             />
             <button
               type="button"
@@ -1368,33 +1574,39 @@ export default function AdminApp({ map }: { map: WorldMap }) {
             >
               ›
             </button>
+            <button
+              type="button"
+              aria-pressed={single && range.from === today}
+              onClick={() => setRange({ from: today, to: today })}
+              className={`${btn} ${single && range.from === today ? 'border-accent text-accent' : ''}`}
+            >
+              {x.today}
+            </button>
           </div>
         </div>
-        <label className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <span className={label}>{x.fromDay}</span>
-          <input
-            type="date"
-            className={field}
+          <DatePicker
+            label={x.fromDay}
             max={range.to}
             value={range.from}
-            onChange={(e) =>
-              e.target.value && setRange({ ...range, from: e.target.value })
-            }
+            lang={lang}
+            x={x}
+            onPick={(d) => setRange({ ...range, from: d })}
           />
-        </label>
-        <label className="flex flex-col gap-1.5">
+        </div>
+        <div className="flex flex-col gap-1.5">
           <span className={label}>{x.toDay}</span>
-          <input
-            type="date"
-            className={field}
+          <DatePicker
+            label={x.toDay}
             min={range.from}
             max={today}
             value={range.to}
-            onChange={(e) =>
-              e.target.value && setRange({ ...range, to: e.target.value })
-            }
+            lang={lang}
+            x={x}
+            onPick={(d) => setRange({ ...range, to: d })}
           />
-        </label>
+        </div>
         <p className="text-ink m-0 ml-auto self-center text-[14px] font-semibold first-letter:uppercase">
           {rangeText}
         </p>
@@ -1432,8 +1644,8 @@ export default function AdminApp({ map }: { map: WorldMap }) {
           </div>
 
           <Section
-            title={x.activity}
-            sub={`${x.activityNote} ${x.pickDay}`}
+            title={data.hours ? x.activityHourly : x.activity}
+            sub={data.hours ? x.activityNote : `${x.activityNote} ${x.pickDay}`}
             className="mt-gutter"
           >
             <Activity data={data} x={x} lang={lang} onPick={pickDay} />

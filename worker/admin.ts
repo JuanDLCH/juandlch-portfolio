@@ -96,6 +96,35 @@ function rangeOf(url: URL) {
   return { from, to };
 }
 
+/** A day's messages, voice calls and cost per Bogotá hour ('00'…'23'). */
+async function hourly(db: D1Database, fromAt: string, toAt: string) {
+  const hour = "strftime('%H', at, '-5 hours')";
+  const [messages, calls, costs] = await db.batch<
+    Record<string, string | number | null>
+  >([
+    db
+      .prepare(
+        `SELECT ${hour} AS h, source, count(*) AS n FROM messages WHERE at >= ? AND at < ? GROUP BY 1, 2`,
+      )
+      .bind(fromAt, toAt),
+    db
+      .prepare(
+        `SELECT ${hour} AS h, count(*) AS n FROM events WHERE kind = 'voice_call' AND at >= ? AND at < ? GROUP BY 1`,
+      )
+      .bind(fromAt, toAt),
+    db
+      .prepare(
+        `SELECT ${hour} AS h, sum(n) AS usd FROM events WHERE kind IN ('chat_cost', 'voice_cost') AND at >= ? AND at < ? GROUP BY 1`,
+      )
+      .bind(fromAt, toAt),
+  ]);
+  return {
+    messages: messages.results,
+    calls: calls.results,
+    costs: costs.results,
+  };
+}
+
 /** Counts per day and totals between `from` and `to` (Bogotá days). */
 async function overview(db: D1Database, from: string, to: string) {
   const [fromAt] = windowOf(from);
@@ -196,6 +225,8 @@ async function overview(db: D1Database, from: string, to: string) {
     demos: demos.results,
     costs: costs.results,
     countries: countries.results,
+    // A single day is charted by hour (Bogotá).
+    hours: from === to ? await hourly(db, fromAt, toAt) : null,
   };
 }
 
