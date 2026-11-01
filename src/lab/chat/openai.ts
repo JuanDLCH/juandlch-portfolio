@@ -1,6 +1,6 @@
 // Voice input: transcribes a recording, with the visitor's own OpenAI key or
 // (key '') through the site's Worker, which counts it as a message.
-import { LAB_API, labToken } from './lab';
+import { LAB_API, dropLabToken, labToken } from './lab';
 
 export async function transcribe(key: string, audio: Blob, lang: 'en' | 'es') {
   const form = new FormData();
@@ -12,16 +12,24 @@ export async function transcribe(key: string, audio: Blob, lang: 'en' | 'es') {
   form.append('file', audio, `voice.${ext}`);
   form.append('model', 'whisper-1');
   form.append('language', lang);
-  const res = await fetch(
-    key
-      ? 'https://api.openai.com/v1/audio/transcriptions'
-      : `${LAB_API}/audio/transcriptions`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${key || (await labToken())}` },
-      body: form,
-    },
-  );
+  const send = async () =>
+    fetch(
+      key
+        ? 'https://api.openai.com/v1/audio/transcriptions'
+        : `${LAB_API}/audio/transcriptions`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key || (await labToken())}` },
+        body: form,
+      },
+    );
+  let res = await send();
+  // The Worker rejected the site session (e.g. the IP changed): get a new
+  // one and try once more.
+  if (!key && res.status === 401) {
+    dropLabToken();
+    res = await send();
+  }
   if (res.status === 429) {
     const code = (
       (await res.json().catch(() => ({}))) as {
