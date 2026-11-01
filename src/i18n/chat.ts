@@ -40,6 +40,9 @@ const EN = {
   limitDay: 'Today: {max} messages across every case',
   limitLeft: 'Today: {n} of {max} messages left',
   limitConv: 'This chat: {n} of {max} left',
+  // Under the composer of the profile agent (worker/metrics.ts keeps its
+  // questions).
+  stored: 'Questions are stored anonymously to improve this demo',
   videoSoon: 'The recording for this case is on its way.',
   buildBtn: 'How I’d build it',
   buildTag: 'Architecture',
@@ -325,6 +328,7 @@ const ES: typeof EN = {
   bookEmail: 'O escribe a',
   limitDay: 'Hoy: {max} mensajes entre todos los casos',
   limitLeft: 'Hoy: te quedan {n} de {max} mensajes',
+  stored: 'Las preguntas se guardan de forma anónima para mejorar esta demo',
   limitConv: 'Este chat: quedan {n} de {max}',
   videoSoon: 'La grabación de este caso viene en camino.',
   buildBtn: '¿Cómo lo construiría?',

@@ -48,3 +48,6 @@ Thumbs.db
 
 # Stray screenshots at the repo root (assets belong in src/assets/)
 /*.png
+
+# Lab question reports (scripts/analyze-questions.mjs): visitor text
+/analysis/

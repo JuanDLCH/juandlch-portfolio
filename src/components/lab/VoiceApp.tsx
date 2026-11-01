@@ -903,6 +903,8 @@ export default function VoiceApp() {
                 className={`${mono} text-muted m-0 text-center text-[10px] tracking-[0.06em] uppercase`}
               >
                 {x.limits}
+                <br />
+                {x.stored}
               </p>
             )}
             {failed && (

@@ -78,6 +78,9 @@ export interface ChatSession {
   docs?: Doc[];
   /** Last document id handed out, so removed ids are never reused. */
   docSeq?: number;
+  /** Random id of the conversation, sent to the Worker (X-Lab-Conv) so the
+   * questions it keeps stay grouped; a cleared chat starts a new one. */
+  conv?: string;
 }
 
 export const emptySession = (): ChatSession => ({

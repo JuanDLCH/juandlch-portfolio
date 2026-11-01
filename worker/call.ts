@@ -10,6 +10,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { RealtimeSessionCreateRequest } from 'openai/resources/realtime/realtime';
 import type { Env } from './env';
+import { saveQuestion, track } from './metrics';
 import { hangup, sideband } from './openai';
 import { realtimeUsd, type RealtimeUsage } from './prices';
 
@@ -22,6 +23,9 @@ interface Call {
   /** Seconds of the budget used before this call (by the calls it resumes). */
   used: number;
   startedAt: number;
+  /** The first call of a resumed chain, to keep its questions together. */
+  thread?: string;
+  lang?: string;
 }
 
 /** What's left of an ended call, for a resume. */
@@ -29,6 +33,7 @@ interface Done {
   ip: string;
   used: number;
   taken: boolean;
+  thread?: string;
 }
 
 /** How long an ended call can be resumed. */
@@ -53,6 +58,9 @@ export class VoiceCall extends DurableObject<Env> {
   private responses = 0;
   /** What the call has cost so far (USD), from each response's usage. */
   private spent = 0;
+  /** Thread and language of the call, for the questions it records. */
+  private thread = '';
+  private lang = '';
   /** The hangup in progress, so overlapping ends run it once. */
   private ending: Promise<void> | null = null;
 
@@ -64,6 +72,8 @@ export class VoiceCall extends DurableObject<Env> {
     await this.ctx.storage.put('call', call);
     await this.ctx.storage.setAlarm(endsAt);
     this.expected = fingerprint(session);
+    this.thread = call.thread ?? call.callId;
+    this.lang = call.lang ?? '';
     try {
       this.ws = await sideband(this.env, call.callId);
       this.ws?.addEventListener('message', (e) => this.watch(e.data));
@@ -74,14 +84,15 @@ export class VoiceCall extends DurableObject<Env> {
     }
   }
 
-  /** Seconds used by this (ended) call and the ones it resumed, if `ip`
-   * may resume it and at least `min` seconds of `budget` are left. Once. */
+  /** Seconds used by this (ended) call and the ones it resumed, and their
+   * thread, if `ip` may resume it and at least `min` seconds of `budget` are
+   * left. Once. */
   async takeResume(ip: string, budget: number, min: number) {
     const done = await this.ctx.storage.get<Done>('done');
     if (!done || done.taken || done.ip !== ip) return null;
     if (budget - done.used < min) return null;
     await this.ctx.storage.put('done', { ...done, taken: true });
-    return done.used;
+    return { used: done.used, thread: done.thread };
   }
 
   /** Undoes takeResume when the call that would continue it didn't start. */
@@ -114,6 +125,7 @@ export class VoiceCall extends DurableObject<Env> {
       type?: string;
       session?: Partial<RealtimeSessionCreateRequest>;
       response?: { usage?: RealtimeUsage };
+      transcript?: string;
     };
     try {
       event = JSON.parse(data);
@@ -126,6 +138,20 @@ export class VoiceCall extends DurableObject<Env> {
       fingerprint(event.session) !== this.expected
     )
       void this.finish('session changed');
+    // What the visitor said, for the question analysis (worker/metrics.ts).
+    if (
+      event.type === 'conversation.item.input_audio_transcription.completed' &&
+      typeof event.transcript === 'string' &&
+      this.thread
+    )
+      this.ctx.waitUntil(
+        saveQuestion(this.env, {
+          source: 'voice',
+          conv: this.thread,
+          lang: this.lang || undefined,
+          text: event.transcript,
+        }),
+      );
     if (event.type !== 'response.done') return;
     if (event.response?.usage)
       this.spent += realtimeUsd(this.env.VOICE_MODEL, event.response.usage);
@@ -161,7 +187,12 @@ export class VoiceCall extends DurableObject<Env> {
       return;
     }
     await this.ctx.storage.deleteAll();
-    await this.ctx.storage.put('done', { ip: call.ip, used, taken: false });
+    await this.ctx.storage.put('done', {
+      ip: call.ip,
+      used,
+      taken: false,
+      thread: call.thread ?? call.callId,
+    });
     await this.ctx.storage.setAlarm(Date.now() + RESUME_MS);
     console.log(`end ${call.callId}: ${first} (${used}s used)`);
     try {
@@ -173,5 +204,12 @@ export class VoiceCall extends DurableObject<Env> {
     await this.env.QUOTA.get(this.env.QUOTA.idFromName(call.day)).release(
       call.ip,
     );
+    await track(this.env, {
+      kind: 'voice_end',
+      subject: 'voice',
+      lang: call.lang,
+      detail: first,
+      n: Math.round((Date.now() - call.startedAt) / 1000),
+    });
   }
 }
