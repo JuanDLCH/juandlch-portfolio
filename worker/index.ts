@@ -6,6 +6,7 @@
 // quota. Every call is cut by its VoiceCall alarm after SESSION_S seconds.
 import type { Env } from './env';
 import { admin } from './admin';
+import { hit } from './hits';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, turnstileOk } from './http';
 import { runInsights } from './insights';
@@ -165,6 +166,8 @@ export default {
     if (!origins(env).includes(req.headers.get('Origin') ?? ''))
       return json({ error: 'origin' }, 403);
     switch (url.pathname) {
+      case '/api/hit':
+        return hit(req, env, ctx);
       case '/api/voice/session':
         return startSession(req, env, ctx);
       case '/api/voice/end':
