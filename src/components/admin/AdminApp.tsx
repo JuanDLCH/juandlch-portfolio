@@ -4,7 +4,7 @@
 // Every chart is a single series in the accent color with its values written
 // out (and a table view), so nothing depends on telling colors apart.
 // Visitor text and model output render as plain text only.
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ADMIN, type AdminCopy } from '../../i18n/admin';
 import { CATEGORIES, GOALS, INTENTS } from '../../lab/insights/taxonomy';
 import { setLang, setTheme } from '../../scripts/prefs';
@@ -17,6 +17,8 @@ interface Overview {
   reports: Row[];
   activity: Row[];
   messages: Row[];
+  /** Distinct conversations over the whole range. */
+  conversations: number;
   category: Row[];
   intent: Row[];
   goal: Row[];
@@ -24,7 +26,11 @@ interface Overview {
 }
 interface Detail {
   report: Row | null;
+  /** The day's messages, up to the API's limit; `total` is how many exist. */
   messages: Row[];
+  total: number;
+  /** Every message the report cites, even past the limit. */
+  cited: Row[];
   goals: Row[];
 }
 interface Report {
@@ -149,7 +155,10 @@ function Bars({
   );
 }
 
-/** Messages per day as columns, with a tooltip breaking the day down. */
+/** Messages per day as columns over a light grid, a date under every few
+ * columns (every one in a week), and a tooltip beside the hovered column,
+ * kept inside the chart. */
+const TIP_W = 200;
 function Activity({
   data,
   x,
@@ -160,6 +169,8 @@ function Activity({
   lang: Lang;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [width, setWidth] = useState(0);
+  const plot = useRef<HTMLDivElement>(null);
   const days = daysBetween(data.from, data.to);
   const per = days.map((day) => {
     const msgs = data.messages.filter((m) => m.day === day);
@@ -173,76 +184,130 @@ function Activity({
       calls: ev('voice_call') + ev('voice_resume'),
     };
   });
-  const max = Math.max(1, ...per.map((p) => p.total));
+  // A round top for the scale, so the grid reads in whole numbers.
+  const peak = Math.max(...per.map((p) => p.total));
+  const top = peak <= 4 ? 4 : Math.ceil(peak / 4) * 4;
+  const n = days.length;
+  const step = n <= 7 ? 1 : Math.ceil(n / 10);
+  const short = (day: string) =>
+    new Intl.DateTimeFormat(lang, {
+      timeZone: 'UTC',
+      ...(n <= 7
+        ? { weekday: 'short', day: 'numeric' }
+        : { day: 'numeric', month: 'short' }),
+    }).format(new Date(`${day}T12:00:00Z`));
+  const show = (i: number) => {
+    setWidth(plot.current?.clientWidth ?? 0);
+    setHover(i);
+  };
   const h = hover === null ? null : per[hover];
-  const ticks = [0, Math.floor(days.length / 2), days.length - 1];
+  // Beside the column: to its right, or its left near the right edge.
+  const cx = hover === null ? 0 : ((hover + 0.5) / n) * width;
+  const left =
+    cx + 12 + TIP_W <= width ? cx + 12 : Math.max(0, cx - 12 - TIP_W);
+  const cols = { gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` };
   return (
-    <div className="relative" onMouseLeave={() => setHover(null)}>
-      <div className="border-line2 flex h-40 items-end gap-[2px] border-b">
-        {per.map((p, i) => (
-          <button
-            key={p.day}
-            type="button"
-            aria-label={`${fmtDay(p.day, lang)}: ${p.total}`}
-            onMouseEnter={() => setHover(i)}
-            onFocus={() => setHover(i)}
-            onBlur={() => setHover(null)}
-            className="flex h-full min-w-0 flex-1 cursor-default items-end border-0 bg-transparent p-0"
+    <div className="grid grid-cols-[auto_1fr] gap-x-2">
+      {/* Scale */}
+      <div
+        className={`${mono} text-muted flex h-44 flex-col justify-between text-right text-[10px] leading-none`}
+        aria-hidden="true"
+      >
+        {[top, top / 2, 0].map((v) => (
+          <span
+            key={v}
+            className="-translate-y-1/2 first:translate-y-0 last:translate-y-0"
           >
-            <span
-              className={`block w-full rounded-t-[4px] ${hover === i ? 'bg-ink' : 'bg-accent'}`}
-              style={{
-                height: p.total ? `${Math.max(3, (p.total / max) * 100)}%` : 0,
-              }}
-            />
-          </button>
+            {v}
+          </span>
         ))}
       </div>
       <div
-        className={`${mono} text-muted mt-1.5 flex justify-between text-[10px]`}
+        ref={plot}
+        className="relative h-44"
+        onMouseLeave={() => setHover(null)}
       >
-        {ticks.map((t) => (
-          <span key={t}>{fmtDay(days[t], lang)}</span>
+        {/* Grid: top, middle and the baseline. */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+          <span className="border-line block border-t" />
+          <span className="border-line block border-t border-dashed" />
+          <span className="border-line2 block border-t" />
+        </div>
+        <div className="absolute inset-0 grid gap-[2px]" style={cols}>
+          {per.map((p, i) => (
+            <button
+              key={p.day}
+              type="button"
+              aria-label={`${fmtDay(p.day, lang, true)}: ${p.total} ${x.kpi.messages}`}
+              onMouseEnter={() => show(i)}
+              onFocus={() => show(i)}
+              onBlur={() => setHover(null)}
+              className={`flex h-full min-w-0 cursor-default items-end border-0 p-0 ${hover === i ? 'bg-chip' : 'bg-transparent'}`}
+            >
+              <span
+                className={`block w-full rounded-t-[4px] ${hover === i ? 'bg-ink' : 'bg-accent'}`}
+                style={{
+                  height: p.total
+                    ? `${Math.max(2, (p.total / top) * 100)}%`
+                    : 0,
+                }}
+              />
+            </button>
+          ))}
+        </div>
+        {h && (
+          <div
+            role="status"
+            className="border-line2 bg-bg text-body pointer-events-none absolute top-1 z-10 border p-2.5 text-[12px] shadow-lg"
+            style={{ left, width: TIP_W }}
+          >
+            <div className="text-ink mb-1.5 font-semibold first-letter:uppercase">
+              {fmtDay(h.day, lang, true)}
+            </div>
+            <div className="flex justify-between gap-4">
+              <span>{x.kpi.messages}</span>
+              <span className={`${mono} text-ink`}>{h.total}</span>
+            </div>
+            {h.by.map((b) => (
+              <div
+                key={b.source}
+                className="text-muted flex justify-between gap-4 pl-2"
+              >
+                <span>
+                  {x.bySource[b.source as keyof AdminCopy['bySource']] ??
+                    b.source}
+                </span>
+                <span className={mono}>{b.n}</span>
+              </div>
+            ))}
+            <div className="flex justify-between gap-4">
+              <span>{x.kpi.sessions}</span>
+              <span className={`${mono} text-ink`}>{h.sessions}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span>{x.kpi.calls}</span>
+              <span className={`${mono} text-ink`}>{h.calls}</span>
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Dates under their columns, counted from the last one. */}
+      <span />
+      <div
+        className={`${mono} text-muted mt-1.5 grid gap-[2px] text-[10px]`}
+        style={cols}
+        aria-hidden="true"
+      >
+        {days.map((d, i) => (
+          <span key={d} className="relative h-3.5">
+            {(n - 1 - i) % step === 0 && (
+              <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap">
+                {short(d)}
+              </span>
+            )}
+          </span>
         ))}
       </div>
-      {h && (
-        <div
-          role="status"
-          className="border-line2 bg-bg text-body pointer-events-none absolute top-0 z-10 min-w-44 border p-2.5 text-[12px] shadow-lg"
-          style={{
-            left: `${((hover ?? 0) / Math.max(1, per.length - 1)) * 100}%`,
-            transform: `translateX(-${((hover ?? 0) / Math.max(1, per.length - 1)) * 100}%)`,
-          }}
-        >
-          <div className="text-ink mb-1 font-semibold">
-            {fmtDay(h.day, lang, true)}
-          </div>
-          <div className="flex justify-between gap-4">
-            <span>{x.kpi.messages}</span>
-            <span className={`${mono} text-ink`}>{h.total}</span>
-          </div>
-          {h.by.map((b) => (
-            <div
-              key={b.source}
-              className="text-muted flex justify-between gap-4 pl-2"
-            >
-              <span>
-                {x.bySource[b.source as keyof AdminCopy['bySource']] ??
-                  b.source}
-              </span>
-              <span className={mono}>{b.n}</span>
-            </div>
-          ))}
-          <div className="flex justify-between gap-4">
-            <span>{x.kpi.sessions}</span>
-            <span className={`${mono} text-ink`}>{h.sessions}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span>{x.kpi.calls}</span>
-            <span className={`${mono} text-ink`}>{h.calls}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -324,7 +389,13 @@ function DayView({
       .finally(() => setBusy(false));
   };
   const byId = useMemo(
-    () => new Map((detail?.messages ?? []).map((m) => [num(m.id), m])),
+    () =>
+      new Map(
+        [...(detail?.cited ?? []), ...(detail?.messages ?? [])].map((m) => [
+          num(m.id),
+          m,
+        ]),
+      ),
     [detail],
   );
   const convs = useMemo(() => {
@@ -476,7 +547,13 @@ function DayView({
 
           <div>
             <span className={label}>
-              {x.messagesDay} ({detail.messages.length})
+              {x.messagesDay} (
+              {detail.total > detail.messages.length
+                ? x.shown
+                    .replace('{n}', String(detail.messages.length))
+                    .replace('{total}', String(detail.total))
+                : detail.total}
+              )
             </span>
             <div className="mt-2 flex flex-col gap-3">
               {convs.map(([k, msgs], n) => {
@@ -584,7 +661,7 @@ export default function AdminApp() {
     ? [
         [x.kpi.sessions, sum(data.activity, (a) => a.kind === 'chat_session')],
         [x.kpi.messages, sum(data.messages, () => true)],
-        [x.kpi.conversations, sum(data.messages, () => true, 'convs')],
+        [x.kpi.conversations, data.conversations],
         [
           x.kpi.calls,
           sum(

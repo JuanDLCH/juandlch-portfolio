@@ -90,7 +90,7 @@ async function overview(db: D1Database, days: number) {
   const [fromAt] = windowOf(from);
   // Bogotá day of a UTC timestamp, in SQL.
   const local = "date(at, '-5 hours')";
-  const [reports, activity, msgs, category, intent, goal, topic] =
+  const [reports, activity, msgs, convs, category, intent, goal, topic] =
     await db.batch<Record<string, string | number | null>>([
       db
         .prepare(
@@ -105,6 +105,12 @@ async function overview(db: D1Database, days: number) {
       db
         .prepare(
           `SELECT ${local} AS day, source, count(*) AS n, count(DISTINCT conv) AS convs FROM messages WHERE at >= ? GROUP BY 1, 2`,
+        )
+        .bind(fromAt),
+      // Conversations over the whole range: one spanning midnight counts once.
+      db
+        .prepare(
+          'SELECT count(*) AS n FROM (SELECT DISTINCT source, conv FROM messages WHERE at >= ?)',
         )
         .bind(fromAt),
       ...['category', 'intent'].map((c) =>
@@ -131,6 +137,7 @@ async function overview(db: D1Database, days: number) {
     reports: reports.results,
     activity: activity.results,
     messages: msgs.results,
+    conversations: Number(convs.results[0]?.n ?? 0),
     category: category.results,
     intent: intent.results,
     goal: goal.results,
@@ -138,10 +145,29 @@ async function overview(db: D1Database, days: number) {
   };
 }
 
-/** A day's report and every message with its labels. */
+/** Message ids a stored report cites. */
+function citedIds(raw: unknown): number[] {
+  try {
+    const doc = JSON.parse(String(raw ?? '{}')) as {
+      interests?: { message_ids?: number[] }[];
+      goals?: { message_ids?: number[] }[];
+    };
+    return [...(doc.interests ?? []), ...(doc.goals ?? [])].flatMap(
+      (i) => i.message_ids ?? [],
+    );
+  } catch {
+    return [];
+  }
+}
+
+/** Messages listed per day; the report's citations are fetched apart. */
+const DAY_LIMIT = 1000;
+
+/** A day's report, its messages with their labels (up to DAY_LIMIT, with
+ * the total), and every message the report cites, wherever it falls. */
 async function dayDetail(db: D1Database, day: string) {
   const [from, to] = windowOf(day);
-  const [report, msgs, goals] = await db.batch<
+  const [report, msgs, goals, total] = await db.batch<
     Record<string, string | number | null>
   >([
     db
@@ -154,7 +180,7 @@ async function dayDetail(db: D1Database, day: string) {
         `SELECT m.id, m.at, m.source, m.conv, m.text, l.category, l.intent,
            (SELECT group_concat(topic, '|') FROM message_topics t WHERE t.message_id = m.id) AS topics
          FROM messages m LEFT JOIN message_labels l ON l.message_id = m.id
-         WHERE m.at >= ? AND m.at < ? ORDER BY m.at, m.id LIMIT 1000`,
+         WHERE m.at >= ? AND m.at < ? ORDER BY m.at, m.id LIMIT ${DAY_LIMIT}`,
       )
       .bind(from, to),
     db
@@ -162,10 +188,27 @@ async function dayDetail(db: D1Database, day: string) {
         'SELECT source, conv, goal, evidence FROM conversation_goals WHERE day = ?',
       )
       .bind(day),
+    db
+      .prepare('SELECT count(*) AS n FROM messages WHERE at >= ? AND at < ?')
+      .bind(from, to),
   ]);
+  const row = report.results[0] ?? null;
+  const ids = citedIds(row?.report);
+  const cited = ids.length
+    ? (
+        await db
+          .prepare(
+            'SELECT id, text FROM messages WHERE id IN (SELECT value FROM json_each(?))',
+          )
+          .bind(JSON.stringify([...new Set(ids)]))
+          .all<Record<string, string | number | null>>()
+      ).results
+    : [];
   return {
-    report: report.results[0] ?? null,
+    report: row,
     messages: msgs.results,
+    total: Number(total.results[0]?.n ?? 0),
+    cited,
     goals: goals.results,
   };
 }
