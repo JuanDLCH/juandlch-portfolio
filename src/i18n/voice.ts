@@ -67,7 +67,7 @@ const EN = {
   // (wrangler.jsonc) and the 30 min a resume is kept (worker/call.ts).
   limits: '1 call a day · up to 5 min · pause and resume within 30 min',
   // Under the limits (worker/metrics.ts keeps what the visitor says).
-  stored: 'What you ask is stored anonymously to improve this demo',
+  stored: 'What you say is stored anonymously to improve this demo',
   resume: 'Resume',
   startOver: 'Start over',
   resumedNote: 'call resumed · left',
@@ -142,7 +142,7 @@ const ES: typeof EN = {
     network: 'Sin conexión. Revisa tu red y vuelve a intentarlo.',
   },
   limits: '1 llamada al día · hasta 5 min · pausa y reanuda en 30 min',
-  stored: 'Lo que preguntas se guarda de forma anónima para mejorar esta demo',
+  stored: 'Lo que dices se guarda de forma anónima para mejorar esta demo',
   resume: 'Reanudar',
   startOver: 'Empezar de cero',
   resumedNote: 'llamada reanudada · quedan',

@@ -6,7 +6,7 @@ export interface Env {
   ASSETS?: Fetcher;
   QUOTA: DurableObjectNamespace<Quota>;
   CALL: DurableObjectNamespace<VoiceCall>;
-  /** Lab metrics and questions (worker/metrics.ts). Optional: without it
+  /** Lab metrics and visitor messages (worker/metrics.ts). Optional: without it
    * nothing is recorded. */
   LAB_DB?: D1Database;
   // Secrets (wrangler secret put / .dev.vars).

@@ -1,5 +1,5 @@
 // Lab metrics in D1 (LAB_DB): usage counters for the chat and voice demos and
-// what visitors ask the profile agents ("Meet my AI" in the chat and the CV
+// every message visitors send the profile agents ("Meet my AI" in the chat and the CV
 // chat, Sophie in the voice lab), for scripts/analyze-questions.mjs. No IPs or
 // IP hashes are stored, and emails and phone numbers are masked. Rows older
 // than RETAIN_DAYS are deleted by the daily cron (prune). Writing never fails
@@ -25,7 +25,7 @@ export interface LabEvent {
   n?: number;
 }
 
-export interface Question {
+export interface Message {
   source: 'chat' | 'cv' | 'voice';
   /** Conversation (chat) or call thread (voice), random, to keep context. */
   conv: string;
@@ -41,8 +41,8 @@ const MAX_TEXT = 4000;
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, at TEXT NOT NULL, kind TEXT NOT NULL, subject TEXT, lang TEXT, detail TEXT, n REAL)`,
   `CREATE INDEX IF NOT EXISTS events_at ON events (at)`,
-  `CREATE TABLE IF NOT EXISTS questions (id INTEGER PRIMARY KEY, at TEXT NOT NULL, source TEXT NOT NULL, conv TEXT NOT NULL, lang TEXT, text TEXT NOT NULL)`,
-  `CREATE INDEX IF NOT EXISTS questions_at ON questions (at)`,
+  `CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, at TEXT NOT NULL, source TEXT NOT NULL, conv TEXT NOT NULL, lang TEXT, text TEXT NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS messages_at ON messages (at)`,
 ];
 let ready: Promise<unknown> | null = null;
 const schema = (db: D1Database) => {
@@ -92,13 +92,13 @@ export const redact = (text: string) =>
       m.replace(/\D/g, '').length >= 9 ? '[number]' : m,
     );
 
-export const saveQuestion = (env: Env, q: Question) => {
+export const saveMessage = (env: Env, q: Message) => {
   const text = redact(q.text.trim()).slice(0, MAX_TEXT);
   if (!text) return Promise.resolve();
-  return write(env, 'question', (db) =>
+  return write(env, 'message', (db) =>
     db
       .prepare(
-        'INSERT INTO questions (at, source, conv, lang, text) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO messages (at, source, conv, lang, text) VALUES (?, ?, ?, ?, ?)',
       )
       .bind(now(), q.source, q.conv.slice(0, 64), q.lang ?? null, text)
       .run(),
@@ -111,7 +111,7 @@ export const prune = (env: Env) => {
   return write(env, 'prune', (db) =>
     db.batch([
       db.prepare('DELETE FROM events WHERE at < ?').bind(before),
-      db.prepare('DELETE FROM questions WHERE at < ?').bind(before),
+      db.prepare('DELETE FROM messages WHERE at < ?').bind(before),
     ]),
   );
 };

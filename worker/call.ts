@@ -10,7 +10,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { RealtimeSessionCreateRequest } from 'openai/resources/realtime/realtime';
 import type { Env } from './env';
-import { saveQuestion, track } from './metrics';
+import { saveMessage, track } from './metrics';
 import { hangup, sideband } from './openai';
 import { realtimeUsd, type RealtimeUsage } from './prices';
 
@@ -23,7 +23,7 @@ interface Call {
   /** Seconds of the budget used before this call (by the calls it resumes). */
   used: number;
   startedAt: number;
-  /** The first call of a resumed chain, to keep its questions together. */
+  /** The first call of a resumed chain, to keep its messages together. */
   thread?: string;
   lang?: string;
 }
@@ -58,7 +58,7 @@ export class VoiceCall extends DurableObject<Env> {
   private responses = 0;
   /** What the call has cost so far (USD), from each response's usage. */
   private spent = 0;
-  /** Thread and language of the call, for the questions it records. */
+  /** Thread and language of the call, for the messages it records. */
   private thread = '';
   private lang = '';
   /** The hangup in progress, so overlapping ends run it once. */
@@ -138,14 +138,14 @@ export class VoiceCall extends DurableObject<Env> {
       fingerprint(event.session) !== this.expected
     )
       void this.finish('session changed');
-    // What the visitor said, for the question analysis (worker/metrics.ts).
+    // What the visitor said, for the analysis (worker/metrics.ts).
     if (
       event.type === 'conversation.item.input_audio_transcription.completed' &&
       typeof event.transcript === 'string' &&
       this.thread
     )
       this.ctx.waitUntil(
-        saveQuestion(this.env, {
+        saveMessage(this.env, {
           source: 'voice',
           conv: this.thread,
           lang: this.lang || undefined,

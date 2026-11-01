@@ -1,7 +1,7 @@
 // What visitors ask the profile agents, categorized in batch. Reads the
-// questions and usage events the Worker keeps in D1 (worker/metrics.ts),
+// visitor messages and usage events the Worker keeps in D1 (worker/metrics.ts),
 // classifies each conversation with the OpenAI Batch API (half price; a run
-// over ~1k questions costs cents) and writes a Markdown report and a CSV to
+// over ~1k messages costs cents) and writes a Markdown report and a CSV to
 // analysis/ (gitignored: visitor text stays out of the repo).
 //   node scripts/analyze-questions.mjs [--since 2026-11-01] [--limit 20]
 //     [--dry-run] [--model gpt-6-luna] [--batch batch_…]
@@ -78,8 +78,8 @@ if (!dbId) throw new Error('database_id not found in wrangler.jsonc');
 const query = async (sql, params = []) =>
   (await cf(`/${dbId}/query`, { sql, params }))[0].results;
 
-const questions = await query(
-  'SELECT at, source, conv, lang, text FROM questions WHERE at >= ? ORDER BY conv, at',
+const messages = await query(
+  'SELECT at, source, conv, lang, text FROM messages WHERE at >= ? ORDER BY conv, at',
   [since],
 );
 let events = await query(
@@ -88,16 +88,16 @@ let events = await query(
   [since],
 );
 
-/** Questions grouped by conversation, oldest first. */
+/** Messages grouped by conversation, oldest first. */
 let convs = Object.values(
-  Object.groupBy(questions, (q) => `${q.source}:${q.conv}`),
+  Object.groupBy(messages, (q) => `${q.source}:${q.conv}`),
 );
 if (args.limit) convs = convs.slice(0, Number(args.limit));
 const stamp = new Date().toISOString().slice(0, 10);
 const dir = new URL('../analysis/', import.meta.url);
 await mkdir(dir, { recursive: true });
 console.log(
-  `${questions.length} questions in ${convs.length} conversations, ${events.length} event rows since ${since}`,
+  `${messages.length} messages in ${convs.length} conversations, ${events.length} event rows since ${since}`,
 );
 
 if (args['dry-run']) {
@@ -119,7 +119,7 @@ const oa = async (path, init = {}) => {
   return res;
 };
 
-const SYSTEM = `You classify what visitors asked an AI assistant that answers questions about Juan Diego Londoño (an AI engineer) and his CV, on his portfolio site. You get one conversation: the visitor's messages, in order (the assistant's answers are not included). For EACH message, return its category, a short normalized version of the question in English (max 12 words, generic: no names of the visitor or personal data), and its language (ISO 639-1). Greetings or "thanks" go in "offtopic". Use "other" only when nothing fits, with a suggested label.
+const SYSTEM = `You classify what visitors asked an AI assistant that answers questions about Juan Diego Londoño (an AI engineer) and his CV, on his portfolio site. You get one conversation: the visitor's messages, in order (the assistant's answers are not included). For EACH message, return its category, a short normalized version of the question in English (max 12 words, generic: no names of the visitor or personal data), and its language (ISO 639-1). Every message is included, not only questions: greetings, "thanks", answers to the assistant and tests go in "offtopic" unless they ask about him (follow-ups take the category of what they follow). Use "other" only when nothing fits, with a suggested label.
 Categories:
 ${Object.entries(CATEGORIES)
   .map(([k, v]) => `- ${k}: ${v}`)
@@ -187,7 +187,7 @@ if (!batchId) {
   form.set(
     'file',
     new Blob([lines.join('\n')], { type: 'application/jsonl' }),
-    'questions.jsonl',
+    'messages.jsonl',
   );
   const file = await (
     await oa('/files', { method: 'POST', body: form })
@@ -267,9 +267,9 @@ const count = (xs, by) =>
     .sort((a, b) => b[1] - a[1]);
 const pct = (n) => `${Math.round((n / rows.length) * 100)}%`;
 const md = [
-  `# Lab questions since ${since}`,
+  `# Lab messages since ${since}`,
   '',
-  `${rows.length} questions in ${convs.length} conversations (${count(
+  `${rows.length} messages in ${convs.length} conversations (${count(
     rows,
     (r) => r.source,
   )
@@ -288,7 +288,7 @@ const md = [
   '',
   '## Categories',
   '',
-  '| category | questions | share |',
+  '| category | messages | share |',
   '| --- | ---: | ---: |',
   ...count(rows, (r) => r.category).map(
     ([k, n]) => `| ${k} | ${n} | ${pct(n)} |`,
