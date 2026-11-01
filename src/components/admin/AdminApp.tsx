@@ -965,7 +965,7 @@ function TrafficView({
             map={map}
             values={v.countries.map((c) => ({
               k: String(c.k ?? ''),
-              n: num(c.visits) || num(c.views),
+              n: num(c.visits),
             }))}
             unit={x.visits.toLowerCase()}
             countryName={countryName}
