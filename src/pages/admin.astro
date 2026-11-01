@@ -1,9 +1,12 @@
 ---
 // Insights dashboard. Cloudflare Access guards /admin on juandlch.dev and the
 // Worker checks its JWT on every /admin/api request (worker/admin.ts); this
-// page itself holds no data.
+// page itself holds no data. The world map is drawn here, at build time.
 import AdminApp from '../components/admin/AdminApp';
 import Layout from '../layouts/Layout.astro';
+import { worldMap } from '../lab/insights/world';
+
+const map = worldMap();
 ---
 
 <Layout
@@ -14,5 +17,5 @@ import Layout from '../layouts/Layout.astro';
   description="Private dashboard."
   noindex
 >
-  <AdminApp client:only="react" />
+  <AdminApp client:only="react" map={map} />
 </Layout>

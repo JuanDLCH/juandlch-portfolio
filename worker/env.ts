@@ -43,6 +43,12 @@ export interface Env {
    * AUD tag (worker/admin.ts checks its JWT). */
   ACCESS_TEAM: string;
   ACCESS_AUD: string;
+  /** Web Analytics for the dashboard's traffic (worker/admin.ts): the
+   * account and the site's tag (vars), and a token with Account Analytics
+   * Read (secret; without it the traffic block is hidden). */
+  CF_ACCOUNT_ID: string;
+  CF_SITE_TAG: string;
+  CF_ANALYTICS_TOKEN?: string;
   /** "1" (dev only, on localhost): the dashboard API without Access. */
   ADMIN_DEV?: string;
   /** "1": fake OpenAI (no calls, no cost), to test limits and cutoffs. */
