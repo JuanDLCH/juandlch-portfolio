@@ -63,6 +63,7 @@ No test suite.
 
 - AWS icons are official SVGs in `src/assets/aws/` (sourced from the JuanDLCH profile repo; `sns.svg` from the design). `Stack.astro` resolves them via `import.meta.glob` to hashed URLs. Run `pnpm optimize:svg` (SVGO, `svgo.config.mjs`) after adding any SVG.
 - `vite.build.assetsInlineLimit` is 0 on purpose: otherwise small images are inlined as `data:` URIs and `loading="lazy"` does nothing. Below-the-fold images must use `loading="lazy" decoding="async"` with explicit width/height.
+- **Link previews:** `Layout.astro` emits Open Graph / Twitter card tags with absolute URLs from `site` in `astro.config.mjs` (the production origin: update it with a custom domain). The image is `src/assets/og.png` (1200×630), rendered from HTML by `node scripts/og-image.mjs` (headless Chrome): regenerate it when the headline, role or photo change. The landing's preview title and description are `shareTitle`/`shareDesc` in `content.ts` (crawlers read the English ones); other pages use their English title and `description`.
 - Raster images (certification badges, hero photo) go in `src/assets/` and render with Astro's `<Image>`/`<Picture>` (sharp, webp/avif); never in `public/`.
 
 ## Pending placeholders

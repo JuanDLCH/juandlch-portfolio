@@ -30,7 +30,8 @@ const {
 
 <Layout
   title={{ en: 'JuanDLCH — Portfolio', es: 'JuanDLCH — Portafolio' }}
-  description={pick(x.heroSub, 'en')}
+  description={pick(x.shareDesc, 'en')}
+  shareTitle={pick(x.shareTitle, 'en')}
 >
   <Header x={x} />
   <div class="mx-auto max-w-[1200px] px-[clamp(16px,4vw,48px)]">
