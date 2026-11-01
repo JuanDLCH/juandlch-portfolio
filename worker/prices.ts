@@ -25,15 +25,14 @@ export function chatUsd(model: string, u: TextUsage) {
   );
 }
 
-/** The most a chat request can cost: its whole output budget, plus its input
- * estimated from the body (about 4 characters a token; base64 images make it
- * an overestimate, which is the safe side). */
-export function chatWorstUsd(model: string, bodyChars: number, maxOut: number) {
+/** The most a chat request can cost: its whole output budget, plus a token
+ * for every UTF-8 byte of the body (byte-level tokenizers never make more
+ * tokens than bytes, and inline images and PDFs tokenize to far fewer than
+ * their base64), up to the context window. Remote content is refused before. */
+export function chatWorstUsd(model: string, bodyBytes: number, maxOut: number) {
   const p = MODELS[model as ModelId];
   if (!p) return 1;
-  return (
-    (Math.min(bodyChars / 4, 400_000) * p.inPerM + maxOut * p.outPerM) / 1e6
-  );
+  return (Math.min(bodyBytes, 400_000) * p.inPerM + maxOut * p.outPerM) / 1e6;
 }
 
 const REALTIME: Record<

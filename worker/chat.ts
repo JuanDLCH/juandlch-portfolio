@@ -134,6 +134,21 @@ function mockStream(model: string) {
   );
 }
 
+/** Whether anything in the input (tool outputs included) references
+ * content by URL or file id instead of carrying it inline. */
+function remote(v: unknown): boolean {
+  if (Array.isArray(v)) return v.some(remote);
+  if (!v || typeof v !== 'object') return false;
+  const o = v as Record<string, unknown>;
+  if ('file_id' in o || 'file_url' in o) return true;
+  if (
+    'image_url' in o &&
+    !(typeof o.image_url === 'string' && o.image_url.startsWith('data:'))
+  )
+    return true;
+  return Object.values(o).some(remote);
+}
+
 export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   const ip = await session(req, env);
   if (!ip) return refuse('session', 401);
@@ -153,6 +168,9 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   }
   if (!Array.isArray(body.input) || !body.input.length)
     return json({ error: 'bad_request' }, 400);
+  // Images and files only inline: what a URL or a file id points to can't be
+  // priced from the body, so it could cost past the reservation.
+  if (remote(body.input)) return json({ error: 'remote_content' }, 400);
   // Only the case's own function tools.
   const tools = Array.isArray(body.tools) ? body.tools : [];
   const allowed = new Set(c.clientTools ?? []);
@@ -180,7 +198,11 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   // the ones after it in the turn carry tool results.
   const last = body.input[body.input.length - 1] as { role?: unknown };
   const message = last?.role === 'user';
-  const worst = chatWorstUsd(model, pinned.length, c.maxTokens);
+  const worst = chatWorstUsd(
+    model,
+    new TextEncoder().encode(pinned).length,
+    c.maxTokens,
+  );
   const quota = quotaOf(env);
   const r = await quota.chatReserve(ip, message, worst, limits(env));
   if ('error' in r) return limited(r.error);
