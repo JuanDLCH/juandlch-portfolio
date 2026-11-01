@@ -843,9 +843,7 @@ export default function VoiceApp() {
                 type="button"
                 data-voice-start
                 onClick={
-                  live
-                    ? () => hangUp('user')
-                    : () => void start(ended ? resumable : null)
+                  live ? () => hangUp('user') : () => void start(resumable)
                 }
                 disabled={phase.at === 'connecting'}
                 className={`inline-flex h-11 min-w-[176px] cursor-pointer items-center justify-center gap-2 border px-5 text-sm font-semibold transition-[filter,border-color] disabled:cursor-wait disabled:opacity-70 ${live ? 'border-line2 text-ink hover:border-accent bg-transparent' : 'border-accent bg-accent text-on-accent hover:brightness-110'}`}
