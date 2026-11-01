@@ -156,14 +156,17 @@ async function overview(db: D1Database, days: number) {
            WHERE kind IN ('chat_cost', 'voice_cost') AND at >= ? GROUP BY 1, 2`,
       )
       .bind(fromAt),
-    // Where demo users are: chat conversations plus voice calls.
+    // Where demo users are: chat conversations plus voice calls. Older
+    // messages have no conversation id and are left out, not guessed.
     db
       .prepare(
-        `SELECT country AS k,
-             count(DISTINCT CASE WHEN kind = 'chat_message' THEN coalesce(detail, id) END)
+        `SELECT k, n FROM (
+           SELECT country AS k,
+             count(DISTINCT CASE WHEN kind = 'chat_message' THEN detail END)
                + sum(kind = 'voice_call') AS n
            FROM events WHERE kind IN ('chat_message', 'voice_call') AND at >= ?
-           GROUP BY 1 ORDER BY 2 DESC LIMIT 15`,
+           GROUP BY 1
+         ) WHERE n > 0 ORDER BY n DESC LIMIT 15`,
       )
       .bind(fromAt),
   ]);
