@@ -25,7 +25,7 @@
   "vars": {
     // The production origin(s), comma-separated (dev: .dev.vars). Empty, every
     // session is refused.
-    "SITE_ORIGIN": "",
+    "SITE_ORIGIN": "https://juandlch-portfolio.juandiego0329.workers.dev",
     "VOICE_MODEL": "gpt-realtime-2.1-mini",
     "VOICE_NAME": "coral",
     "VOICE_REASONING": "",
