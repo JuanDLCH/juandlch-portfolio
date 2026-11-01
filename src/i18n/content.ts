@@ -18,7 +18,7 @@ const EN = {
   navAbout: 'About',
   navContact: 'Contact',
   navCv: 'My CV ↓',
-  talkCv: 'Chat with my CV',
+  talkCv: 'Speak to my CV',
   bookCall: 'Book a call with me',
   langGroup: 'Language',
   photoAlt: 'Photo of Juan Diego Londoño',
@@ -70,21 +70,22 @@ const EN = {
   labA: 'Don’t take my word for it. ',
   labB: 'Talk to it.',
   labSub:
-    'The chat runs live on your own API key; the voice lab is on its way. Keys stay in your browser tab — never stored, never logged.',
+    'Both run live, no key needed: talk to my voice agent or try the chat with your own files. Each visitor gets a daily allowance — plenty to see how they work.',
   lab1Tag: 'Lab 01 · Flagship',
   lab1Body:
-    'Full-duplex voice with interruptions, captions and a live latency panel.',
+    'Talk to Sophie, a realtime voice agent that knows my work. Interrupt her anytime; captions as she speaks.',
   lab2Tag: 'Lab 02 · Agents',
   lab2Body:
     'Text, images, documents and audio, with tool calls visible as they run.',
   labOpen: 'Open the demo',
   labLive: 'Live demo',
-  labSoon: 'Coming soon',
+  labFree: 'No key needed',
   pvSim: 'Simulated preview',
   pvYou: 'You',
-  pvAgent: 'Agent',
-  voiceUser: 'Hi — can I get two combos for delivery?',
-  voiceAgent: 'Sure. Which combos would you like, and what’s the address?',
+  pvAgent: 'Sophie',
+  voiceUser: 'Has he built voice agents?',
+  voiceAgent:
+    'Yes. He worked on realtime voice agents that take restaurant orders…',
   chatFile: 'menu.pdf',
   chatUser: 'Which of these dishes are vegetarian?',
   toolResult: '3 matches',
@@ -119,6 +120,12 @@ const EN = {
   toLight: 'Switch to light mode',
   toDark: 'Switch to dark mode',
   backToTop: 'Back to top',
+  sophieLabel: 'Talk to Sophie, my voice agent: ask her anything about me',
+  sophieEyebrow: 'Sophie · voice agent',
+  sophieCta: 'Talk to her',
+  // Lines Sophie types out in her bubble, one at a time ("|" separates them).
+  sophieLines:
+    'Ask me anything about Juan Diego. Out loud.|Hiring an AI engineer? I can tell you if he fits.|Psst… I know his whole CV by heart.|Which clouds does he use? Just ask me.|Curious what he builds? I’ll tell you in 5 minutes.',
 };
 
 const ES: typeof EN = {
@@ -132,7 +139,7 @@ const ES: typeof EN = {
   navAbout: 'Sobre mí',
   navContact: 'Contacto',
   navCv: 'Mi CV ↓',
-  talkCv: 'Chatea con mi CV',
+  talkCv: 'Habla con mi CV',
   bookCall: 'Agenda una llamada conmigo',
   langGroup: 'Idioma',
   photoAlt: 'Foto de Juan Diego Londoño',
@@ -184,21 +191,22 @@ const ES: typeof EN = {
   labA: 'No me creas a mí. ',
   labB: 'Háblale.',
   labSub:
-    'El chat funciona en vivo con tu propia API key; el laboratorio de voz viene en camino. Las llaves se quedan en tu pestaña — nunca se guardan ni se registran.',
+    'Los dos funcionan en vivo, sin API key: habla con mi agente de voz o prueba el chat con tus propios archivos. Cada visitante tiene un cupo diario — de sobra para ver cómo funcionan.',
   lab1Tag: 'Lab 01 · Principal',
   lab1Body:
-    'Voz bidireccional con interrupciones, subtítulos y un panel de latencia en vivo.',
+    'Habla con Sophie, un agente de voz en tiempo real que conoce mi trabajo. Interrúmpela cuando quieras; subtítulos mientras habla.',
   lab2Tag: 'Lab 02 · Agentes',
   lab2Body:
     'Texto, imágenes, documentos y audio, con las llamadas a herramientas visibles mientras ocurren.',
   labOpen: 'Abrir la demo',
   labLive: 'Demo en vivo',
-  labSoon: 'Próximamente',
+  labFree: 'Sin API key',
   pvSim: 'Vista simulada',
   pvYou: 'Tú',
-  pvAgent: 'Agente',
-  voiceUser: 'Hola — ¿me envías dos combos a domicilio?',
-  voiceAgent: 'Claro. ¿Qué combos quieres y cuál es la dirección?',
+  pvAgent: 'Sophie',
+  voiceUser: '¿Ha construido agentes de voz?',
+  voiceAgent:
+    'Sí. Trabajó en agentes de voz en tiempo real que toman pedidos de restaurantes…',
   chatFile: 'menu.pdf',
   chatUser: '¿Cuáles de estos platos son vegetarianos?',
   toolResult: '3 resultados',
@@ -233,6 +241,12 @@ const ES: typeof EN = {
   toLight: 'Cambiar a modo claro',
   toDark: 'Cambiar a modo oscuro',
   backToTop: 'Volver arriba',
+  sophieLabel:
+    'Habla con Sophie, mi agente de voz: pregúntale lo que quieras sobre mí',
+  sophieEyebrow: 'Sophie · agente de voz',
+  sophieCta: 'Habla con ella',
+  sophieLines:
+    'Pregúntame lo que quieras sobre Juan Diego. En voz alta.|¿Buscas un AI engineer? Te digo si encaja.|Psst… me sé su CV de memoria.|¿Qué nubes usa? Solo pregúntame.|¿Qué construye? Te lo cuento en 5 minutos.',
 };
 
 function build(isEs: boolean) {

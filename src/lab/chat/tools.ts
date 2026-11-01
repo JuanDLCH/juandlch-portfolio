@@ -875,7 +875,7 @@ export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
 // `group` labels the tool card ("CV · Experience"); `source` is what the
 // model cites.
 const loadProfile = async () =>
-  (await import('./profile')).PROFILE.map((e) => ({
+  (await import('./profile')).buildProfile(location.origin).map((e) => ({
     ...e,
     group: e.group ?? e.source.label,
   }));

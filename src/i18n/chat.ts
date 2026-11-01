@@ -9,6 +9,10 @@ const EN = {
   homeLabel: 'Back to the portfolio',
   introBtn: 'About this demo',
   introTag: 'Live demo · your key',
+  introTagSite: 'Live demo',
+  introBodySite:
+    'A real agent grounded in my CV, case studies and portfolio, that cites its sources. It runs on my key, with a daily limit of 40 messages per visitor: plenty to try it. Want to see more? Book a call and I’ll show it to you live.',
+  introStart: 'Start chatting',
   introTitle: 'Chat with an AI that knows my work',
   introBody:
     'A real agent grounded in my CV, case studies and portfolio, that cites its sources. I don’t put my own key behind a public page, so it runs on yours. No key? Watch the recording or book a call and I’ll show it to you live.',
@@ -230,7 +234,12 @@ const EN = {
     tooLong:
       'That message is over 4,000 characters. Shorten it, or send the text as a PDF.',
     convLimit:
-      'This conversation reached 100 messages, the most it takes. Clear it to keep going.',
+      'This conversation reached 30 messages, the most it takes. Clear it to keep going.',
+    chatLimitIp:
+      'That’s today’s 40 messages on my key. Want to keep going? Book a call with Juan Diego, or talk to Sophie in the Voice Lab.',
+    chatLimitDay:
+      'The demo has run out of messages for today. Come back tomorrow, or book a call with Juan Diego and he’ll show it to you live.',
+    captcha: 'I couldn’t check that you’re not a bot. Try again.',
     imageUnreadable:
       'I couldn’t open that image: it may be damaged. Try another copy.',
     pdfPages:
@@ -260,6 +269,7 @@ const EN = {
     clear: 'Clear conversation',
     file: 'Choose another file',
     addDoc: 'Add a document',
+    book: 'Book a call',
   },
   switchTag: 'Example case',
   switchTitle: 'Switch case?',
@@ -279,6 +289,10 @@ const ES: typeof EN = {
   homeLabel: 'Volver al portafolio',
   introBtn: 'Sobre esta demo',
   introTag: 'Demo en vivo · tu llave',
+  introTagSite: 'Demo en vivo',
+  introBodySite:
+    'Un agente real que responde desde mi CV, mis casos de estudio y mi portafolio, citando sus fuentes. Corre con mi llave, con un límite diario de 40 mensajes por visitante: suficiente para probarlo. ¿Quieres ver más? Agenda una llamada y te lo muestro en vivo.',
+  introStart: 'Empezar a chatear',
   introTitle: 'Chatea con una IA que conoce mi trabajo',
   introBody:
     'Un agente real que responde desde mi CV, mis casos de estudio y mi portafolio, citando sus fuentes. No pongo mi propia llave detrás de una página pública, así que corre con la tuya. ¿Sin llave? Mira la grabación o agenda una llamada y te la muestro en vivo.',
@@ -502,7 +516,12 @@ const ES: typeof EN = {
     tooLong:
       'Ese mensaje tiene más de 4.000 caracteres. Acórtalo, o envía el texto como PDF.',
     convLimit:
-      'Esta conversación llegó a 100 mensajes, el máximo que admite. Bórrala para seguir.',
+      'Esta conversación llegó a 30 mensajes, el máximo que admite. Bórrala para seguir.',
+    chatLimitIp:
+      'Ya usaste los 40 mensajes de hoy con mi llave. ¿Quieres seguir? Agenda una llamada con Juan Diego o habla con Sophie en el Voice Lab.',
+    chatLimitDay:
+      'La demo se quedó sin mensajes por hoy. Vuelve mañana, o agenda una llamada con Juan Diego y te la muestra en vivo.',
+    captcha: 'No pude comprobar que no eres un bot. Inténtalo de nuevo.',
     imageUnreadable:
       'No pude abrir esa imagen: puede estar dañada. Prueba con otra copia.',
     pdfPages:
@@ -532,6 +551,7 @@ const ES: typeof EN = {
     clear: 'Borrar conversación',
     file: 'Elegir otro archivo',
     addDoc: 'Agregar un documento',
+    book: 'Agendar una llamada',
   },
   switchTag: 'Caso de ejemplo',
   switchTitle: '¿Cambiar de caso?',

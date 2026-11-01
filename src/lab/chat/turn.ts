@@ -22,7 +22,12 @@ export type TurnError =
   | 'unreadable'
   | 'api'
   | 'refusal'
-  | 'truncated';
+  | 'truncated'
+  // Site key (worker/chat.ts): the visitor's or the site's daily limit, or
+  // the bot check failed.
+  | 'chatLimitIp'
+  | 'chatLimitDay'
+  | 'captcha';
 
 /**
  * Runs one user turn to completion: streams text, runs client tools, follows

@@ -1,0 +1,15 @@
+# Copy to .dev.vars for `pnpm dev:api` (never commit .dev.vars).
+OPENAI_API_KEY=sk-...
+# Cloudflare's Turnstile test secret: always passes. (2x0000000000000000000000000000000AA always fails.)
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+IP_SALT=dev-only-salt
+# 1 = no OpenAI calls at all (fake SDP answer), to test limits and the cutoff.
+MOCK_OPENAI=1
+# The astro dev origin (the browser posts from it through the proxy).
+SITE_ORIGIN=http://localhost:4321
+# Dev: lift the daily limits (they override wrangler.jsonc).
+# MAX_PER_IP=100000
+# MAX_PER_DAY=100000
+# CHAT_MSGS_PER_IP=100000
+# CHAT_USD_PER_IP=100
+# CHAT_USD_PER_DAY=100

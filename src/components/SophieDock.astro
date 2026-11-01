@@ -1,0 +1,289 @@
+---
+// Sophie in the corner of the landing: a small version of the voice lab's
+// orb (crown of rays, capsule eyes) with a speech bubble that types a line
+// now and then, and the whole thing links to the voice lab. Her eyes follow
+// the pointer and blink; while she "speaks" the rays pulse and her eyes
+// bounce; on hover she smiles (^ ^). The back-to-top arrow sits above her.
+// Plain script, no island: the landing stays light. Reduced motion: no
+// typing, blinking or following, the bubble just shows its line.
+import { attrs, pick, splitTxt, type Content } from '../i18n';
+import CornerMarks from './CornerMarks.astro';
+import T from './T.astro';
+
+interface Props {
+  x: Content['x'];
+}
+const { x } = Astro.props;
+const lines = splitTxt(x.sophieLines, '|');
+const data = JSON.stringify({
+  en: lines.map((l) => pick(l, 'en')),
+  es: lines.map((l) => pick(l, 'es')),
+});
+
+// Crown of rays around the core (r = 31 around 50,50), irregular like the
+// voice lab's.
+const RAYS = Array.from({ length: 28 }, (_, i) => {
+  const wob = 0.45 + 0.55 * Math.abs(Math.sin(i * 1.9) * Math.cos(i * 0.7));
+  return {
+    a: ((i * 360) / 28).toFixed(1),
+    h: (3 + 7 * wob).toFixed(1),
+    d: (-(i % 7) * 0.13).toFixed(2),
+  };
+});
+---
+
+<a
+  href="/lab/voice"
+  data-sophie
+  data-lines={data}
+  {...attrs({ 'aria-label': x.sophieLabel })}
+  class="sophie group fixed right-[clamp(16px,3vw,32px)] bottom-[calc(clamp(16px,3vw,32px)+env(safe-area-inset-bottom))] z-40 flex translate-y-3 items-end gap-3 no-underline opacity-0 transition-[opacity,translate] duration-500 data-shown:translate-y-0 data-shown:opacity-100 motion-reduce:transition-none"
+>
+  <span
+    data-bubble
+    aria-hidden="true"
+    class="bg-panel border-line2 group-hover:border-accent pointer-events-none relative mb-2 flex w-[min(280px,calc(100vw-116px))] origin-bottom-right scale-95 flex-col gap-1.5 border px-3.5 pt-3 pb-2.5 opacity-0 shadow-[0_18px_44px_-22px_var(--accent)] transition-[opacity,scale,border-color] duration-300 data-open:pointer-events-auto data-open:scale-100 data-open:opacity-100 motion-reduce:transition-none"
+  >
+    <CornerMarks only={['tl']} offset="-5px" size="10px" />
+    <span class="mono text-muted flex items-center gap-2 text-[10px] tracking-[0.08em] uppercase">
+      <span class="jd-blink bg-ok size-1.5"></span>
+      <T v={x.sophieEyebrow} />
+    </span>
+    <span class="text-ink min-h-[2.8em] text-[14px] leading-[1.4]">
+      <span data-line></span>
+      <span
+        data-caret
+        class="jd-blink bg-accent ml-[3px] inline-block h-[0.95em] w-[0.42em] align-[-0.12em]"
+      ></span>
+    </span>
+    <span class="mono text-accent inline-flex items-center gap-1.5 text-[10px] tracking-[0.08em] uppercase">
+      <T v={x.sophieCta} />
+      <span class="jd-arrow">→</span>
+    </span>
+    {/* Tail towards Sophie. */}
+    <span class="bg-panel border-line2 group-hover:border-accent absolute -right-[6px] bottom-4 size-[10px] rotate-45 border-t border-r transition-colors"></span>
+  </span>
+
+  <span class="relative size-[60px] shrink-0">
+    <svg
+      viewBox="0 0 100 100"
+      aria-hidden="true"
+      class="block size-full overflow-visible"
+    >
+      <g class="fill-accent">
+        {RAYS.map((r) => (
+          <g transform={`rotate(${r.a} 50 50)`}>
+            <rect
+              class="sophie-ray"
+              x="49"
+              y={(50 - 34 - Number(r.h)).toFixed(1)}
+              width="2"
+              height={r.h}
+              style={`animation-delay:${r.d}s`}
+            />
+          </g>
+        ))}
+      </g>
+      <circle
+        cx="50"
+        cy="50"
+        r="31"
+        class="fill-panel stroke-accent"
+        stroke-width="1.6"
+      ></circle>
+      <g data-face>
+        <g class="sophie-eyes fill-accent">
+          <rect x="38" y="40" width="7" height="15" rx="3.5"></rect>
+          <rect x="55" y="40" width="7" height="15" rx="3.5"></rect>
+        </g>
+        <g
+          class="sophie-happy stroke-accent"
+          fill="none"
+          stroke-width="3"
+          stroke-linecap="round"
+        >
+          <path d="M37.5 50q4-7 8 0"></path>
+          <path d="M54.5 50q4-7 8 0"></path>
+        </g>
+      </g>
+    </svg>
+  </span>
+</a>
+
+<style>
+  .sophie-ray {
+    transform-box: fill-box;
+    transform-origin: center bottom;
+    animation: sophie-ray 1.8s ease-in-out infinite alternate;
+  }
+  .sophie[data-talking] .sophie-ray {
+    animation-duration: 0.45s;
+  }
+  @keyframes sophie-ray {
+    from {
+      transform: scaleY(0.35);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+  .sophie-eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: transform 0.12s ease-out;
+  }
+  .sophie[data-blink] .sophie-eyes {
+    transform: scaleY(0.1);
+  }
+  .sophie[data-talking] .sophie-eyes {
+    animation: sophie-talk 0.32s ease-in-out infinite alternate;
+  }
+  @keyframes sophie-talk {
+    from {
+      transform: scaleY(0.82) translateY(1px);
+    }
+    to {
+      transform: scaleY(1.06) translateY(-1px);
+    }
+  }
+  .sophie-happy {
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .sophie:hover .sophie-eyes,
+  .sophie:focus-visible .sophie-eyes {
+    opacity: 0;
+  }
+  .sophie:hover .sophie-happy,
+  .sophie:focus-visible .sophie-happy {
+    opacity: 1;
+  }
+  [data-face] {
+    transition: transform 0.18s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sophie-ray,
+    .sophie[data-talking] .sophie-ray,
+    .sophie[data-talking] .sophie-eyes {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  let teardown: (() => void) | undefined;
+  document.addEventListener('astro:before-swap', () => teardown?.());
+  document.addEventListener('astro:page-load', () => {
+    const root = document.querySelector<HTMLAnchorElement>('[data-sophie]');
+    if (!root) return;
+    const bubble = root.querySelector<HTMLElement>('[data-bubble]')!;
+    const line = root.querySelector<HTMLElement>('[data-line]')!;
+    const caret = root.querySelector<HTMLElement>('[data-caret]')!;
+    const face = root.querySelector<SVGGElement>('[data-face]')!;
+    const lines = JSON.parse(root.dataset.lines ?? '{}') as Record<
+      'en' | 'es',
+      string[]
+    >;
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lang = () =>
+      document.documentElement.dataset.lang === 'es' ? 'es' : 'en';
+    const timers: number[] = [];
+    const later = (fn: () => void, ms: number) =>
+      timers.push(window.setTimeout(fn, ms));
+    let index = -1;
+    let typing = 0;
+    let shown = 0;
+
+    // Types the next line (or `again` the current one), holds it, folds.
+    const say = (again = false) => {
+      if (!again) index = (index + 1) % lines[lang()].length;
+      const text = lines[lang()][index];
+      clearInterval(typing);
+      bubble.toggleAttribute('data-open', true);
+      if (still) {
+        line.textContent = text;
+        caret.hidden = true;
+        return;
+      }
+      let n = 0;
+      line.textContent = '';
+      caret.hidden = false;
+      root.toggleAttribute('data-talking', true);
+      typing = window.setInterval(() => {
+        n += 1;
+        line.textContent = text.slice(0, n);
+        if (n >= text.length) {
+          clearInterval(typing);
+          root.removeAttribute('data-talking');
+        }
+      }, 32);
+    };
+    const fold = () => {
+      if (root.matches(':hover, :focus-visible')) return;
+      bubble.removeAttribute('data-open');
+    };
+    // A few lines spaced out, so she says hi without nagging.
+    const cycle = () => {
+      if (shown >= 4) return;
+      shown += 1;
+      say();
+      later(fold, 8000);
+      later(cycle, 26000);
+    };
+
+    later(() => {
+      root.toggleAttribute('data-shown', true);
+      if (!still) later(cycle, 900);
+      else say();
+    }, 1400);
+
+    // Every time the bubble comes back, a new line.
+    const onEnter = () => {
+      if (!bubble.hasAttribute('data-open')) say();
+    };
+    const onLeave = () => later(fold, 2500);
+    root.addEventListener('pointerenter', onEnter);
+    root.addEventListener('focus', onEnter);
+    root.addEventListener('pointerleave', onLeave);
+    root.addEventListener('blur', onLeave);
+
+    // The line follows the page language.
+    const mo = new MutationObserver(() => {
+      if (index >= 0 && bubble.hasAttribute('data-open')) say(true);
+    });
+    mo.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-lang'],
+    });
+
+    // Eyes follow the pointer and blink now and then.
+    const onMove = (e: PointerEvent) => {
+      const r = root.getBoundingClientRect();
+      const cx = r.right - 30;
+      const cy = r.bottom - 30;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const d = Math.hypot(dx, dy) || 1;
+      const k = Math.min(1, d / 300) * 4;
+      face.style.transform = `translate(${((dx / d) * k).toFixed(2)}px, ${((dy / d) * k).toFixed(2)}px)`;
+    };
+    let blinkT = 0;
+    const blink = () => {
+      root.toggleAttribute('data-blink', true);
+      later(() => root.removeAttribute('data-blink'), 140);
+      blinkT = window.setTimeout(blink, 2500 + Math.random() * 3500);
+    };
+    if (!still) {
+      addEventListener('pointermove', onMove, { passive: true });
+      blinkT = window.setTimeout(blink, 2000);
+    }
+
+    teardown = () => {
+      timers.forEach(clearTimeout);
+      clearInterval(typing);
+      clearTimeout(blinkT);
+      mo.disconnect();
+      removeEventListener('pointermove', onMove);
+    };
+  });
+</script>

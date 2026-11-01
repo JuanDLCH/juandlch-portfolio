@@ -18,5 +18,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
     // Keep small images as separate files so loading="lazy" actually defers them.
     build: { assetsInlineLimit: 0 },
+    // Dev only: the voice API runs in `pnpm dev:api` (wrangler, worker/).
+    server: { proxy: { '/api': 'http://localhost:8787' } },
   },
 });
