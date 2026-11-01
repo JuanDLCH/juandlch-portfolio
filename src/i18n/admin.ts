@@ -12,9 +12,9 @@ const EN = {
     'No access: open this page on juandlch.dev and sign in with Cloudflare Access.',
   retry: 'Try again',
   kpi: {
-    sessions: 'Chat sessions',
-    messages: 'Messages',
     conversations: 'Conversations',
+    messages: 'Messages',
+    perConv: 'Messages per conversation',
     calls: 'Voice calls',
   },
   activity: 'Messages per day',
@@ -78,9 +78,9 @@ const ES: AdminCopy = {
     'Sin acceso: abre esta página en juandlch.dev e inicia sesión con Cloudflare Access.',
   retry: 'Reintentar',
   kpi: {
-    sessions: 'Sesiones de chat',
-    messages: 'Mensajes',
     conversations: 'Conversaciones',
+    messages: 'Mensajes',
+    perConv: 'Mensajes por conversación',
     calls: 'Llamadas de voz',
   },
   activity: 'Mensajes por día',

@@ -180,8 +180,7 @@ function Activity({
       day,
       total: msgs.reduce((s, m) => s + num(m.n), 0),
       by: msgs.map((m) => ({ source: String(m.source), n: num(m.n) })),
-      sessions: ev('chat_session'),
-      calls: ev('voice_call') + ev('voice_resume'),
+      calls: ev('voice_call'),
     };
   });
   // A round top for the scale, so the grid reads in whole numbers.
@@ -280,10 +279,6 @@ function Activity({
                 <span className={mono}>{b.n}</span>
               </div>
             ))}
-            <div className="flex justify-between gap-4">
-              <span>{x.kpi.sessions}</span>
-              <span className={`${mono} text-ink`}>{h.sessions}</span>
-            </div>
             <div className="flex justify-between gap-4">
               <span>{x.kpi.calls}</span>
               <span className={`${mono} text-ink`}>{h.calls}</span>
@@ -632,12 +627,20 @@ export default function AdminApp() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    // A slower answer for a range no longer selected is dropped.
+    let current = true;
     get<Overview>(`/admin/api/overview?days=${days}`)
       .then((d) => {
+        if (!current) return;
         setData(d);
         setErr('');
       })
-      .catch((e: Error) => setErr(e.message));
+      .catch((e: Error) => {
+        if (current) setErr(e.message);
+      });
+    return () => {
+      current = false;
+    };
   }, [days, tick]);
 
   const labelOf = (
@@ -657,18 +660,19 @@ export default function AdminApp() {
 
   const sum = (list: Row[] | undefined, pick: (r: Row) => boolean, f = 'n') =>
     (list ?? []).filter(pick).reduce((s, r) => s + num(r[f]), 0);
+  // All four about the CV chat and Sophie, where messages are stored. A
+  // resumed call continues the same call, so only starts count.
+  const msgs = sum(data?.messages, () => true);
+  const convs = data?.conversations ?? 0;
   const kpis = data
     ? [
-        [x.kpi.sessions, sum(data.activity, (a) => a.kind === 'chat_session')],
-        [x.kpi.messages, sum(data.messages, () => true)],
-        [x.kpi.conversations, data.conversations],
+        [x.kpi.conversations, convs],
+        [x.kpi.messages, msgs],
         [
-          x.kpi.calls,
-          sum(
-            data.activity,
-            (a) => a.kind === 'voice_call' || a.kind === 'voice_resume',
-          ),
+          x.kpi.perConv,
+          convs ? (msgs / convs).toFixed(1).replace(/\.0$/, '') : '0',
         ],
+        [x.kpi.calls, sum(data.activity, (a) => a.kind === 'voice_call')],
       ]
     : [];
 
