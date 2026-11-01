@@ -34,6 +34,9 @@ interface Done {
 /** How long an ended call can be resumed. */
 const RESUME_MS = 30 * 60_000;
 
+/** How soon a failed hangup is tried again. */
+const RETRY_MS = 10_000;
+
 /** Far more answers than 5 minutes of talk can take. */
 const MAX_RESPONSES = 50;
 
@@ -50,6 +53,8 @@ export class VoiceCall extends DurableObject<Env> {
   private responses = 0;
   /** What the call has cost so far (USD), from each response's usage. */
   private spent = 0;
+  /** The hangup in progress, so overlapping ends run it once. */
+  private ending: Promise<void> | null = null;
 
   async start(
     call: Call,
@@ -88,8 +93,11 @@ export class VoiceCall extends DurableObject<Env> {
   }
 
   async alarm() {
-    // The cutoff, or the end of the resume window.
-    if (await this.ctx.storage.get('call')) await this.finish('time');
+    // The cutoff, a hangup to try again, or the end of the resume window.
+    if (await this.ctx.storage.get('call'))
+      await this.finish(
+        (await this.ctx.storage.get<string>('ending')) ?? 'time',
+      );
     else await this.ctx.storage.deleteAll();
   }
 
@@ -120,24 +128,37 @@ export class VoiceCall extends DurableObject<Env> {
       void this.finish('too many responses');
   }
 
-  private async finish(reason: string) {
+  private finish(reason: string) {
+    this.ending ??= this.hangUp(reason).finally(() => (this.ending = null));
+    return this.ending;
+  }
+
+  /** Ends the call. The call stays on record (and the alarm keeps trying)
+   * until OpenAI confirms the hangup, so a failed one can't leave it running
+   * past its cutoff. */
+  private async hangUp(reason: string) {
     const call = await this.ctx.storage.get<Call>('call');
     if (!call) return;
     const budget = Number(this.env.SESSION_S);
+    const first = (await this.ctx.storage.get<string>('ending')) ?? reason;
     const used =
-      reason === 'time'
+      first === 'time'
         ? budget
         : Math.min(
             budget,
             call.used + Math.ceil((Date.now() - call.startedAt) / 1000),
           );
+    if (!(await hangup(this.env, call.callId))) {
+      await this.ctx.storage.put('ending', first);
+      await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
+      return;
+    }
     await this.ctx.storage.deleteAll();
     await this.ctx.storage.put('done', { ip: call.ip, used, taken: false });
     await this.ctx.storage.setAlarm(Date.now() + RESUME_MS);
-    console.log(`end ${call.callId}: ${reason} (${used}s used)`);
-    await hangup(this.env, call.callId);
+    console.log(`end ${call.callId}: ${first} (${used}s used)`);
     try {
-      this.ws?.close(1000, reason);
+      this.ws?.close(1000, first);
     } catch {
       /* already closed */
     }

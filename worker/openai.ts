@@ -71,18 +71,27 @@ export async function createCall(
 }
 
 /** Ends the call on OpenAI's side, whatever the browser does. */
+/** Hangs up a call. True once it's over: hung up now, or already ended. */
 export async function hangup(env: Env, callId: string) {
   if (env.MOCK_OPENAI === '1') {
     console.log(`[mock] hangup ${callId}`);
-    return;
+    return true;
   }
-  const res = await fetch(`${API}/calls/${encodeURIComponent(callId)}/hangup`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
-  });
-  // 404: it had already ended.
-  if (!res.ok && res.status !== 404)
+  try {
+    const res = await fetch(
+      `${API}/calls/${encodeURIComponent(callId)}/hangup`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      },
+    );
+    // 404: it had already ended.
+    if (res.ok || res.status === 404) return true;
     console.error(`hangup ${callId}: ${res.status}`);
+  } catch (err) {
+    console.error(`hangup ${callId}: ${String(err)}`);
+  }
+  return false;
 }
 
 /** Opens the sideband: a server-side WebSocket on the same call. */
