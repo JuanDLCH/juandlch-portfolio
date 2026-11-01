@@ -85,7 +85,7 @@ export class Quota extends DurableObject<Env> {
     kind: 'message' | 'round' | 'check',
     worst: number,
     limits: { msgs: number; usdIp: number; usdDay: number },
-  ): Promise<{ id: string } | { error: ChatError }> {
+  ): Promise<{ id: string; left: number } | { error: ChatError }> {
     const s = this.ctx.storage;
     const now = Date.now();
     const flying = ((await s.get<Flight[]>(`fly:${ip}`)) ?? []).filter(
@@ -111,7 +111,9 @@ export class Quota extends DurableObject<Env> {
       [`fly:${ip}`]: [...flying, { id, at: now }],
     });
     if ((await s.getAlarm()) === null) await s.setAlarm(now + 2 * DAY_MS);
-    return { id };
+    // Messages the IP has left after this one, for the UI.
+    const left = limits.msgs - msgs - (kind === 'message' ? 1 : 0);
+    return { id, left: Math.max(0, left) };
   }
 
   /** The request is over: its reservation becomes the real cost (`actual`),

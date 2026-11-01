@@ -62,8 +62,13 @@ export async function startChat(req: Request, env: Env) {
   if (!(await turnstileOk(env, req, token))) return refuse('captcha', 403);
   const ip = await ipHash(env, req);
   const exp = Date.now() + TOKEN_MS;
-  const left = await quotaOf(env).chatLeft(ip, limits(env).msgs);
-  return json({ token: `lab.${exp}.${await hmac(env, `${ip}.${exp}`)}`, left });
+  const max = limits(env).msgs;
+  const left = await quotaOf(env).chatLeft(ip, max);
+  return json({
+    token: `lab.${exp}.${await hmac(env, `${ip}.${exp}`)}`,
+    left,
+    max,
+  });
 }
 
 /** The IP hash a request's token was issued to, if it's valid. */
@@ -77,6 +82,9 @@ async function session(req: Request, env: Env) {
 }
 
 const limited = (error: ChatError) => refuse(error, 429);
+/** The header that tells the page how many messages the IP has left today
+ * (read by the SDK's fetch in src/lab/chat/openai-chat.ts). */
+const LEFT = 'X-Lab-Left';
 
 /** Follows a response stream and returns its usage, if it ends with one. */
 async function usageOf(stream: ReadableStream<Uint8Array>) {
@@ -242,7 +250,7 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
     await quota.chatSettle(ip, r.id, worst, 0);
     return new Response(upstream.body, {
       status: upstream.status,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', [LEFT]: String(r.left) },
     });
   }
   const [toVisitor, toMeter] = upstream.body.tee();
@@ -255,6 +263,7 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-store',
+      [LEFT]: String(r.left),
     },
   });
 }

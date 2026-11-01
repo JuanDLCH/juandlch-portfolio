@@ -897,6 +897,14 @@ export default function VoiceApp() {
                   {x.startOver}
                 </button>
               )}
+            {/* The limits, while there's no call or time to resume. */}
+            {!live && phase.at !== 'connecting' && !resumable && !failed && (
+              <p
+                className={`${mono} text-muted m-0 text-center text-[10px] tracking-[0.06em] uppercase`}
+              >
+                {x.limits}
+              </p>
+            )}
             {failed && (
               <a
                 href="/lab/cv"
