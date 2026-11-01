@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ADMIN, type AdminCopy } from '../../i18n/admin';
 import { CATEGORIES, GOALS, INTENTS } from '../../lab/insights/taxonomy';
 import type { WorldMap } from '../../lab/insights/world';
+import { OWNER } from '../../scripts/hit';
 import { setLang, setTheme } from '../../scripts/prefs';
 import { I, Icon, iconBtn, label, mono, useHtml } from '../lab/ui';
 
@@ -25,7 +26,21 @@ interface Overview {
   goal: Row[];
   topic: Row[];
   /** Per Bogotá hour ('00'…'23') when the range is a single day. */
-  hours: { messages: Row[]; calls: Row[]; costs: Row[] } | null;
+  hours: {
+    messages: Row[];
+    calls: Row[];
+    costs: Row[];
+    views: Row[];
+  } | null;
+  /** The site's own page views (worker/hits.ts): `k` is `human` or
+   * `bot:<why>`; pages, countries and referrers are people only. */
+  views: {
+    days: Row[];
+    paths: Row[];
+    countries: Row[];
+    referrers: Row[];
+    since: string | null;
+  };
   /** Messages and conversations per demo (every case, from the events). */
   demos: Row[];
   /** USD per day and part (chat case, voice_note, voice). */
@@ -99,9 +114,6 @@ const monthRange = (month: string, today: string): Range => {
 };
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-/** Bogotá hour ('00'…'23') of a moment. */
-const bogotaHour = (ms: number) =>
-  new Date(ms - 5 * 3_600_000).toISOString().slice(11, 13);
 
 const num = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
 const fmtDay = (day: string, lang: Lang, long = false) =>
@@ -850,10 +862,11 @@ function CountryMap({
   );
 }
 
-/** Site visits from Web Analytics, and how many visitors of each demo page
- * went on to use it. */
+/** Site visits from the site's own counter (worker/hits.ts): people only,
+ * with the bots it left out, and how many visitors of each demo page went
+ * on to use it. Web Analytics' unfiltered total is shown for reference. */
 function TrafficView({
-  t,
+  wa,
   data,
   x,
   lang,
@@ -861,7 +874,8 @@ function TrafficView({
   onPick,
   map,
 }: {
-  t: Extract<Traffic, { enabled: true }>;
+  /** Web Analytics, when its token is set (a reference total). */
+  wa: Extract<Traffic, { enabled: true }> | null;
   data: Overview;
   x: AdminCopy;
   lang: Lang;
@@ -869,22 +883,40 @@ function TrafficView({
   onPick: (day: string) => void;
   map: WorldMap;
 }) {
-  // A single day goes by hour; longer ranges by Bogotá day (UTC-5), like
-  // every other count here.
-  const hourly = data.from === data.to;
-  const days = hourly ? HOURS : daysBetween(data.from, data.to);
-  const byDay = new Map<string, { views: number; visits: number }>();
-  for (const h of t.hours) {
-    const ms = Date.parse(h.k);
-    const day = hourly ? bogotaHour(ms) : bogota(ms);
-    const d = byDay.get(day) ?? { views: 0, visits: 0 };
-    byDay.set(day, { views: d.views + h.views, visits: d.visits + h.visits });
-  }
-  const per = days.map((d) => byDay.get(d) ?? { views: 0, visits: 0 });
+  const v = data.views;
+  // A single day goes by hour; longer ranges by Bogotá day.
+  const hourly = !!data.hours;
+  const keys = hourly ? HOURS : daysBetween(data.from, data.to);
+  const rows = (hourly ? (data.hours?.views ?? []) : v.days).map((r) => ({
+    at: String(hourly ? r.h : r.day),
+    k: String(r.k),
+    views: num(r.views),
+    visits: num(r.visits),
+  }));
+  const per = keys.map((key) => {
+    const mine = rows.filter((r) => r.at === key);
+    const people = mine.filter((r) => r.k === 'human');
+    return {
+      views: people.reduce((s, r) => s + num(r.views), 0),
+      visits: people.reduce((s, r) => s + num(r.visits), 0),
+      bots: mine
+        .filter((r) => String(r.k).startsWith('bot'))
+        .reduce((s, r) => s + num(r.views), 0),
+    };
+  });
   const visits = per.reduce((s, p) => s + p.visits, 0);
   const views = per.reduce((s, p) => s + p.views, 0);
+  // Bots left out, by why.
+  const why = new Map<string, number>();
+  for (const r of v.days)
+    if (String(r.k).startsWith('bot:')) {
+      const k = String(r.k).slice(4);
+      why.set(k, (why.get(k) ?? 0) + num(r.views));
+    }
+  const bots = [...why.values()].reduce((s, n) => s + n, 0);
+  const waVisits = wa?.hours.reduce((s, h) => s + h.visits, 0) ?? null;
   const viewsOf = (path: string) =>
-    t.paths.find((p) => p.k === path)?.views ?? 0;
+    num(v.paths.find((p) => p.k === path)?.views);
   const convs = (k: string) => num(data.demos.find((d) => d.k === k)?.convs);
   const labConvs = data.demos
     .filter((d) => d.k !== 'cv')
@@ -897,16 +929,22 @@ function TrafficView({
     { path: '/lab/cv', used: convs('cv'), unit: x.convWord },
     { path: '/lab/voice', used: calls, unit: x.callWord },
   ];
+  const notes = [
+    x.trafficNote
+      .replace('{visits}', String(visits))
+      .replace('{views}', String(views)),
+    bots ? x.botsLeftOut.replace('{n}', String(bots)) : '',
+    v.since
+      ? x.countingSince.replace(
+          '{day}',
+          fmtDay(bogota(Date.parse(v.since)), lang),
+        )
+      : x.countingNone,
+  ].filter(Boolean);
   return (
-    <Section
-      title={x.traffic}
-      sub={x.trafficNote
-        .replace('{visits}', String(visits))
-        .replace('{views}', String(views))}
-      className="mt-gutter"
-    >
+    <Section title={x.traffic} sub={notes.join(' ')} className="mt-gutter">
       <DayColumns
-        days={days}
+        days={keys}
         hourly={hourly}
         values={per.map((p) => p.visits)}
         unit={x.visits}
@@ -916,6 +954,7 @@ function TrafficView({
           <>
             <TipRow label={x.visits} value={per[i].visits} />
             <TipRow label={x.views} value={per[i].views} />
+            <TipRow rule label={x.botViews} value={per[i].bots} />
           </>
         )}
       />
@@ -924,7 +963,10 @@ function TrafficView({
         <div className="mt-3">
           <CountryMap
             map={map}
-            values={t.countries.map((c) => ({ k: c.k, n: c.visits }))}
+            values={v.countries.map((c) => ({
+              k: String(c.k ?? ''),
+              n: num(c.visits),
+            }))}
             unit={x.visits.toLowerCase()}
             countryName={countryName}
           />
@@ -935,23 +977,10 @@ function TrafficView({
           <span className={label}>{x.pages}</span>
           <div className="mt-3">
             <Bars
-              rows={t.paths.map((p) => ({
-                key: p.k,
-                label: p.k,
-                n: p.views,
-              }))}
-              x={x}
-            />
-          </div>
-        </div>
-        <div>
-          <span className={label}>{x.visitorCountries}</span>
-          <div className="mt-3">
-            <Bars
-              rows={t.countries.map((c) => ({
-                key: c.k,
-                label: countryName(c.k),
-                n: c.visits,
+              rows={v.paths.map((p) => ({
+                key: String(p.k),
+                label: String(p.k),
+                n: num(p.views),
               }))}
               x={x}
             />
@@ -961,15 +990,33 @@ function TrafficView({
           <span className={label}>{x.referrers}</span>
           <div className="mt-3">
             <Bars
-              rows={t.referrers
-                .filter((r) => r.visits > 0)
-                .map((r) => ({
-                  key: r.k || 'direct',
-                  label: r.k || x.direct,
-                  n: r.visits,
+              rows={v.referrers.map((r) => ({
+                key: String(r.k) || 'direct',
+                label: String(r.k) || x.direct,
+                n: num(r.visits),
+              }))}
+              x={x}
+            />
+          </div>
+        </div>
+        <div>
+          <span className={label}>{x.botsTitle}</span>
+          <div className="mt-3">
+            <Bars
+              rows={[...why]
+                .sort((a, b) => b[1] - a[1])
+                .map(([k, n]) => ({
+                  key: k,
+                  label: x.botWhy[k as keyof AdminCopy['botWhy']] ?? k,
+                  n,
                 }))}
               x={x}
             />
+            {waVisits !== null && (
+              <p className={`${note} mt-3`}>
+                {x.waTotal.replace('{n}', String(waVisits))}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -987,18 +1034,20 @@ function TrafficView({
           </thead>
           <tbody>
             {funnel.map((f) => {
-              const v = viewsOf(f.path);
+              const pv = viewsOf(f.path);
               return (
                 <tr key={f.path} className="border-line border-t">
                   <td className={`${mono} text-ink py-1.5 text-[12px]`}>
                     {f.path}
                   </td>
-                  <td className={`${mono} text-body py-1.5 text-right`}>{v}</td>
+                  <td className={`${mono} text-body py-1.5 text-right`}>
+                    {pv}
+                  </td>
                   <td className={`${mono} text-body py-1.5 text-right`}>
                     {f.used} {f.unit}
                   </td>
                   <td className={`${mono} text-ink py-1.5 text-right`}>
-                    {v ? `${Math.round((f.used / v) * 100)}%` : '–'}
+                    {pv ? `${Math.round((f.used / pv) * 100)}%` : '–'}
                   </td>
                 </tr>
               );
@@ -1323,6 +1372,23 @@ export default function AdminApp({ map }: { map: WorldMap }) {
   const { es, dark } = useHtml();
   const lang: Lang = es ? 'es' : 'en';
   const x = ADMIN[lang];
+  // Whether this browser's own visits are left out of the counts.
+  const [owner, setOwner] = useState(() => {
+    try {
+      return localStorage.getItem(OWNER) !== '0';
+    } catch {
+      return false;
+    }
+  });
+  const toggleOwner = () => {
+    const next = !owner;
+    try {
+      localStorage.setItem(OWNER, next ? '1' : '0');
+    } catch {
+      /* storage unavailable */
+    }
+    setOwner(next);
+  };
   // Today in Bogotá, fixed for the page's life (reload for a new day).
   const [today] = useState(() => bogota(Date.now()));
   const [range, setRange] = useState<Range>(() => lastDays(30, today));
@@ -1345,6 +1411,16 @@ export default function AdminApp({ map }: { map: WorldMap }) {
         if (!current) return;
         setData(d);
         setErr('');
+        // Signed in here: this browser's visits to the site stop counting
+        // (src/scripts/hit.ts), unless undone below.
+        try {
+          if (localStorage.getItem(OWNER) === null) {
+            localStorage.setItem(OWNER, '1');
+            setOwner(true);
+          }
+        } catch {
+          /* storage unavailable */
+        }
       })
       .catch((e: Error) => {
         if (current) setErr(e.message);
@@ -1489,6 +1565,16 @@ export default function AdminApp({ map }: { map: WorldMap }) {
           </a>
           <h1 className="text-ink text-h2 m-0 mt-2 font-semibold">{x.title}</h1>
           <p className={note}>{x.subtitle}</p>
+          <p className={`${note} flex flex-wrap items-center gap-2`}>
+            <span>{owner ? x.ownerOn : x.ownerOff}</span>
+            <button
+              type="button"
+              onClick={toggleOwner}
+              className="text-accent cursor-pointer border-0 bg-transparent p-0 text-[12px] underline-offset-4 hover:underline"
+            >
+              {owner ? x.ownerCount : x.ownerSkip}
+            </button>
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {(['en', 'es'] as const).map((l) => (
@@ -1657,21 +1743,22 @@ export default function AdminApp({ map }: { map: WorldMap }) {
             <Activity data={data} x={x} lang={lang} onPick={pickDay} />
           </Section>
 
-          {/* Only with the overview of the same range: the conversion table
-              and the day grouping use both. */}
-          {traffic?.enabled &&
-            data.from === range.from &&
-            data.to === range.to && (
-              <TrafficView
-                t={traffic}
-                data={data}
-                x={x}
-                lang={lang}
-                countryName={countryName}
-                onPick={pickDay}
-                map={map}
-              />
-            )}
+          {/* Web Analytics' total only with the overview of its range. */}
+          <TrafficView
+            wa={
+              traffic?.enabled &&
+              data.from === range.from &&
+              data.to === range.to
+                ? traffic
+                : null
+            }
+            data={data}
+            x={x}
+            lang={lang}
+            countryName={countryName}
+            onPick={pickDay}
+            map={map}
+          />
           {trafficErr && (
             <p className={`${note} mt-gutter`}>{x.trafficError}</p>
           )}

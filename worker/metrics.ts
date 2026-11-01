@@ -16,7 +16,10 @@ export type EventKind =
   /** What a chat request (subject: case, or `voice_note`) or a voice call
    * cost, in USD (`n`). */
   | 'chat_cost'
-  | 'voice_cost';
+  | 'voice_cost'
+  /** A page view (worker/hits.ts): subject the path, detail `human` or
+   * `bot:<why>`, `n` 1 when it starts a visit, `ref` the referring host. */
+  | 'page_view';
 
 export interface LabEvent {
   kind: EventKind;
@@ -27,6 +30,8 @@ export interface LabEvent {
   detail?: string;
   /** Visitor's country (ISO code, from Cloudflare). */
   country?: string;
+  /** Referring host of a page view that starts a visit. */
+  ref?: string;
   /** Seconds of a voice call, etc. */
   n?: number;
 }
@@ -59,7 +64,10 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS daily_reports (day TEXT PRIMARY KEY, status TEXT NOT NULL, batch_id TEXT, sent TEXT, model TEXT, conversations INTEGER, messages INTEGER, cost_usd REAL, stats TEXT, report TEXT, error TEXT, attempts INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)`,
 ];
 // Columns added after the tables existed; "duplicate column" once they're there.
-const ADDED = ['ALTER TABLE events ADD COLUMN country TEXT'];
+const ADDED = [
+  'ALTER TABLE events ADD COLUMN country TEXT',
+  'ALTER TABLE events ADD COLUMN ref TEXT',
+];
 let ready: Promise<unknown> | null = null;
 const schema = (db: D1Database) => {
   ready ??= db
@@ -112,7 +120,7 @@ export const track = (env: Env, e: LabEvent) =>
   write(env, e.kind, (db) =>
     db
       .prepare(
-        'INSERT INTO events (at, kind, subject, lang, detail, n, country) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO events (at, kind, subject, lang, detail, n, country, ref) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       )
       .bind(
         now(),
@@ -122,6 +130,7 @@ export const track = (env: Env, e: LabEvent) =>
         e.detail?.slice(0, 120) ?? null,
         e.n ?? null,
         e.country?.slice(0, 2) ?? null,
+        e.ref?.slice(0, 100) ?? null,
       )
       .run(),
   );
