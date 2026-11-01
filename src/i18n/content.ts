@@ -36,7 +36,7 @@ const EN = {
   heroB: 'listens, reasons and acts',
   heroC: ' — inside real software.',
   heroSub:
-    'Software engineer first. I design and ship agents, realtime voice and document pipelines for companies, from the first discovery call to the AWS infrastructure they run on.',
+    'Software engineer first. I design and ship agents, realtime voice and document AI for companies, from the first discovery call to the AWS infrastructure they run on.',
   ctaLab: 'Try my live demos',
   ctaWork: 'Selected work',
   agentSpeaking: 'Agent speaking',
@@ -48,15 +48,15 @@ const EN = {
   stAgent: 'AGENT',
   stTool: 'TOOL',
   figCaption:
-    'One conversational turn — speech in, transcription, reasoning, a tool call, speech out — interruptible at every step.',
+    'One turn of a conversation: the agent listens, transcribes, thinks, checks a system and answers — and you can interrupt it at any point.',
   aboutTitle: 'From full stack to AI lead',
   aboutA:
     'I spent my first years shipping ERP systems, cloud backends and integrations. That is why the AI I build today comes with ',
-  aboutB: 'APIs, state, infrastructure and a cost estimate',
+  aboutB: 'integration with your systems, infrastructure and a cost estimate',
   aboutC: ' — not just a prompt.',
   tl1: 'Stellion Tech — two ERP systems, end to end',
   tl2: 'Trade EC / TRD Global — APIs, integrations, data',
-  tl3: 'Agents, RAG, OCR and voice in client products',
+  tl3: 'Agents, document search, document reading (OCR) and voice in client products',
   tl4: 'Team lead, AI consulting, architecture on AWS',
   leadTitle: 'Leading AI projects',
   leadIntro:
@@ -75,16 +75,16 @@ const EN = {
   labA: 'Don’t take my word for it. ',
   labB: 'Talk to it.',
   labSub:
-    'Both run live, no key needed: talk to my voice agent or try the chat with your own files. Each visitor gets a daily allowance — plenty to see how they work.',
+    'Both run live, free and with no sign-up: talk to my voice agent or try the chat with your own files. Each visitor gets a daily allowance — plenty to see how they work.',
   lab1Tag: 'Lab 01 · Flagship',
   lab1Body:
     'Talk to Sophie, a realtime voice agent that knows my work. Interrupt her anytime; captions as she speaks.',
   lab2Tag: 'Lab 02 · Agents',
   lab2Body:
-    'Text, images, documents and audio, with tool calls visible as they run.',
+    'Text, images, documents and audio — and you see every step the agent takes, live: what it checks and what it finds.',
   labOpen: 'Open the demo',
   labLive: 'Live demo',
-  labFree: 'No key needed',
+  labFree: 'Free · no sign-up',
   pvSim: 'Simulated preview',
   pvYou: 'You',
   pvAgent: 'Sophie',
@@ -102,7 +102,7 @@ const EN = {
   awsLeadA: 'Most of what I ship runs on AWS. ',
   awsLeadB: ' is my default for production GenAI.',
   awsBody:
-    'Model choice across providers with Claude models as my go-to, and Bedrock AgentCore to run agents — wired into serverless pipelines with Lambda, Step Functions and EventBridge. I also gave technical support to my company’s AWS Generative AI Competency process.',
+    'I pick the right model for each job (Claude is my go-to) and run agents on Bedrock AgentCore, connected to automated workflows on AWS. I also gave technical support to my company’s AWS Generative AI Competency certification.',
   awsFlex:
     'AWS is my focus, not my limit — I work with whichever cloud or model provider a project requires.',
   awsIconsLabel: 'AWS services I work with',
@@ -111,7 +111,7 @@ const EN = {
   ragA: 'Retrieval that ',
   ragB: 'earns its answers.',
   ragSub:
-    'My agents don’t get a bare top-k. Every question is rewritten, searched with lexical and semantic retrieval, reranked and checked by a validator before anything is answered.',
+    'When an agent answers from a company’s documents, it first has to find the right passage. So my agents don’t get a bare top-k: every question is rewritten, searched by keywords and by meaning, reranked and checked by a validator before anything is answered.',
   ragFigTag: 'Fig. 05 · retrieval loop',
   ragFigLabel: 'RAG pipeline diagram',
   prTitle: 'Engineering principles',
@@ -173,15 +173,15 @@ const ES: typeof EN = {
   stAgent: 'AGENTE',
   stTool: 'HERRAMIENTA',
   figCaption:
-    'Un turno de conversación — voz de entrada, transcripción, razonamiento, una llamada a herramienta, voz de salida — interrumpible en cada paso.',
+    'Un turno de conversación: el agente escucha, transcribe, piensa, consulta un sistema y responde — y lo puedes interrumpir en cualquier momento.',
   aboutTitle: 'De full stack a líder de IA',
   aboutA:
     'Mis primeros años los pasé construyendo ERPs, backends en la nube e integraciones. Por eso la IA que construyo hoy viene con ',
-  aboutB: 'APIs, estado, infraestructura y un estimado de costos',
+  aboutB: 'conexión a tus sistemas, infraestructura y un estimado de costos',
   aboutC: ' — no solo un prompt.',
   tl1: 'Stellion Tech — dos sistemas ERP, de principio a fin',
   tl2: 'Trade EC / TRD Global — APIs, integraciones, datos',
-  tl3: 'Agentes, RAG, OCR y voz en productos de clientes',
+  tl3: 'Agentes, búsqueda en documentos, lectura de documentos (OCR) y voz en productos de clientes',
   tl4: 'Líder de equipo, consultoría de IA, arquitectura en AWS',
   leadTitle: 'Liderando proyectos de IA',
   leadIntro:
@@ -200,16 +200,16 @@ const ES: typeof EN = {
   labA: 'No me creas a mí. ',
   labB: 'Háblale.',
   labSub:
-    'Los dos funcionan en vivo, sin API key: habla con mi agente de voz o prueba el chat con tus propios archivos. Cada visitante tiene un cupo diario — de sobra para ver cómo funcionan.',
+    'Los dos funcionan en vivo, gratis y sin registro: habla con mi agente de voz o prueba el chat con tus propios archivos. Cada visitante tiene un cupo diario — de sobra para ver cómo funcionan.',
   lab1Tag: 'Lab 01 · Principal',
   lab1Body:
     'Habla con Sophie, un agente de voz en tiempo real que conoce mi trabajo. Interrúmpela cuando quieras; subtítulos mientras habla.',
   lab2Tag: 'Lab 02 · Agentes',
   lab2Body:
-    'Texto, imágenes, documentos y audio, con las llamadas a herramientas visibles mientras ocurren.',
+    'Texto, imágenes, documentos y audio — y ves en vivo cada paso del agente: qué consulta y qué encuentra.',
   labOpen: 'Abrir la demo',
   labLive: 'Demo en vivo',
-  labFree: 'Sin API key',
+  labFree: 'Gratis · sin registro',
   pvSim: 'Vista simulada',
   pvYou: 'Tú',
   pvAgent: 'Sophie',
@@ -227,7 +227,7 @@ const ES: typeof EN = {
   awsLeadA: 'Casi todo lo que llevo a producción corre en AWS. ',
   awsLeadB: ' es mi opción por defecto para GenAI en producción.',
   awsBody:
-    'Elección de modelos entre proveedores con los modelos de Claude como mi opción principal, y Bedrock AgentCore para ejecutar agentes — integrado en pipelines serverless con Lambda, Step Functions y EventBridge. También di soporte técnico al proceso de AWS Generative AI Competency de la compañía.',
+    'Elijo el modelo adecuado para cada caso (Claude es mi favorito) y monto los agentes sobre Bedrock AgentCore, conectados a procesos automáticos en AWS. También di soporte técnico a la certificación AWS Generative AI Competency de la compañía.',
   awsFlex:
     'AWS es mi enfoque, no mi límite — trabajo con la nube o el proveedor de modelos que cada proyecto requiera.',
   awsIconsLabel: 'Servicios de AWS con los que trabajo',
@@ -236,7 +236,7 @@ const ES: typeof EN = {
   ragA: 'Recuperación que ',
   ragB: 'se gana sus respuestas.',
   ragSub:
-    'Mis agentes no reciben un top-k a secas. Cada pregunta se reescribe, se busca de forma léxica y semántica, se reordena y un validador la revisa antes de responder.',
+    'Cuando un agente responde con los documentos de una empresa, primero tiene que encontrar el pasaje correcto. Por eso mis agentes no reciben un top-k a secas: cada pregunta se reescribe, se busca por palabras clave y por significado, se reordena y un validador la revisa antes de responder.',
   ragFigTag: 'Fig. 05 · ciclo de recuperación',
   ragFigLabel: 'Diagrama del pipeline de RAG',
   prTitle: 'Principios de ingeniería',
@@ -380,12 +380,12 @@ function build(isEs: boolean) {
             'Las preguntas ambiguas o de varias partes se reescriben o se dividen en subconsultas antes de buscar.',
           ],
           [
-            'Léxico y semántico, no uno solo',
-            'La búsqueda por palabras clave y la vectorial encuentran cosas distintas; los resultados se fusionan en un solo ranking.',
+            'Palabras clave y significado, no uno solo',
+            'Buscar por palabras clave y por significado encuentra cosas distintas; los resultados se fusionan en un solo ranking.',
           ],
           [
             'Reordenar lo recuperado',
-            'Una pasada de reranking pone primero los fragmentos más relevantes antes de que lleguen al agente.',
+            'Una pasada de reranking pone primero los pasajes más relevantes antes de que lleguen al agente.',
           ],
           [
             'Validar antes de responder',
@@ -398,8 +398,8 @@ function build(isEs: boolean) {
             'Ambiguous or multi-part questions are rewritten or split into sub-queries before any search runs.',
           ],
           [
-            'Lexical and semantic, not one or the other',
-            'Keyword and vector search catch different things; results are fused into a single ranking.',
+            'Keywords and meaning, not one or the other',
+            'Searching by keywords and by meaning catches different things; results are fused into a single ranking.',
           ],
           [
             'Rerank what you retrieve',
@@ -422,7 +422,7 @@ function build(isEs: boolean) {
           title: 'Agentes de voz que toman pedidos en tiempo real',
           problem:
             'En el drive-thru, el cliente llega al parlante y habla: pide, cambia de opinión, pregunta por el menú y las promociones, y espera respuesta al instante. La operación necesitaba un agente que atendiera esas conversaciones con naturalidad en horas pico, entendiera pedidos con ruido de fondo e interrupciones, y los registrara directo en sus sistemas.',
-          role: 'Desarrollé la integración de voz en tiempo real con ElevenLabs usando modelos de Claude: streaming de audio, detección de turnos e interrupciones, estado de la conversación y llamadas a herramientas hacia las APIs de menú y pedidos.',
+          role: 'Desarrollé la integración de voz en tiempo real con ElevenLabs usando modelos de Claude: audio en vivo, saber cuándo el cliente terminó de hablar o lo interrumpe, recordar el pedido en curso y registrarlo en los sistemas de menú y pedidos.',
           stack: ['ElevenLabs', 'Claude', 'Deepgram', 'WebSockets', 'AWS'],
           figTag: 'Fig. 01 · turno de voz',
           figLabel: 'Diagrama del pipeline de voz',
@@ -458,7 +458,7 @@ function build(isEs: boolean) {
           title: 'Un asistente de seguros en WhatsApp',
           problem:
             'Los asegurados ya escriben por WhatsApp. La aseguradora necesitaba que ahí mismo pudieran consultar su póliza, validar si un caso está cubierto y abrir una reclamación, con respuestas basadas en sus datos reales y sus reglas — no un chatbot aislado.',
-          role: 'Construí y evolucioné flujos conversacionales sobre la API de WhatsApp de Meta: manejo de webhooks y eventos, orquestación y lógica de negocio, integración con servicios existentes y migración de flujos heredados.',
+          role: 'Construí y evolucioné las conversaciones sobre la API oficial de WhatsApp de Meta: recibir y procesar cada mensaje, la lógica del negocio, la conexión con los sistemas de la aseguradora y la migración de los flujos antiguos.',
           stack: [
             'WhatsApp Business Platform',
             'Meta Cloud API',
@@ -478,11 +478,11 @@ function build(isEs: boolean) {
         },
         {
           href: '#case-edu',
-          tag: 'Caso 04 · Educación · Pipeline agéntico',
+          tag: 'Caso 04 · Educación · Automatización con IA',
           title: 'Evaluación automática de clases grabadas',
           problem:
             'Revisar grabaciones de clases a mano no escala. La plataforma necesitaba evaluaciones estructuradas y consistentes que pudiera usar dentro de su propia aplicación.',
-          role: 'Participé en la arquitectura y el desarrollo: procesamiento de audio, transcripción, evaluación basada en agentes y reportes JSON integrados con el software del cliente.',
+          role: 'Participé en la arquitectura y el desarrollo: procesamiento de audio, transcripción, evaluación basada en agentes y reportes que la app del cliente usa directamente.',
           stack: ['Amazon Transcribe', 'Step Functions', 'LLMs', 'RAG'],
           figTag: 'Fig. 04 · flujo de evaluación',
           figLabel: 'Diagrama del flujo de evaluación',
@@ -502,7 +502,7 @@ function build(isEs: boolean) {
           title: 'Voice agents that take orders in real time',
           problem:
             'At the drive-thru, customers pull up to the speaker and talk: they order, change their minds, ask about the menu and deals, and expect an answer right away. The operation needed an agent that handles those conversations naturally at rush hour, understands orders through background noise and interruptions, and puts them straight into its systems.',
-          role: 'Built the realtime voice integration with ElevenLabs on Claude models: audio streaming, turn detection and interruptions, conversation state, and tool calls into the menu and ordering APIs.',
+          role: 'Built the realtime voice integration with ElevenLabs on Claude models: live audio, knowing when the customer has finished talking or cuts in, keeping track of the order in progress, and placing it in the menu and ordering systems.',
           stack: ['ElevenLabs', 'Claude', 'Deepgram', 'WebSockets', 'AWS'],
           figTag: 'Fig. 01 · voice turn',
           figLabel: 'Voice pipeline diagram',
@@ -538,7 +538,7 @@ function build(isEs: boolean) {
           title: 'An insurance assistant on WhatsApp',
           problem:
             'Policyholders already write on WhatsApp. The insurer needed them to check their policy, confirm whether something is covered and file a claim right there, answered from its real data and rules — not a disconnected chatbot.',
-          role: 'Built and evolved conversational flows on Meta’s WhatsApp Cloud API: webhook and event handling, orchestration and business logic, integrations with existing services, and migration of legacy flows.',
+          role: 'Built and evolved the conversations on Meta’s official WhatsApp API: receiving and handling every message, the business logic, the connection to the insurer’s systems, and moving the old flows over.',
           stack: [
             'WhatsApp Business Platform',
             'Meta Cloud API',
@@ -558,11 +558,11 @@ function build(isEs: boolean) {
         },
         {
           href: '#case-edu',
-          tag: 'Case 04 · Education · Agentic pipeline',
+          tag: 'Case 04 · Education · AI automation',
           title: 'Assessing recorded classes automatically',
           problem:
             'Reviewing class recordings by hand doesn’t scale. The platform needed structured, consistent evaluations it could use inside its own app.',
-          role: 'Took part in the architecture and development: audio processing, transcription, agent-based evaluation and JSON reports integrated with the client’s software.',
+          role: 'Took part in the architecture and development: audio processing, transcription, agent-based evaluation and reports the client’s app uses directly.',
           stack: ['Amazon Transcribe', 'Step Functions', 'LLMs', 'RAG'],
           figTag: 'Fig. 04 · evaluation flow',
           figLabel: 'Evaluation flow diagram',
@@ -606,17 +606,17 @@ function build(isEs: boolean) {
     ? [
         {
           title: 'Sistemas agénticos',
-          body: 'Agentes con herramientas, memoria y aprobaciones, orquestados de forma explícita.',
+          body: 'Agentes que usan herramientas, recuerdan el contexto y piden aprobación, con pasos claros y revisables.',
           tools: 'LangGraph · MCP · Bedrock AgentCore · Claude',
         },
         {
           title: 'IA de voz en tiempo real',
-          body: 'Pipelines de voz en streaming con turnos, interrupciones y baja latencia.',
+          body: 'Agentes de voz que responden al instante y se dejan interrumpir, como una persona.',
           tools: 'Deepgram · ElevenLabs · WebSockets · WebRTC',
         },
         {
           title: 'Document AI y recuperación',
-          body: 'Extracción estructurada, OCR y RAG sobre datos del negocio.',
+          body: 'IA que lee documentos, extrae sus datos y responde con la información del negocio.',
           tools: 'Textract · OCR · pgvector · RAG',
         },
         {
@@ -627,24 +627,24 @@ function build(isEs: boolean) {
         },
         {
           title: 'Backend y cloud',
-          body: 'APIs tipadas, sistemas orientados a eventos e infraestructura serverless.',
+          body: 'Lo que hay detrás: APIs, procesos automáticos y nube que escala sola.',
           tools: 'Python · TypeScript · FastAPI · AWS serverless',
         },
       ]
     : [
         {
           title: 'Agentic systems',
-          body: 'Agents with tools, memory and approvals, orchestrated explicitly.',
+          body: 'Agents that use tools, remember context and ask for approval, with clear steps you can review.',
           tools: 'LangGraph · MCP · Bedrock AgentCore · Claude',
         },
         {
           title: 'Realtime voice AI',
-          body: 'Streaming voice pipelines with turn-taking, interruptions and low latency.',
+          body: 'Voice agents that answer instantly and can be interrupted, like a person.',
           tools: 'Deepgram · ElevenLabs · WebSockets · WebRTC',
         },
         {
           title: 'Document AI & retrieval',
-          body: 'Structured extraction, OCR and RAG over business data.',
+          body: 'AI that reads documents, pulls out their data and answers from the business’s own information.',
           tools: 'Textract · OCR · pgvector · RAG',
         },
         {
@@ -655,7 +655,7 @@ function build(isEs: boolean) {
         },
         {
           title: 'Backend & cloud',
-          body: 'Typed APIs, event-driven systems and serverless infrastructure.',
+          body: 'What runs behind it: APIs, automated workflows and cloud that scales on its own.',
           tools: 'Python · TypeScript · FastAPI · AWS serverless',
         },
       ];
@@ -702,17 +702,17 @@ function build(isEs: boolean) {
           ],
           [
             'Medir latencia, costo y confiabilidad',
-            'Cada funcionalidad de IA tiene un presupuesto: qué tan rápida, cuánto cuesta por solicitud y cómo falla. En LLMOps, agentes evaluadores prueban cada cambio en bucle y cada llamada se registra y se costea. Las decisiones siguen a los números.',
+            'Cada funcionalidad de IA tiene un presupuesto: qué tan rápida, cuánto cuesta por solicitud y cómo falla. Agentes evaluadores prueban cada cambio automáticamente y cada llamada queda registrada con su costo. Las decisiones siguen a los números.',
             ['Evaluation agents', 'LangSmith', 'CloudWatch', 'Aurora logs'],
           ],
           [
             'Construir para producción, no para demos',
-            'Autenticación, observabilidad, reintentos, estado y despliegue son parte del primer diseño, no una fase posterior.',
+            'Seguridad, monitoreo, manejo de fallas y despliegue son parte del primer diseño, no una fase posterior.',
             ['GitHub Actions', 'Terraform', 'AWS SAM'],
           ],
           [
             'El criterio humano sigue siendo esencial',
-            'La IA acelera mi trabajo — Claude Code como herramienta principal, con Cursor y ChatGPT — pero reviso cada PR a fondo y nada llega a main ni a producción sin pasar por mí. No me automatizo a mí mismo: optimizo mi trabajo.',
+            'La IA acelera mi trabajo — Claude Code como herramienta principal, con Cursor y ChatGPT — pero reviso cada PR a fondo y nada llega a producción sin pasar por mí. No me automatizo a mí mismo: optimizo mi trabajo.',
           ],
         ]
       : [
@@ -722,17 +722,17 @@ function build(isEs: boolean) {
           ],
           [
             'Measure latency, cost and reliability',
-            'Every AI feature gets a budget: how fast, how much per request, how it fails. In LLMOps terms, evaluation agents test every change in a loop and every call is logged and costed. Decisions follow the numbers.',
+            'Every AI feature gets a budget: how fast, how much per request, how it fails. Evaluation agents test every change automatically, and every call is logged with its cost. Decisions follow the numbers.',
             ['Evaluation agents', 'LangSmith', 'CloudWatch', 'Aurora logs'],
           ],
           [
             'Build for production, not just demos',
-            'Auth, observability, retries, state and deployment are part of the first design, not a later phase.',
+            'Security, monitoring, failure handling and deployment are part of the first design, not a later phase.',
             ['GitHub Actions', 'Terraform', 'AWS SAM'],
           ],
           [
             'Human judgment remains essential',
-            'AI speeds up my work — Claude Code as my main tool, with Cursor and ChatGPT alongside — but I review every PR thoroughly and nothing reaches main or production without passing through me. I don’t automate myself; I optimize my work.',
+            'AI speeds up my work — Claude Code as my main tool, with Cursor and ChatGPT alongside — but I review every PR thoroughly and nothing reaches production without passing through me. I don’t automate myself; I optimize my work.',
           ],
         ]
   ).map(function (p: (string | string[])[], i: number) {
