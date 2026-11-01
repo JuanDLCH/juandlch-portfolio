@@ -41,7 +41,7 @@ export const CV_HEAD = {
   name: 'Juan Diego Londoño Chavarría',
   headline: 'AI Engineer | Agentic Systems, RAG & LLMOps on AWS',
   contact:
-    'Medellín, Colombia · Open to remote | juandiego0329@gmail.com | linkedin.com/in/juandlch | github.com/JuanDLCH',
+    'Medellín, Colombia · Open to remote | juandiego0329@gmail.com | linkedin.com/in/juandlch | github.com/JuanDLCH | Portfolio: juandlch.dev',
   stats: {
     id: 'stats',
     cite: 'Headline',
@@ -118,33 +118,33 @@ export const CV: CvSection[] = [
     blocks: [
       {
         heading: 'Lead AI Engineer | Trade EC',
-        meta: 'Quito, Ecuador (Remote) · Sep 2024 – Present',
+        meta: 'Quito, Ecuador (Remote) · Sep 2024 – Oct 2026',
         items: [
           {
             id: 'lead-team',
             cite: 'Lead AI Engineer: team',
-            text: 'Lead a 3-person team delivering custom AI solutions (chatbots, RAG/OCR, voice and text automation) on AWS for clients in food service, retail, cinema, finance and education, coordinating cross-team development with the front-end, back-end and QA teams.',
+            text: 'Led a 3-person team delivering custom AI solutions (chatbots, RAG/OCR, voice and text automation) on AWS for clients in food service, retail, cinema, finance and education, coordinating cross-team development with the front-end, back-end and QA teams.',
           },
           {
             id: 'lead-rag',
             cite: 'Lead AI Engineer: RAG',
-            text: 'Designed agentic and RAG systems (LangGraph, LangChain, LlamaIndex) with query rewriting, hybrid keyword + vector retrieval, reranking and a validator agent that checks answers before they are returned, keeping responses grounded in client data.',
+            text: 'Designed agentic and RAG systems (LangGraph, LangChain, LlamaIndex) with query rewriting, hybrid keyword + vector retrieval, reranking and a validator agent that checked answers before they were returned, keeping responses grounded in client data.',
           },
           {
             id: 'lead-llmops',
             cite: 'Lead AI Engineer: LLMOps',
             label: 'LLMOps',
-            text: 'Built evaluation agents that test every change in a loop and logged and costed every LLM call (LangSmith, CloudWatch, Aurora), so model and prompt decisions are driven by latency, cost and quality data.',
+            text: 'Built evaluation agents that tested every change in a loop and logged and costed every LLM call (LangSmith, CloudWatch, Aurora), so model and prompt decisions were driven by latency, cost and quality data.',
           },
           {
             id: 'lead-arch',
             cite: 'Lead AI Engineer: architecture',
-            text: "Own client discovery, architecture and cost estimation as the team's technical reference; contributed architecture, documentation and estimates to the company's AWS Generative AI Competency process.",
+            text: "Owned client discovery, architecture and cost estimation as the team's technical reference; contributed architecture, documentation and estimates to the company's AWS Generative AI Competency process.",
           },
           {
             id: 'lead-ai-dev',
             cite: 'Lead AI Engineer: AI-assisted development',
-            text: 'Use AI-assisted development (Claude Code, Cursor) under strict human review: every PR is reviewed and nothing reaches production unchecked.',
+            text: 'Used AI-assisted development (Claude Code, Cursor) under strict human review: every PR was reviewed and nothing reached production unchecked.',
           },
         ],
       },
@@ -206,7 +206,7 @@ export const CV: CvSection[] = [
             id: 'client-chatbots',
             cite: 'Client work: chatbots',
             label: 'Multicines, InsureHero, El Hornero, Sushicorp, JXBS',
-            text: 'LLM chatbots and WhatsApp (Meta Cloud API) assistants integrated with business systems, including HubSpot CRM.',
+            text: 'LLM chatbots and WhatsApp (Meta Cloud API) assistants integrated with business systems.',
           },
         ],
       },

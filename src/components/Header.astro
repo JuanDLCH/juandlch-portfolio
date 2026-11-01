@@ -2,6 +2,8 @@
 import { attrs, pick, type Content } from '../i18n';
 import T from './T.astro';
 import ThemeToggle from './ThemeToggle';
+import cvEn from '../assets/cv/Juan-Londono_AI-Engineer.pdf?url';
+import cvEs from '../assets/cv/Juan-Londono_AI-Engineer_ES.pdf?url';
 
 interface Props {
   x: Content['x'];
@@ -20,6 +22,22 @@ const links = [
   { href: '#contact', label: x.navContact, sections: 'contact' },
 ];
 // Active state comes from <html data-lang>, so it is right before any JS runs.
+// The CV in each language; the page's language is listed first.
+const cvs = [
+  {
+    lang: 'en',
+    label: 'English',
+    href: cvEn,
+    file: 'Juan-Londono_AI-Engineer.pdf',
+  },
+  {
+    lang: 'es',
+    label: 'Español',
+    href: cvEs,
+    file: 'Juan-Londono_AI-Engineer_ES.pdf',
+  },
+];
+const cvFirst = '[html[data-lang=es]_&]:order-first';
 const langBtn =
   'text-ink grid h-9 w-10 cursor-pointer place-items-center border-0 bg-transparent p-0 font-[inherit] text-xs font-medium tracking-[0.06em]';
 ---
@@ -60,12 +78,31 @@ const langBtn =
       ))}
     </nav>
     <div class="mono ml-2 flex items-center gap-2 text-[13px] tracking-[0.06em] uppercase narrow:ml-1 narrow:gap-1.5 narrow:text-xs mob:ml-auto">
-      <a
-        href="#cv"
-        class="border-line2 border px-3.5 py-2 whitespace-nowrap no-underline narrow:px-2.5 mob:hidden"
-      >
-        <T v={x.navCv} />
-      </a>
+      <details data-cv class="group relative mob:hidden">
+        <summary
+          {...attrs({ 'aria-label': x.cvMenu })}
+          class="border-line2 block cursor-pointer list-none border px-3.5 py-2 whitespace-nowrap narrow:px-2.5 [&::-webkit-details-marker]:hidden group-open:border-accent group-open:text-accent"
+        >
+          <T v={x.navCv} />
+        </summary>
+        <div class="border-line2 bg-bg absolute top-full right-0 z-10 mt-1.5 flex min-w-44 flex-col border p-1 shadow-lg">
+          {cvs.map((cv) => (
+            <a
+              href={cv.href}
+              download={cv.file}
+              hreflang={cv.lang}
+              data-cv-link
+              class:list={[
+                'hover:bg-panel focus-visible:bg-panel flex items-center justify-between gap-4 px-3 py-2.5 no-underline',
+                cv.lang === 'es' && cvFirst,
+              ]}
+            >
+              <span>{cv.label}</span>
+              <span class="text-muted text-[11px]">PDF ↓</span>
+            </a>
+          ))}
+        </div>
+      </details>
       <div
         role="group"
         {...attrs({ 'aria-label': x.langGroup })}
@@ -172,13 +209,31 @@ const langBtn =
         </a>
       ))}
     </nav>
-    <a
-      href="#cv"
-      data-menu-link
-      class="mono border-line2 flex min-h-[52px] shrink-0 items-center justify-center border text-[13px] tracking-[0.06em] uppercase no-underline"
+    <div
+      role="group"
+      {...attrs({ 'aria-label': x.cvMenu })}
+      class="mono shrink-0 text-[13px] tracking-[0.06em] uppercase"
     >
-      <T v={x.navCv} />
-    </a>
+      <p class="text-muted mb-2 text-xs">
+        <T v={x.cvMenu} />
+      </p>
+      <div class="flex gap-2">
+        {cvs.map((cv) => (
+          <a
+            href={cv.href}
+            download={cv.file}
+            hreflang={cv.lang}
+            data-menu-link
+            class:list={[
+              'border-line2 flex min-h-[52px] flex-1 items-center justify-center border no-underline',
+              cv.lang === 'es' && cvFirst,
+            ]}
+          >
+            <span>{cv.label}</span>&nbsp;↓
+          </a>
+        ))}
+      </div>
+    </div>
   </div>
 </dialog>
 
@@ -250,9 +305,28 @@ const langBtn =
     );
     sections.forEach((el) => io.observe(el));
     addEventListener('scroll', paint, { passive: true });
+
+    // CV picker: closes on a pick, a click outside it or Escape.
+    const cv = document.querySelector<HTMLDetailsElement>('[data-cv]');
+    const closeCv = (e: Event) => {
+      if (!cv?.open) return;
+      if (e instanceof KeyboardEvent) {
+        if (e.key !== 'Escape') return;
+        cv.open = false;
+        cv.querySelector('summary')?.focus();
+      } else if (!cv.contains(e.target as Node)) cv.open = false;
+    };
+    cv?.querySelectorAll('[data-cv-link]').forEach((a) =>
+      a.addEventListener('click', () => (cv.open = false)),
+    );
+    document.addEventListener('click', closeCv);
+    document.addEventListener('keydown', closeCv);
+
     teardown = () => {
       io.disconnect();
       removeEventListener('scroll', paint);
+      document.removeEventListener('click', closeCv);
+      document.removeEventListener('keydown', closeCv);
     };
   });
 </script>
