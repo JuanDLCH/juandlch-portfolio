@@ -114,7 +114,7 @@ const LABEL_SCHEMA = {
 };
 
 const labelBody = (env: Env, msgs: Msg[], known: string[]) => ({
-  model: env.INSIGHTS_MODEL,
+  model: env.INSIGHTS_LABEL_MODEL,
   instructions: LABEL_PROMPT,
   input: JSON.stringify({
     known_topics: known,
@@ -319,7 +319,7 @@ async function dayMessages(db: D1Database, day: string) {
 const labelUsd = (env: Env, msgs: Msg[]) => {
   const chars = msgs.reduce((n, m) => n + m.text.length + 20, 0);
   return (
-    chatUsd(env.INSIGHTS_MODEL, {
+    chatUsd(env.INSIGHTS_LABEL_MODEL, {
       input_tokens: 2500 + chars,
       output_tokens: 300 + msgs.length * 60,
     }) / 2
@@ -346,7 +346,7 @@ async function submit(env: Env, db: D1Database, day: string, attempts: number) {
   }
   const known = await knownTopics(db);
   const fields = {
-    model: env.INSIGHTS_MODEL,
+    model: `${env.INSIGHTS_LABEL_MODEL} / ${env.INSIGHTS_REPORT_MODEL}`,
     conversations: convs.size,
     messages: total,
     sent: JSON.stringify(sent),
@@ -407,14 +407,15 @@ async function batchResults(env: Env, row: ReportRow) {
   if (row.batch_id === 'mock') {
     for (const key of JSON.parse(row.sent ?? '[]') as string[])
       out.set(key, { text: null, usage: null });
-    return { done: true as const, out };
+    return { state: 'done' as const, out };
   }
   const batch = (await (
     await openai(env, `/batches/${row.batch_id}`)
   ).json()) as { status: string; output_file_id?: string | null };
+  // A dead batch is sent again (runInsights), not polled again.
   if (['failed', 'expired', 'cancelled'].includes(batch.status))
-    throw new Error(`batch ${batch.status}`);
-  if (batch.status !== 'completed') return { done: false as const, out };
+    return { state: 'dead' as const, out, status: batch.status };
+  if (batch.status !== 'completed') return { state: 'pending' as const, out };
   if (batch.output_file_id) {
     const text = await (
       await openai(env, `/files/${batch.output_file_id}/content`)
@@ -429,13 +430,22 @@ async function batchResults(env: Env, row: ReportRow) {
         out.set(r.custom_id, outputOf(r.response.body));
     }
   }
-  return { done: true as const, out };
+  return { state: 'done' as const, out };
 }
 
 /** Stores the labels of a finished batch (relabeling what came back wrong). */
 async function ingest(env: Env, db: D1Database, row: ReportRow) {
-  const { done, out } = await batchResults(env, row);
-  if (!done) return false;
+  const res = await batchResults(env, row);
+  if (res.state === 'dead') {
+    await setRow(db, row.day, {
+      status: 'failed',
+      attempts: row.attempts + 1,
+      error: `batch ${res.status}`,
+    });
+    return false;
+  }
+  if (res.state === 'pending') return false;
+  const { out } = res;
   const convs = await dayMessages(db, row.day);
   const known = await knownTopics(db);
   const knownSet = new Set(known);
@@ -446,13 +456,13 @@ async function ingest(env: Env, db: D1Database, row: ReportRow) {
     const msgs = convs.get(key);
     if (!msgs) continue;
     const r = out.get(key);
-    if (r?.usage) usd += chatUsd(env.INSIGHTS_MODEL, r.usage) / 2;
+    if (r?.usage) usd += chatUsd(env.INSIGHTS_LABEL_MODEL, r.usage) / 2;
     let got = r?.text ? checkLabels(msgs, r.text) : null;
     if (!got && retries < RETRIES) {
       retries++;
       try {
         const again = await respond(env, labelBody(env, msgs, known));
-        if (again.usage) usd += chatUsd(env.INSIGHTS_MODEL, again.usage);
+        if (again.usage) usd += chatUsd(env.INSIGHTS_LABEL_MODEL, again.usage);
         got = again.text ? checkLabels(msgs, again.text) : null;
       } catch (err) {
         console.error(`insights relabel ${key}: ${String(err)}`);
@@ -663,7 +673,7 @@ async function report(env: Env, db: D1Database, day: string) {
   let usd = 0;
   if (topicMsgs.size || goalMsgs.size) {
     const r = await respond(env, {
-      model: env.INSIGHTS_MODEL,
+      model: env.INSIGHTS_REPORT_MODEL,
       instructions: REPORT_PROMPT,
       input: JSON.stringify({
         day,
@@ -692,7 +702,7 @@ async function report(env: Env, db: D1Database, day: string) {
         },
       },
     });
-    if (r.usage) usd = chatUsd(env.INSIGHTS_MODEL, r.usage);
+    if (r.usage) usd = chatUsd(env.INSIGHTS_REPORT_MODEL, r.usage);
     if (!r.text) throw new Error('report: no output');
     parsed = JSON.parse(r.text);
   }
@@ -738,18 +748,29 @@ async function report(env: Env, db: D1Database, day: string) {
  * ingested and reported. Safe to run any number of times. `force` sends a
  * day again from scratch (the admin's re-run). */
 export async function runInsights(env: Env, force?: string) {
-  if (!env.INSIGHTS_MODEL) return;
+  if (!env.INSIGHTS_LABEL_MODEL || !env.INSIGHTS_REPORT_MODEL) return;
   const db = await labDb(env);
   if (!db) return;
+  // What to send: the forced day, or yesterday if it wasn't sent yet, else
+  // the oldest failed day with tries left (a batch can expire days later).
   const yesterday = bogotaDay(Date.now() - DAY_MS);
-  for (const day of force ? [force] : [yesterday]) {
-    const row = await db
-      .prepare('SELECT status, attempts FROM daily_reports WHERE day = ?')
-      .bind(day)
-      .first<{ status: string; attempts: number }>();
-    const retry = row?.status === 'failed' && row.attempts < MAX_ATTEMPTS;
-    if (row && !retry && !force) continue;
-    const attempts = force ? 0 : (row?.attempts ?? 0) + (retry ? 1 : 0);
+  const sent = await db
+    .prepare('SELECT 1 FROM daily_reports WHERE day = ?')
+    .bind(yesterday)
+    .first();
+  const retry = await db
+    .prepare(
+      `SELECT day, attempts FROM daily_reports WHERE status = 'failed' AND attempts < ? ORDER BY day LIMIT 1`,
+    )
+    .bind(MAX_ATTEMPTS)
+    .first<{ day: string; attempts: number }>();
+  const next = force
+    ? { day: force, attempts: 0 }
+    : !sent
+      ? { day: yesterday, attempts: 0 }
+      : retry;
+  if (next) {
+    const { day, attempts } = next;
     try {
       await submit(env, db, day, attempts);
     } catch (err) {
