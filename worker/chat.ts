@@ -12,7 +12,7 @@
 import { CASES } from '../src/lab/chat/cases';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
-import { saveQuestion, track } from './metrics';
+import { saveMessage, track } from './metrics';
 import { chatUsd, chatWorstUsd, noteUsd, type TextUsage } from './prices';
 
 const OPENAI = 'https://api.openai.com/v1';
@@ -186,7 +186,7 @@ function noteMessage(
   return Promise.all([
     track(env, { kind: 'chat_message', subject }),
     caseId === 'meet' && /^[\w-]{8,64}$/.test(conv)
-      ? saveQuestion(env, {
+      ? saveMessage(env, {
           source: subject === 'cv' ? 'cv' : 'chat',
           conv,
           text,
