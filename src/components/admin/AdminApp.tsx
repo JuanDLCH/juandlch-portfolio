@@ -255,7 +255,10 @@ function DayColumns({
     setHover(i);
   };
   // Beside the column: to its right, or its left near the right edge.
-  const cx = hover === null ? 0 : ((hover + 0.5) / n) * width;
+  // A column hovered before the days changed (a click filtering to one day
+  // keeps focus) may no longer exist.
+  const at = hover !== null && hover < n ? hover : null;
+  const cx = at === null ? 0 : ((at + 0.5) / n) * width;
   const left =
     cx + 12 + TIP_W <= width ? cx + 12 : Math.max(0, cx - 12 - TIP_W);
   const cols = { gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` };
@@ -296,10 +299,10 @@ function DayColumns({
               onFocus={() => show(i)}
               onBlur={() => setHover(null)}
               onClick={() => onPick?.(day)}
-              className={`flex h-full min-w-0 items-end border-0 p-0 ${onPick ? 'cursor-pointer' : 'cursor-default'} ${hover === i ? 'bg-chip' : 'bg-transparent'}`}
+              className={`flex h-full min-w-0 items-end border-0 p-0 ${onPick ? 'cursor-pointer' : 'cursor-default'} ${at === i ? 'bg-chip' : 'bg-transparent'}`}
             >
               <span
-                className={`block w-full rounded-t-[4px] ${hover === i ? 'bg-ink' : 'bg-accent'}`}
+                className={`block w-full rounded-t-[4px] ${at === i ? 'bg-ink' : 'bg-accent'}`}
                 style={{
                   height: values[i]
                     ? `${Math.max(2, (values[i] / top) * 100)}%`
@@ -309,16 +312,16 @@ function DayColumns({
             </button>
           ))}
         </div>
-        {hover !== null && (
+        {at !== null && (
           <div
             role="status"
             className="border-line2 bg-bg text-body pointer-events-none absolute top-1 z-10 border p-2.5 text-[12px] shadow-lg"
             style={{ left, width: TIP_W }}
           >
             <div className="text-ink mb-1.5 font-semibold first-letter:uppercase">
-              {fmtDay(days[hover], lang, true)}
+              {fmtDay(days[at], lang, true)}
             </div>
-            {tip(hover)}
+            {tip(at)}
           </div>
         )}
       </div>
@@ -420,9 +423,128 @@ function Activity({
   );
 }
 
-/** Shades of the accent for the map, light to dark: one hue, so more is
- * darker and nothing depends on telling hues apart. */
-const SHADES = [0.3, 0.48, 0.66, 0.84, 1];
+/** The map's scale: the accent from a light tint to a deep shade, the same
+ * in both themes, so darker always means more and nothing depends on
+ * telling hues apart. */
+const SHADES = [
+  'color-mix(in oklab, var(--accent) 30%, white)',
+  'color-mix(in oklab, var(--accent) 60%, white)',
+  'var(--accent)',
+  'color-mix(in oklab, var(--accent) 65%, black)',
+  'color-mix(in oklab, var(--accent) 40%, black)',
+];
+
+/** Month and year picker (Firefox has no native one): the year with arrows
+ * and its twelve months; months after `max` are disabled. */
+function MonthPicker({
+  value,
+  max,
+  lang,
+  x,
+  onPick,
+}: {
+  /** YYYY-MM, or '' when the range isn't a whole month. */
+  value: string;
+  max: string;
+  lang: Lang;
+  x: AdminCopy;
+  onPick: (month: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [year, setYear] = useState(Number((value || max).slice(0, 4)));
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (
+        e instanceof KeyboardEvent
+          ? e.key === 'Escape'
+          : !ref.current?.contains(e.target as Node)
+      )
+        setOpen(false);
+    };
+    addEventListener('mousedown', close);
+    addEventListener('keydown', close);
+    return () => {
+      removeEventListener('mousedown', close);
+      removeEventListener('keydown', close);
+    };
+  }, [open]);
+  const name = (m: number, style: 'short' | 'long') =>
+    new Intl.DateTimeFormat(lang, { month: style, timeZone: 'UTC' }).format(
+      new Date(Date.UTC(2000, m, 15)),
+    );
+  const maxYear = Number(max.slice(0, 4));
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
+          setYear(Number((value || max).slice(0, 4)));
+          setOpen((o) => !o);
+        }}
+        className={`${field} flex min-w-36 cursor-pointer items-center justify-between gap-3 text-left`}
+      >
+        <span className={value ? 'first-letter:uppercase' : 'text-muted'}>
+          {value
+            ? `${name(Number(value.slice(5)) - 1, 'long')} ${value.slice(0, 4)}`
+            : x.pickMonth}
+        </span>
+        <Icon d={I.calendar} size={14} />
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-label={x.month}
+          className="border-line2 bg-bg absolute top-full left-0 z-20 mt-1 w-64 border p-3 shadow-lg"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label={x.prevYear}
+              className={`${iconBtn} size-7`}
+              onClick={() => setYear((y) => y - 1)}
+            >
+              ‹
+            </button>
+            <span className={`${mono} text-ink text-[13px]`}>{year}</span>
+            <button
+              type="button"
+              aria-label={x.nextYear}
+              disabled={year >= maxYear}
+              className={`${iconBtn} size-7 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => setYear((y) => y + 1)}
+            >
+              ›
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {Array.from({ length: 12 }, (_, m) => {
+              const k = `${year}-${String(m + 1).padStart(2, '0')}`;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  disabled={k > max}
+                  aria-pressed={k === value}
+                  onClick={() => {
+                    onPick(k);
+                    setOpen(false);
+                  }}
+                  className={`${btn} justify-center capitalize ${k === value ? 'border-accent text-accent' : ''}`}
+                >
+                  {name(m, 'short')}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Countries shaded by a value, with a legend and a tooltip per country. */
 function CountryMap({
@@ -470,8 +592,11 @@ function CountryMap({
               key={c.id}
               d={c.d}
               onMouseMove={(e) => move(c.id, e)}
-              className={`${n ? 'fill-accent' : 'fill-chip'} ${hover?.id === c.id ? 'stroke-ink' : 'stroke-panel'}`}
-              style={{ fillOpacity: n ? shade(n) : 1, strokeWidth: 0.6 }}
+              className={`${n ? '' : 'fill-chip'} ${hover?.id === c.id ? 'stroke-ink' : 'stroke-panel'}`}
+              style={{
+                ...(n ? { fill: shade(n) } : {}),
+                strokeWidth: hover?.id === c.id ? 1.4 : 0.6,
+              }}
             />
           );
         })}
@@ -502,11 +627,11 @@ function CountryMap({
           aria-hidden="true"
         >
           <span>1</span>
-          {SHADES.map((o) => (
+          {SHADES.map((c) => (
             <span
-              key={o}
-              className="bg-accent block h-2 w-6"
-              style={{ opacity: o }}
+              key={c}
+              className="border-line2 block h-2.5 w-6 border"
+              style={{ background: c }}
             />
           ))}
           <span>{max}</span>
@@ -994,8 +1119,11 @@ export default function AdminApp({ map }: { map: WorldMap }) {
   const [err, setErr] = useState('');
   const [day, setDay] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
-  const [traffic, setTraffic] = useState<Traffic | null>(null);
-  const [trafficErr, setTrafficErr] = useState(false);
+  // Each answer keeps the range it's for: only the current range's shows.
+  const [trafficOf, setTrafficOf] = useState<{
+    q: string;
+    t: Traffic | null;
+  } | null>(null);
 
   useEffect(() => {
     // A slower answer for a range no longer selected is dropped.
@@ -1019,11 +1147,10 @@ export default function AdminApp({ map }: { map: WorldMap }) {
     get<Traffic>(`/admin/api/traffic?${q}`)
       .then((t) => {
         if (!current) return;
-        setTraffic(t);
-        setTrafficErr(false);
+        setTrafficOf({ q, t });
       })
       .catch(() => {
-        if (current) setTrafficErr(true);
+        if (current) setTrafficOf({ q, t: null });
       });
     return () => {
       current = false;
@@ -1045,6 +1172,8 @@ export default function AdminApp({ map }: { map: WorldMap }) {
       extra: r.days ? x.days.replace('{n}', String(r.days)) : undefined,
     }));
 
+  const traffic = trafficOf?.q === q ? trafficOf.t : null;
+  const trafficErr = trafficOf?.q === q && trafficOf.t === null;
   const same = (r: Range) => r.from === range.from && r.to === range.to;
   const presets = [
     { key: 'today', label: x.today, r: { from: today, to: today } },
@@ -1186,23 +1315,21 @@ export default function AdminApp({ map }: { map: WorldMap }) {
             ))}
           </div>
         </div>
-        <label className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
           <span className={label}>{x.month}</span>
-          <input
-            type="month"
-            className={field}
-            max={today.slice(0, 7)}
+          <MonthPicker
             value={
               range.from.endsWith('-01') &&
               same(monthRange(range.from.slice(0, 7), today))
                 ? range.from.slice(0, 7)
                 : ''
             }
-            onChange={(e) =>
-              e.target.value && setRange(monthRange(e.target.value, today))
-            }
+            max={today.slice(0, 7)}
+            lang={lang}
+            x={x}
+            onPick={(m) => setRange(monthRange(m, today))}
           />
-        </label>
+        </div>
         <label className="flex flex-col gap-1.5">
           <span className={label}>{x.fromDay}</span>
           <input
