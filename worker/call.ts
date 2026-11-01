@@ -84,6 +84,13 @@ export class VoiceCall extends DurableObject<Env> {
     return done.used;
   }
 
+  /** Undoes takeResume when the call that would continue it didn't start. */
+  async giveBack(ip: string) {
+    const done = await this.ctx.storage.get<Done>('done');
+    if (done?.taken && done.ip === ip)
+      await this.ctx.storage.put('done', { ...done, taken: false });
+  }
+
   /** The visitor ended the call. Only the IP that started it can. */
   async end(ip: string) {
     const call = await this.ctx.storage.get<Call>('call');

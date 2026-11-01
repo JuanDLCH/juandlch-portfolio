@@ -59,12 +59,9 @@ async function startSession(req: Request, env: Env) {
   const quota = env.QUOTA.get(env.QUOTA.idFromName(day));
   // Resuming an ended call with time left continues its budget and doesn't
   // count as a new call.
-  const used = resume
-    ? await env.CALL.get(env.CALL.idFromName(resume)).takeResume(
-        ip,
-        budget,
-        MIN_RESUME_S,
-      )
+  const resumed = resume ? env.CALL.get(env.CALL.idFromName(resume)) : null;
+  const used = resumed
+    ? await resumed.takeResume(ip, budget, MIN_RESUME_S)
     : null;
   const seconds = budget - (used ?? 0);
   // The active slot outlives the call a bit, in case its cleanup is lost.
@@ -78,7 +75,11 @@ async function startSession(req: Request, env: Env) {
           Number(env.MAX_PER_DAY),
         )
       : await quota.hold(ip, until);
-  if (denied) return json({ error: denied }, 429);
+  if (denied) {
+    // The time left stays there for the next try.
+    if (used !== null) await resumed?.giveBack(ip);
+    return json({ error: denied }, 429);
+  }
 
   let call: { sdp: string; callId: string } | null = null;
   try {
@@ -103,7 +104,10 @@ async function startSession(req: Request, env: Env) {
     // Never leave a call running without its cutoff.
     if (call) await hangup(env, call.callId);
     if (used === null) await quota.refund(ip);
-    else await quota.release(ip);
+    else {
+      await quota.release(ip);
+      await resumed?.giveBack(ip);
+    }
     return json({ error: 'unavailable' }, 502);
   }
 }
