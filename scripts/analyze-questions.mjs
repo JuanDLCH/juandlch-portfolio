@@ -6,7 +6,7 @@
 //   node scripts/analyze-questions.mjs [--since 2026-11-01] [--limit 20]
 //     [--dry-run] [--model gpt-6-luna] [--batch batch_…]
 // --dry-run only exports (no OpenAI cost); --batch picks up a batch sent by an
-// earlier run that stopped waiting. Reads .env (or the environment):
+// earlier run that stopped waiting (from the conversations it saved then). Reads .env (or the environment):
 //   CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (Account → D1 → Read),
 //   OPENAI_API_KEY (not needed with --dry-run).
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -151,7 +151,11 @@ const SCHEMA = {
   },
 };
 
+/** The conversations a batch was sent with (analysis/, gitignored). */
+const snapshotOf = (id) => new URL(`batch-${id}.json`, dir);
 let batchId = args.batch;
+if (batchId && !/^batch_[\w-]+$/.test(batchId))
+  throw new Error('--batch batch_…');
 if (!batchId) {
   if (!convs.length) {
     console.log('Nothing to classify.');
@@ -200,9 +204,20 @@ if (!batchId) {
     })
   ).json();
   batchId = batch.id;
+  // The batch's c0, c1… are positions in this list: keep it, since D1 can
+  // change before a resumed run reads the results.
+  await writeFile(snapshotOf(batchId), JSON.stringify(convs));
   console.log(
-    `Batch ${batchId} sent. If this stops waiting, run again with --batch ${batchId} (same --since/--limit).`,
+    `Batch ${batchId} sent. If this stops waiting, run again with --batch ${batchId}.`,
   );
+} else {
+  try {
+    convs = JSON.parse(await readFile(snapshotOf(batchId), 'utf8'));
+  } catch {
+    throw new Error(
+      `No snapshot for ${batchId} in analysis/: it must be resumed where it was sent`,
+    );
+  }
 }
 
 let batch;
