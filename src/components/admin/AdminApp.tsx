@@ -80,6 +80,9 @@ const shiftDay = (day: string, n: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000)
     .toISOString()
     .slice(0, 10);
+/** The longest range the API takes (worker/admin.ts, rangeOf), in days
+ * between `from` and `to`. */
+const MAX_SPAN = 366;
 interface Range {
   from: string;
   to: string;
@@ -1588,6 +1591,7 @@ export default function AdminApp({ map }: { map: WorldMap }) {
           <span className={label}>{x.fromDay}</span>
           <DatePicker
             label={x.fromDay}
+            min={shiftDay(range.to, -MAX_SPAN)}
             max={range.to}
             value={range.from}
             lang={lang}
@@ -1600,7 +1604,7 @@ export default function AdminApp({ map }: { map: WorldMap }) {
           <DatePicker
             label={x.toDay}
             min={range.from}
-            max={today}
+            max={[today, shiftDay(range.from, MAX_SPAN)].sort()[0]}
             value={range.to}
             lang={lang}
             x={x}
@@ -1628,7 +1632,9 @@ export default function AdminApp({ map }: { map: WorldMap }) {
       )}
       {!data && !err && <p className={`${note} mt-block`}>{x.loading}</p>}
 
-      {data && (
+      {/* After a failed load, the previous range's data isn't shown under
+          the new range's label. */}
+      {data && !(err && (data.from !== range.from || data.to !== range.to)) && (
         <>
           <div className="mt-block gap-gutter grid grid-cols-2 md:grid-cols-4">
             {kpis.map(([k, v]) => (
