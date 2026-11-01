@@ -78,6 +78,7 @@ export const I = {
   clip: '<path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l8-8"/>',
   mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>',
   send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   stop: '<rect x="6" y="6" width="12" height="12"/>',
   file: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',

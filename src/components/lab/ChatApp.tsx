@@ -793,9 +793,9 @@ export default function ChatApp({
           <a
             href={only ? '/' : '/#lab'}
             aria-label={only ? x.homeLabel : x.backLabel}
-            className={`${mono} border-line2 hover:border-accent mob:size-11 mob:justify-center mob:p-0 mob:text-base inline-flex h-9 shrink-0 items-center gap-2 border px-3 text-[11px] tracking-[0.06em] uppercase no-underline transition-colors`}
+            className={`${mono} border-line2 hover:border-accent mob:size-11 mob:justify-center mob:p-0 inline-flex h-9 shrink-0 items-center gap-2 border px-3 text-[11px] tracking-[0.06em] uppercase no-underline transition-colors`}
           >
-            <span aria-hidden="true">←</span>
+            <Icon d={I.back} size={16} />
             <span className="mob:hidden">{only ? x.home : x.back}</span>
           </a>
           <span

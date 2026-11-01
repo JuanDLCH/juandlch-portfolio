@@ -672,9 +672,9 @@ export default function VoiceApp() {
           <a
             href="/#lab"
             aria-label={x.backLabel}
-            className={`${mono} border-line2 hover:border-accent inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 border px-3.5 text-xs tracking-[0.06em] uppercase no-underline transition-colors`}
+            className={`${mono} border-line2 hover:border-accent mob:w-11 mob:px-0 inline-flex h-11 shrink-0 items-center justify-center gap-2 border px-3.5 text-xs tracking-[0.06em] uppercase no-underline transition-colors`}
           >
-            <span aria-hidden="true">←</span>
+            <Icon d={I.back} size={16} />
             <span className="mob:hidden">{x.back}</span>
           </a>
           <div className="flex min-w-0 flex-col gap-0.5">
