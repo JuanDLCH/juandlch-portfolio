@@ -188,7 +188,7 @@ export const CV: CvSection[] = [
             id: 'client-muyu',
             cite: 'Client work: Muyu Education',
             label: 'Muyu Education',
-            text: 'agentic platform that transcribes recorded classes (Amazon Transcribe, Step Functions, Aurora) and returns structured JSON evaluations.',
+            text: 'agentic platform that transcribes recorded classes (Amazon Transcribe, Step Functions) and returns structured JSON evaluations.',
           },
           {
             id: 'client-anefi',
