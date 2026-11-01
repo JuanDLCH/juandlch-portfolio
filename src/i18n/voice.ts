@@ -29,8 +29,7 @@ const EN = {
   again: 'Talk again',
   mute: 'Mute microphone',
   unmute: 'Unmute microphone',
-  idleCaption:
-    'Press start and ask anything about Juan Diego — his experience, projects, stack, or how to reach him.',
+  idleCaption: 'Press start and ask me anything about Juan Diego.',
   greeting:
     'Hi, I’m Sophie! I can tell you anything you’d like to know about Juan Diego: what he does, the projects he’s built and the technologies he works with. Press Start and ask me anything. I’ll answer right away.',
   hearGreeting: 'Hear Sophie',
@@ -102,8 +101,7 @@ const ES: typeof EN = {
   again: 'Hablar de nuevo',
   mute: 'Silenciar micrófono',
   unmute: 'Activar micrófono',
-  idleCaption:
-    'Pulsa iniciar y pregunta lo que quieras sobre Juan Diego — su experiencia, proyectos, stack o cómo contactarlo.',
+  idleCaption: 'Pulsa iniciar y pregúntame lo que quieras sobre Juan Diego.',
   greeting:
     '¡Hola, soy Sophie! Puedo contarte lo que quieras saber sobre Juan Diego: a qué se dedica, qué proyectos ha construido y con qué tecnologías trabaja. Presiona Iniciar y pregúntame lo que quieras. Te respondo al instante.',
   hearGreeting: 'Escuchar a Sophie',

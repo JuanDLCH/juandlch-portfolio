@@ -633,6 +633,8 @@ export default function VoiceApp() {
     };
   }
   const typedCaption = useTypewriter(caption.text);
+  // Only speech (Sophie's greeting, the call) runs as a ticker.
+  const ticker = live || (phase.at === 'idle' && greeting !== 'off');
   const captionWhoTone =
     caption.who === x.agent && caption.tone !== 'text-muted'
       ? 'text-accent'
@@ -760,17 +762,18 @@ export default function VoiceApp() {
                   and fade on the left (the transcript keeps everything).
                   The inner span is at least as wide as the box, so a short
                   line stays centered and a long one overflows leftwards.
-                  How a call ended wraps instead, so it can be read whole. */}
+                  Fixed text (the instruction, connecting, how a call ended)
+                  wraps instead, so it's always read whole. */}
               <p
                 role={failed ? 'alert' : undefined}
-                className={`mob:text-[clamp(15px,4.2vw,18px)] mt-1.5 mb-0 text-[clamp(15px,1.4vw,20px)] leading-[1.4] font-normal tracking-[-0.02em] ${caption.tone} ${ended ? 'min-h-[2.8em] text-balance' : 'flex h-[1.4em] justify-end overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_14%)]'}`}
+                className={`mob:text-[clamp(15px,4.2vw,18px)] mt-1.5 mb-0 text-[clamp(15px,1.4vw,20px)] leading-[1.4] font-normal tracking-[-0.02em] ${caption.tone} ${!ticker ? 'min-h-[2.8em] text-balance' : 'flex h-[1.4em] justify-end overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_14%)]'}`}
               >
                 {/* Screen readers get the whole text, not every letter. */}
                 <span className="sr-only">{caption.text}</span>
                 <span
                   aria-hidden="true"
                   className={
-                    ended
+                    !ticker
                       ? ''
                       : 'min-w-full shrink-0 text-center whitespace-nowrap'
                   }
