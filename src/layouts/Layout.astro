@@ -16,6 +16,9 @@ const url = new URL(Astro.url.pathname, Astro.site);
 const image = new URL(og.src, Astro.site);
 const imageAlt =
   'Juan Diego Londoño, AI Engineer: “I build AI that listens, reasons and acts — inside real software.”';
+// Cloudflare Web Analytics (cookieless page views). Set only in production
+// builds, so dev and previews don't count.
+const beacon = import.meta.env.PUBLIC_CF_BEACON_TOKEN;
 ---
 
 <html lang="en" data-lang="en">
@@ -101,6 +104,14 @@ const imageAlt =
         if (t) document.title = JSON.parse(t.dataset.title)[lang];
       })();
     </script>
+    {beacon && (
+      <script
+        is:inline
+        defer
+        src="https://static.cloudflareinsights.com/beacon.min.js"
+        data-cf-beacon={JSON.stringify({ token: beacon, spa: true })}
+      />
+    )}
   </head>
   <body>
     <slot />

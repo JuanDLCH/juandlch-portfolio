@@ -12,6 +12,7 @@
 import { CASES } from '../src/lab/chat/cases';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
+import { saveQuestion, track } from './metrics';
 import { chatUsd, chatWorstUsd, noteUsd, type TextUsage } from './prices';
 
 const OPENAI = 'https://api.openai.com/v1';
@@ -52,7 +53,7 @@ async function hmac(env: Env, data: string) {
 }
 
 /** A session token for this IP, valid for TOKEN_MS. */
-export async function startChat(req: Request, env: Env) {
+export async function startChat(req: Request, env: Env, ctx: ExecutionContext) {
   const body = (await req.json().catch(() => null)) as {
     token?: unknown;
   } | null;
@@ -64,6 +65,7 @@ export async function startChat(req: Request, env: Env) {
   const exp = Date.now() + TOKEN_MS;
   const max = limits(env).msgs;
   const left = await quotaOf(env).chatLeft(ip, max);
+  ctx.waitUntil(track(env, { kind: 'chat_session' }));
   return json({
     token: `lab.${exp}.${await hmac(env, `${ip}.${exp}`)}`,
     left,
@@ -161,6 +163,38 @@ function remote(v: unknown): boolean {
   return Object.values(o).some(remote);
 }
 
+/** Counts a visitor message and, for the profile agent, keeps its text
+ * (worker/metrics.ts). */
+function noteMessage(
+  env: Env,
+  caseId: string,
+  subject: string,
+  req: Request,
+  last: { content?: unknown },
+) {
+  const conv = req.headers.get('X-Lab-Conv') ?? '';
+  // What the visitor typed is the message's last part (files come first).
+  const end = Array.isArray(last.content)
+    ? (last.content.at(-1) as { type?: unknown; text?: unknown } | undefined)
+    : undefined;
+  const text =
+    typeof last.content === 'string'
+      ? last.content
+      : end?.type === 'input_text' && typeof end.text === 'string'
+        ? end.text
+        : '';
+  return Promise.all([
+    track(env, { kind: 'chat_message', subject }),
+    caseId === 'meet' && /^[\w-]{8,64}$/.test(conv)
+      ? saveQuestion(env, {
+          source: subject === 'cv' ? 'cv' : 'chat',
+          conv,
+          text,
+        })
+      : null,
+  ]);
+}
+
 export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   const ip = await session(req, env);
   if (!ip) return refuse('session', 401);
@@ -211,6 +245,7 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   const last = body.input[body.input.length - 1] as {
     role?: unknown;
     type?: unknown;
+    content?: unknown;
   };
   const kind =
     last?.role === 'user'
@@ -226,7 +261,15 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   );
   const quota = quotaOf(env);
   const r = await quota.chatReserve(ip, kind, worst, limits(env));
-  if ('error' in r) return limited(r.error);
+  // The CV chat (/lab/cv) runs the meet case; metrics tell them apart.
+  const subject =
+    c.id === 'meet' && req.headers.get('X-Lab-Page') === 'cv' ? 'cv' : c.id;
+  if ('error' in r) {
+    ctx.waitUntil(track(env, { kind: 'chat_limit', subject, detail: r.error }));
+    return limited(r.error);
+  }
+  if (kind === 'message')
+    ctx.waitUntil(noteMessage(env, c.id, subject, req, last));
 
   let upstream: Response;
   try {

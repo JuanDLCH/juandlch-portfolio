@@ -1397,6 +1397,9 @@ export default function ChatApp({
                     {usage}
                   </span>
                 )}
+                {!BYOK && c.id === 'meet' && (
+                  <span className="basis-full">{x.stored}</span>
+                )}
               </div>
             </div>
           </div>

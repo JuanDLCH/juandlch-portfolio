@@ -21,6 +21,17 @@
       { "name": "CALL", "class_name": "VoiceCall" },
     ],
   },
+  // Lab metrics and visitor questions (worker/metrics.ts). The Worker
+  // creates its tables on first use.
+  "d1_databases": [
+    {
+      "binding": "LAB_DB",
+      "database_name": "portfolio-analytics",
+      "database_id": "9ab0ac50-d34f-4e77-800d-f861eaed9ab2",
+    },
+  ],
+  // Daily: deletes metrics older than 180 days.
+  "triggers": { "crons": ["0 4 * * *"] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Quota", "VoiceCall"] }],
   "vars": {
     // The production origin(s), comma-separated (dev: .dev.vars). Empty, every

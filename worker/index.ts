@@ -7,6 +7,7 @@
 import type { Env } from './env';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, turnstileOk } from './http';
+import { prune, track } from './metrics';
 import { createCall, hangup, sessionConfig } from './openai';
 
 export { VoiceCall } from './call';
@@ -28,7 +29,7 @@ async function loadProfile(env: Env, req: Request) {
   return profile.text;
 }
 
-async function startSession(req: Request, env: Env) {
+async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
   const body = (await req.json().catch(() => null)) as {
     sdp?: unknown;
     token?: unknown;
@@ -60,9 +61,10 @@ async function startSession(req: Request, env: Env) {
   // Resuming an ended call with time left continues its budget and doesn't
   // count as a new call.
   const resumed = resume ? env.CALL.get(env.CALL.idFromName(resume)) : null;
-  const used = resumed
+  const taken = resumed
     ? await resumed.takeResume(ip, budget, MIN_RESUME_S)
     : null;
+  const used = taken?.used ?? null;
   const seconds = budget - (used ?? 0);
   // The active slot outlives the call a bit, in case its cleanup is lost.
   const until = Date.now() + (seconds + 30) * 1000;
@@ -88,9 +90,25 @@ async function startSession(req: Request, env: Env) {
     // A few seconds of grace for the connection to come up.
     const endsAt = Date.now() + (seconds + 5) * 1000;
     await env.CALL.get(env.CALL.idFromName(call.callId)).start(
-      { callId: call.callId, ip, day, used: used ?? 0, startedAt: Date.now() },
+      {
+        callId: call.callId,
+        ip,
+        day,
+        used: used ?? 0,
+        startedAt: Date.now(),
+        // A resume continues the thread of the call it resumes.
+        thread: taken?.thread ?? call.callId,
+        lang,
+      },
       endsAt,
       session,
+    );
+    ctx.waitUntil(
+      track(env, {
+        kind: used === null ? 'voice_call' : 'voice_resume',
+        subject: 'voice',
+        lang,
+      }),
     );
     return json({
       sdp: call.sdp,
@@ -139,16 +157,20 @@ export default {
       return json({ error: 'origin' }, 403);
     switch (url.pathname) {
       case '/api/voice/session':
-        return startSession(req, env);
+        return startSession(req, env, ctx);
       case '/api/voice/end':
         return endSession(req, env);
       case '/api/chat/session':
-        return startChat(req, env);
+        return startChat(req, env, ctx);
       case '/api/chat/v1/responses':
         return responses(req, env, ctx);
       case '/api/chat/v1/audio/transcriptions':
         return transcription(req, env);
     }
     return json({ error: 'not_found' }, 404);
+  },
+  // Daily cron (wrangler.jsonc): metrics retention.
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(prune(env));
   },
 } satisfies ExportedHandler<Env>;

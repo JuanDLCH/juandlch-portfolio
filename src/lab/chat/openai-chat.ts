@@ -146,6 +146,7 @@ export async function runTurn(
   const modelId = c.models.openai;
   const model = MODELS[modelId];
   const s = clone(start);
+  const conv = (s.conv ??= crypto.randomUUID());
   // The session history is in this provider's format (see ChatSession.api).
   const api = s.api as Item[];
   // Page images tools returned in earlier turns are not sent again.
@@ -212,7 +213,17 @@ export async function runTurn(
           include: ['reasoning.encrypted_content'],
         },
         // The Worker runs the case's own setup (prompt, model, tools).
-        { signal: cb.signal, headers: { 'X-Lab-Case': c.id } },
+        // Conversation and page only group the metrics (worker/metrics.ts).
+        {
+          signal: cb.signal,
+          headers: {
+            'X-Lab-Case': c.id,
+            'X-Lab-Conv': conv,
+            'X-Lab-Page': location.pathname.startsWith('/lab/cv')
+              ? 'cv'
+              : 'lab',
+          },
+        },
       );
 
       for await (const ev of stream) {
