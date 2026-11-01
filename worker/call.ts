@@ -26,6 +26,7 @@ interface Call {
   /** The first call of a resumed chain, to keep its messages together. */
   thread?: string;
   lang?: string;
+  country?: string;
 }
 
 /** What's left of an ended call, for a resume. */
@@ -210,6 +211,14 @@ export class VoiceCall extends DurableObject<Env> {
       lang: call.lang,
       detail: first,
       n: Math.round((Date.now() - call.startedAt) / 1000),
+      country: call.country,
+    });
+    // What the call cost, summed from each response's usage.
+    await track(this.env, {
+      kind: 'voice_cost',
+      subject: 'voice',
+      n: this.spent,
+      country: call.country,
     });
   }
 }

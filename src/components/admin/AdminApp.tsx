@@ -23,6 +23,12 @@ interface Overview {
   intent: Row[];
   goal: Row[];
   topic: Row[];
+  /** Messages and conversations per demo (every case, from the events). */
+  demos: Row[];
+  /** USD per day and part (chat case, voice_note, voice). */
+  costs: Row[];
+  /** Demo users (chat conversations + voice calls) per country. */
+  countries: Row[];
 }
 interface Detail {
   report: Row | null;
@@ -95,15 +101,22 @@ function Section({
 }
 
 /** Horizontal bars, one series, values written out; a table underneath. */
+const usd = (n: number) => `$${n < 1 ? n.toFixed(3) : n.toFixed(2)}`;
+
 function Bars({
   rows,
   x,
+  fmt = String,
 }: {
   rows: { key: string; label: string; n: number; extra?: string }[];
   x: AdminCopy;
+  /** How values are written (counts by default). */
+  fmt?: (n: number) => string;
 }) {
   const total = rows.reduce((s, r) => s + r.n, 0);
-  const max = Math.max(1, ...rows.map((r) => r.n));
+  // The largest value fills the bar (dollars can all be under 1); 1 when
+  // everything is 0.
+  const max = Math.max(...rows.map((r) => r.n)) || 1;
   if (!rows.length) return <p className={note}>{x.noData}</p>;
   return (
     <>
@@ -111,7 +124,7 @@ function Bars({
         {rows.map((r) => (
           <li
             key={r.key}
-            title={`${r.label}: ${r.n} (${Math.round((r.n / total) * 100)}%)`}
+            title={`${r.label}: ${fmt(r.n)} (${Math.round((r.n / total) * 100)}%)`}
             className="grid grid-cols-[minmax(0,9.5rem)_1fr_auto] items-center gap-3 text-[13px]"
           >
             <span className="text-body truncate">{r.label}</span>
@@ -122,7 +135,7 @@ function Bars({
               />
             </span>
             <span className={`${mono} text-ink text-[12px] tabular-nums`}>
-              {r.n}
+              {fmt(r.n)}
               {r.extra && <span className="text-muted"> · {r.extra}</span>}
             </span>
           </li>
@@ -142,7 +155,9 @@ function Bars({
             {rows.map((r) => (
               <tr key={r.key} className="border-line border-t">
                 <td className="text-body py-1">{r.label}</td>
-                <td className={`${mono} text-ink py-1 text-right`}>{r.n}</td>
+                <td className={`${mono} text-ink py-1 text-right`}>
+                  {fmt(r.n)}
+                </td>
                 <td className={`${mono} text-muted py-1 text-right`}>
                   {Math.round((r.n / total) * 100)}%
                 </td>
@@ -181,6 +196,12 @@ function Activity({
       total: msgs.reduce((s, m) => s + num(m.n), 0),
       by: msgs.map((m) => ({ source: String(m.source), n: num(m.n) })),
       calls: ev('voice_call'),
+      // What the day cost: chat, voice notes, calls and its insights.
+      cost:
+        data.costs
+          .filter((c) => c.day === day)
+          .reduce((s, c) => s + num(c.usd), 0) +
+        num(data.reports.find((r) => r.day === day)?.cost_usd),
     };
   });
   // A round top for the scale, so the grid reads in whole numbers.
@@ -282,6 +303,10 @@ function Activity({
             <div className="flex justify-between gap-4">
               <span>{x.kpi.calls}</span>
               <span className={`${mono} text-ink`}>{h.calls}</span>
+            </div>
+            <div className="border-line mt-1.5 flex justify-between gap-4 border-t pt-1.5">
+              <span>{x.cost}</span>
+              <span className={`${mono} text-ink`}>{usd(h.cost)}</span>
             </div>
           </div>
         )}
@@ -660,6 +685,53 @@ export default function AdminApp() {
 
   const sum = (list: Row[] | undefined, pick: (r: Row) => boolean, f = 'n') =>
     (list ?? []).filter(pick).reduce((s, r) => s + num(r[f]), 0);
+  const demoLabel = (k: string | number | null) =>
+    k === null
+      ? x.unknown
+      : (x.demoNames[String(k) as keyof AdminCopy['demoNames']] ?? String(k));
+  const regions = new Intl.DisplayNames([lang], { type: 'region' });
+  const countryName = (k: string | number | null) => {
+    if (!k || k === 'XX' || k === 'T1') return x.unknown;
+    try {
+      return regions.of(String(k)) ?? String(k);
+    } catch {
+      return String(k);
+    }
+  };
+  // Cost per part over the range; chat demos also per conversation.
+  const parts = new Map<string, number>();
+  for (const c of data?.costs ?? [])
+    parts.set(String(c.k), (parts.get(String(c.k)) ?? 0) + num(c.usd));
+  const insightsUsd = (data?.reports ?? []).reduce(
+    (s, r) => s + num(r.cost_usd),
+    0,
+  );
+  if (insightsUsd) parts.set('insights', insightsUsd);
+  const costRows = [...parts]
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => {
+      // Voice is per call; chat demos per conversation.
+      const per =
+        k === 'voice'
+          ? sum(data?.activity, (e) => e.kind === 'voice_call')
+          : num(data?.demos.find((d) => d.k === k)?.convs);
+      return {
+        key: k,
+        label: demoLabel(k),
+        n: v,
+        extra: per
+          ? (k === 'voice' ? x.perCallCost : x.perConvCost).replace(
+              '{usd}',
+              usd(v / per),
+            )
+          : undefined,
+      };
+    });
+  const costTotal = costRows.reduce((s, r) => s + r.n, 0);
+  const costDays = data
+    ? Math.max(1, daysBetween(data.from, data.to).length)
+    : 1;
+
   // All four about the CV chat and Sophie, where messages are stored. A
   // resumed call continues the same call, so only starts count.
   const msgs = sum(data?.messages, () => true);
@@ -775,6 +847,41 @@ export default function AdminApp() {
             </Section>
             <Section title={x.intents}>
               <Bars rows={rows(data.intent, INTENTS)} x={x} />
+            </Section>
+          </div>
+
+          <div className="mt-gutter gap-gutter grid md:grid-cols-2">
+            <Section title={x.demos} sub={x.demosNote}>
+              <Bars
+                rows={data.demos.map((d) => ({
+                  key: String(d.k),
+                  label: demoLabel(d.k),
+                  n: num(d.n),
+                  extra: num(d.convs)
+                    ? x.convs.replace('{n}', String(num(d.convs)))
+                    : undefined,
+                }))}
+                x={x}
+              />
+            </Section>
+            <Section title={x.countries} sub={x.countriesNote}>
+              <Bars
+                rows={data.countries.map((c) => ({
+                  key: String(c.k),
+                  label: countryName(c.k),
+                  n: num(c.n),
+                }))}
+                x={x}
+              />
+            </Section>
+            <Section
+              title={x.costs}
+              sub={x.costsNote
+                .replace('{total}', usd(costTotal))
+                .replace('{day}', usd(costTotal / costDays))}
+              className="md:col-span-2"
+            >
+              <Bars rows={costRows} x={x} fmt={usd} />
             </Section>
           </div>
 

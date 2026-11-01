@@ -12,7 +12,7 @@
 import { CASES } from '../src/lab/chat/cases';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
-import { saveMessage, track } from './metrics';
+import { countryOf, saveMessage, track } from './metrics';
 import { chatUsd, chatWorstUsd, noteUsd, type TextUsage } from './prices';
 
 const OPENAI = 'https://api.openai.com/v1';
@@ -65,7 +65,7 @@ export async function startChat(req: Request, env: Env, ctx: ExecutionContext) {
   const exp = Date.now() + TOKEN_MS;
   const max = limits(env).msgs;
   const left = await quotaOf(env).chatLeft(ip, max);
-  ctx.waitUntil(track(env, { kind: 'chat_session' }));
+  ctx.waitUntil(track(env, { kind: 'chat_session', country: countryOf(req) }));
   return json({
     token: `lab.${exp}.${await hmac(env, `${ip}.${exp}`)}`,
     left,
@@ -183,9 +183,16 @@ function noteMessage(
       : end?.type === 'input_text' && typeof end.text === 'string'
         ? end.text
         : '';
+  const valid = /^[\w-]{8,64}$/.test(conv);
   return Promise.all([
-    track(env, { kind: 'chat_message', subject }),
-    caseId === 'meet' && /^[\w-]{8,64}$/.test(conv)
+    // The conversation id lets the dashboard count conversations per demo.
+    track(env, {
+      kind: 'chat_message',
+      subject,
+      detail: valid ? conv : undefined,
+      country: countryOf(req),
+    }),
+    caseId === 'meet' && valid
       ? saveMessage(env, {
           source: subject === 'cv' ? 'cv' : 'chat',
           conv,
@@ -265,7 +272,14 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   const subject =
     c.id === 'meet' && req.headers.get('X-Lab-Page') === 'cv' ? 'cv' : c.id;
   if ('error' in r) {
-    ctx.waitUntil(track(env, { kind: 'chat_limit', subject, detail: r.error }));
+    ctx.waitUntil(
+      track(env, {
+        kind: 'chat_limit',
+        subject,
+        detail: r.error,
+        country: countryOf(req),
+      }),
+    );
     return limited(r.error);
   }
   if (kind === 'message')
@@ -298,9 +312,17 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   }
   const [toVisitor, toMeter] = upstream.body.tee();
   ctx.waitUntil(
-    usageOf(toMeter).then((u) =>
-      quota.chatSettle(ip, r.id, worst, u ? chatUsd(model, u) : null),
-    ),
+    usageOf(toMeter).then(async (u) => {
+      const usd = u ? chatUsd(model, u) : null;
+      await quota.chatSettle(ip, r.id, worst, usd);
+      // Without a usage the reservation stays, so that's what it cost.
+      await track(env, {
+        kind: 'chat_cost',
+        subject,
+        n: usd ?? worst,
+        country: countryOf(req),
+      });
+    }),
   );
   return new Response(toVisitor, {
     headers: {
@@ -311,7 +333,11 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   });
 }
 
-export async function transcription(req: Request, env: Env) {
+export async function transcription(
+  req: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const ip = await session(req, env);
   if (!ip) return refuse('session', 401);
   const form = await req.formData().catch(() => null);
@@ -349,11 +375,15 @@ export async function transcription(req: Request, env: Env) {
   } catch {
     /* not JSON */
   }
-  await quota.chatSettle(
-    ip,
-    r.id,
-    NOTE_USD,
-    !res.ok ? 0 : usage ? noteUsd(usage) : null,
+  const usd = !res.ok ? 0 : usage ? noteUsd(usage) : null;
+  await quota.chatSettle(ip, r.id, NOTE_USD, usd);
+  ctx.waitUntil(
+    track(env, {
+      kind: 'chat_cost',
+      subject: 'voice_note',
+      n: usd ?? NOTE_USD,
+      country: countryOf(req),
+    }),
   );
   return new Response(text, {
     status: res.status,

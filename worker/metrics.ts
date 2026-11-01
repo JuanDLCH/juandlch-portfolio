@@ -12,15 +12,21 @@ export type EventKind =
   | 'chat_limit'
   | 'voice_call'
   | 'voice_resume'
-  | 'voice_end';
+  | 'voice_end'
+  /** What a chat request (subject: case, or `voice_note`) or a voice call
+   * cost, in USD (`n`). */
+  | 'chat_cost'
+  | 'voice_cost';
 
 export interface LabEvent {
   kind: EventKind;
   /** Chat case or page (`meet`, `cv`, `order`…), or the voice lab. */
   subject?: string;
   lang?: string;
-  /** End reason, limit code… */
+  /** End reason, limit code, or the conversation id of a chat message. */
   detail?: string;
+  /** Visitor's country (ISO code, from Cloudflare). */
+  country?: string;
   /** Seconds of a voice call, etc. */
   n?: number;
 }
@@ -52,14 +58,34 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS topics (name TEXT PRIMARY KEY, first_day TEXT NOT NULL, last_day TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS daily_reports (day TEXT PRIMARY KEY, status TEXT NOT NULL, batch_id TEXT, sent TEXT, model TEXT, conversations INTEGER, messages INTEGER, cost_usd REAL, stats TEXT, report TEXT, error TEXT, attempts INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)`,
 ];
+// Columns added after the tables existed; "duplicate column" once they're there.
+const ADDED = ['ALTER TABLE events ADD COLUMN country TEXT'];
 let ready: Promise<unknown> | null = null;
 const schema = (db: D1Database) => {
-  ready ??= db.batch(SCHEMA.map((s) => db.prepare(s))).catch((err: unknown) => {
-    ready = null;
-    throw err;
-  });
+  ready ??= db
+    .batch(SCHEMA.map((s) => db.prepare(s)))
+    .then(() =>
+      Promise.all(
+        ADDED.map((s) =>
+          db
+            .prepare(s)
+            .run()
+            .catch((err: unknown) => {
+              if (!String(err).includes('duplicate column')) throw err;
+            }),
+        ),
+      ),
+    )
+    .catch((err: unknown) => {
+      ready = null;
+      throw err;
+    });
   return ready;
 };
+
+/** The visitor's country, as Cloudflare saw the request. */
+export const countryOf = (req: Request) =>
+  (req.cf as { country?: string } | undefined)?.country;
 
 /** The database with its tables, or null when LAB_DB isn't bound. */
 export async function labDb(env: Env) {
@@ -86,7 +112,7 @@ export const track = (env: Env, e: LabEvent) =>
   write(env, e.kind, (db) =>
     db
       .prepare(
-        'INSERT INTO events (at, kind, subject, lang, detail, n) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO events (at, kind, subject, lang, detail, n, country) VALUES (?, ?, ?, ?, ?, ?, ?)',
       )
       .bind(
         now(),
@@ -95,6 +121,7 @@ export const track = (env: Env, e: LabEvent) =>
         e.lang ?? null,
         e.detail?.slice(0, 120) ?? null,
         e.n ?? null,
+        e.country?.slice(0, 2) ?? null,
       )
       .run(),
   );
