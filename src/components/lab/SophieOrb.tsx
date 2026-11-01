@@ -50,6 +50,10 @@ const LEN = Array.from({ length: N }, (_, i) => {
 const EYE_X = [86, 114];
 const EYE_Y = 93;
 const EYE = { w: 12, h: 30 };
+// A thin stroke in the fill's color, taken off the path so the eye keeps
+// its size: Chrome leaves the near-vertical edges of a tilted filled path
+// without antialiasing (they step), and the stroke smooths them.
+const EYE_STROKE = 0.6;
 // Sparkles that pop around the face when she's delighted.
 const SPARKS = [
   { x: 68, y: 70, s: 1 },
@@ -396,8 +400,8 @@ export default function SophieOrb({
       eyes.current.forEach((el, i) => {
         if (!el) return;
         const e = cur[i];
-        const w = EYE.w * e.w;
-        const h = Math.max(2, EYE.h * e.h);
+        const w = EYE.w * e.w - EYE_STROKE;
+        const h = Math.max(2, EYE.h * e.h - EYE_STROKE);
         el.setAttribute('d', eyePath(w, h, e.smile));
         el.setAttribute(
           'transform',
@@ -521,8 +525,13 @@ export default function SophieOrb({
         <g ref={face}>
           <g
             className={
-              mode === 'muted' || mode === 'sad' ? 'fill-warn' : 'fill-accent'
+              mode === 'muted' || mode === 'sad'
+                ? 'fill-warn stroke-warn'
+                : 'fill-accent stroke-accent'
             }
+            strokeWidth={EYE_STROKE}
+            strokeLinejoin="round"
+            shapeRendering="geometricPrecision"
           >
             {EYE_X.map((cx, i) => (
               <path
@@ -531,7 +540,7 @@ export default function SophieOrb({
                   eyes.current[i] = el;
                 }}
                 transform={`translate(${cx} ${EYE_Y})`}
-                d={eyePath(EYE.w, EYE.h, 0)}
+                d={eyePath(EYE.w - EYE_STROKE, EYE.h - EYE_STROKE, 0)}
               />
             ))}
           </g>
