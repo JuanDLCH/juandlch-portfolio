@@ -9,7 +9,7 @@ import { admin } from './admin';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, turnstileOk } from './http';
 import { runInsights } from './insights';
-import { prune, track } from './metrics';
+import { countryOf, prune, track } from './metrics';
 import { createCall, hangup, sessionConfig } from './openai';
 
 export { VoiceCall } from './call';
@@ -104,6 +104,7 @@ async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
         // A resume continues the thread of the call it resumes.
         thread: taken?.thread ?? call.callId,
         lang,
+        country: countryOf(req),
       },
       endsAt,
       session,
@@ -113,6 +114,7 @@ async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
         kind: used === null ? 'voice_call' : 'voice_resume',
         subject: 'voice',
         lang,
+        country: countryOf(req),
       }),
     );
     return json({
@@ -172,7 +174,7 @@ export default {
       case '/api/chat/v1/responses':
         return responses(req, env, ctx);
       case '/api/chat/v1/audio/transcriptions':
-        return transcription(req, env);
+        return transcription(req, env, ctx);
     }
     return json({ error: 'not_found' }, 404);
   },
