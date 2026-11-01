@@ -868,6 +868,8 @@ export const PROFILE_SECTIONS = [
   'portfolio_stack',
   'portfolio_principles',
   'portfolio_approach',
+  'portfolio_build',
+  'stories',
   'notes',
 ] as const;
 export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
@@ -894,7 +896,7 @@ const getProfileSection: ClientTool = {
   def: {
     name: 'get_profile_section',
     description:
-      "Return one section of Juan Diego's profile. CV sections: summary, skills, experience (roles and dates), client_work, education_languages, certifications. Portfolio sections: portfolio_work (case studies), portfolio_stack (full toolbox, clouds), portfolio_principles, portfolio_approach (RAG approach, career path, leadership). notes: roles he is looking for, availability, other clouds, how he learns, contact. Each entry has the source to cite.",
+      "Return one section of Juan Diego's profile. CV sections: summary, skills, experience (roles and dates), client_work, education_languages, certifications. Portfolio sections: portfolio_work (case studies), portfolio_stack (full toolbox, clouds), portfolio_principles, portfolio_approach (RAG approach, career path, leadership), portfolio_build (how this portfolio site, its AI lab, the voice agent, its metrics and daily AI report were built). stories: the challenges he faced on each project and how he solved them, to tell as anecdotes. notes: roles he is looking for, availability, other clouds, how he learns, contact. Each entry has the source to cite.",
     input_schema: {
       type: 'object',
       properties: {
