@@ -7,11 +7,15 @@
 import type { Env } from './env';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, turnstileOk } from './http';
+import { runInsights } from './insights';
 import { prune, track } from './metrics';
 import { createCall, hangup, sessionConfig } from './openai';
 
 export { VoiceCall } from './call';
 export { Quota } from './quota';
+
+/** The daily cron (wrangler.jsonc): 00:10 in Bogotá. */
+const DAILY = '10 5 * * *';
 
 const CALL_ID = /^rtc_[\w-]{1,100}$/;
 /** Shorter remainders aren't worth a resume: a new call starts instead. */
@@ -169,8 +173,14 @@ export default {
     }
     return json({ error: 'not_found' }, 404);
   },
-  // Daily cron (wrangler.jsonc): metrics retention.
-  async scheduled(_event, env, ctx) {
-    ctx.waitUntil(prune(env));
+  // Crons (wrangler.jsonc): daily retention, and the insights (worker/insights.ts)
+  // moved along on every run.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        if (event.cron === DAILY) await prune(env);
+        await runInsights(env);
+      })(),
+    );
   },
 } satisfies ExportedHandler<Env>;

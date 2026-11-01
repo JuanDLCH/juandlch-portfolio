@@ -30,8 +30,10 @@
       "database_id": "9ab0ac50-d34f-4e77-800d-f861eaed9ab2",
     },
   ],
-  // Daily: deletes metrics older than 180 days.
-  "triggers": { "crons": ["0 4 * * *"] },
+  // 00:10 Bogotá: metrics retention and the day's insights batch; hourly: the
+  // insights moved along (worker/insights.ts). Keep the first in sync with
+  // DAILY in worker/index.ts.
+  "triggers": { "crons": ["10 5 * * *", "40 * * * *"] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Quota", "VoiceCall"] }],
   "vars": {
     // The production origin(s), comma-separated (dev: .dev.vars). Empty, every
@@ -50,6 +52,10 @@
     "CHAT_MSGS_PER_IP": "60",
     "CHAT_USD_PER_IP": "0.40",
     "CHAT_USD_PER_DAY": "3",
+    // Daily insights over the visitors' messages (empty model: off).
+    "INSIGHTS_MODEL": "gpt-6.1-sol",
+    "INSIGHTS_MAX_CONVS": "150",
+    "INSIGHTS_USD_PER_DAY": "1",
     "MOCK_OPENAI": "",
   },
   "observability": { "enabled": true },

@@ -1,6 +1,6 @@
 // Lab metrics in D1 (LAB_DB): usage counters for the chat and voice demos and
 // every message visitors send the profile agents ("Meet my AI" in the chat and the CV
-// chat, Sophie in the voice lab), for scripts/analyze-questions.mjs. No IPs or
+// chat, Sophie in the voice lab), labeled every day by worker/insights.ts. No IPs or
 // IP hashes are stored, and emails and phone numbers are masked. Rows older
 // than RETAIN_DAYS are deleted by the daily cron (prune). Writing never fails
 // a request: errors are logged and dropped.
@@ -33,7 +33,7 @@ export interface Message {
   text: string;
 }
 
-const RETAIN_DAYS = 180;
+export const RETAIN_DAYS = 180;
 const MAX_TEXT = 4000;
 
 // The database is provisioned by wrangler on deploy, so the tables are made
@@ -43,6 +43,14 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS events_at ON events (at)`,
   `CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, at TEXT NOT NULL, source TEXT NOT NULL, conv TEXT NOT NULL, lang TEXT, text TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS messages_at ON messages (at)`,
+  // Daily insights (worker/insights.ts). `day` is the Bogotá day.
+  `CREATE TABLE IF NOT EXISTS message_labels (message_id INTEGER PRIMARY KEY, day TEXT NOT NULL, category TEXT, intent TEXT)`,
+  `CREATE INDEX IF NOT EXISTS message_labels_day ON message_labels (day)`,
+  `CREATE TABLE IF NOT EXISTS message_topics (message_id INTEGER NOT NULL, topic TEXT NOT NULL, day TEXT NOT NULL, PRIMARY KEY (message_id, topic))`,
+  `CREATE INDEX IF NOT EXISTS message_topics_day ON message_topics (day, topic)`,
+  `CREATE TABLE IF NOT EXISTS conversation_goals (day TEXT NOT NULL, source TEXT NOT NULL, conv TEXT NOT NULL, goal TEXT NOT NULL, evidence TEXT NOT NULL, PRIMARY KEY (day, source, conv))`,
+  `CREATE TABLE IF NOT EXISTS topics (name TEXT PRIMARY KEY, first_day TEXT NOT NULL, last_day TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS daily_reports (day TEXT PRIMARY KEY, status TEXT NOT NULL, batch_id TEXT, sent TEXT, model TEXT, conversations INTEGER, messages INTEGER, cost_usd REAL, stats TEXT, report TEXT, error TEXT, attempts INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)`,
 ];
 let ready: Promise<unknown> | null = null;
 const schema = (db: D1Database) => {
@@ -52,6 +60,14 @@ const schema = (db: D1Database) => {
   });
   return ready;
 };
+
+/** The database with its tables, or null when LAB_DB isn't bound. */
+export async function labDb(env: Env) {
+  const db = env.LAB_DB;
+  if (!db) return null;
+  await schema(db);
+  return db;
+}
 
 async function write(env: Env, what: string, run: (db: D1Database) => unknown) {
   const db = env.LAB_DB;
@@ -108,10 +124,19 @@ export const saveMessage = (env: Env, q: Message) => {
 /** Deletes what's older than RETAIN_DAYS (the daily cron). */
 export const prune = (env: Env) => {
   const before = new Date(Date.now() - RETAIN_DAYS * 86_400_000).toISOString();
+  const day = before.slice(0, 10);
   return write(env, 'prune', (db) =>
     db.batch([
       db.prepare('DELETE FROM events WHERE at < ?').bind(before),
       db.prepare('DELETE FROM messages WHERE at < ?').bind(before),
+      // Insights go with the messages they were made from.
+      ...[
+        'message_labels',
+        'message_topics',
+        'conversation_goals',
+        'daily_reports',
+      ].map((t) => db.prepare(`DELETE FROM ${t} WHERE day < ?`).bind(day)),
+      db.prepare('DELETE FROM topics WHERE last_day < ?').bind(day),
     ]),
   );
 };
