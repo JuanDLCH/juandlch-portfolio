@@ -1,5 +1,6 @@
 // Voice input: transcribes a recording, with the visitor's own OpenAI key or
-// (key '') through the site's Worker, which counts it as a message.
+// (key '') through the site's Worker (its transcript then goes out as a
+// message, which is what counts).
 import { LAB_API, dropLabToken, labToken } from './lab';
 
 export async function transcribe(key: string, audio: Blob, lang: 'en' | 'es') {

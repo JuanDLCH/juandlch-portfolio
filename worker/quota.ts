@@ -72,10 +72,11 @@ export class Quota extends DurableObject<Env> {
   }
 
   /** Reserves a chat request costing up to `worst` dollars; `message`: it
-   * starts a new visitor message. Returns its id, or why it can't run. */
+   * starts a new visitor message ('check': only refused if out of them).
+   * Returns its id, or why it can't run. */
   async chatReserve(
     ip: string,
-    message: boolean,
+    message: boolean | 'check',
     worst: number,
     limits: { msgs: number; usdIp: number; usdDay: number },
   ): Promise<{ id: string } | { error: ChatError }> {
@@ -93,7 +94,7 @@ export class Quota extends DurableObject<Env> {
     if (total + worst > limits.usdDay) return { error: 'chat_limit_day' };
     const id = crypto.randomUUID();
     await s.put({
-      [`msgs:${ip}`]: msgs + (message ? 1 : 0),
+      [`msgs:${ip}`]: msgs + (message === true ? 1 : 0),
       [`usd:${ip}`]: usd + worst,
       usd: total + worst,
       [`fly:${ip}`]: [...flying, { id, at: now }],

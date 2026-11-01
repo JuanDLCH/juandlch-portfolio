@@ -7,7 +7,8 @@
 //   (instructions, model, output budget, effort, tools), so the key can only
 //   run the lab's cases; then the request is reserved against the quotas,
 //   forwarded, and settled to its real cost when its usage streams by.
-// - POST /api/chat/v1/audio/transcriptions: voice notes, as one message.
+// - POST /api/chat/v1/audio/transcriptions: voice notes (the transcript counts
+//   as a message once sent).
 import { CASES } from '../src/lab/chat/cases';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
@@ -258,7 +259,9 @@ export async function transcription(req: Request, env: Env) {
     return json({ error: 'bad_request' }, 400);
   const lang = form?.get('language') === 'es' ? 'es' : 'en';
   const quota = quotaOf(env);
-  const r = await quota.chatReserve(ip, true, NOTE_USD, limits(env));
+  // Refused once out of messages, but not counted: the transcript is sent as
+  // a message right after, and that one counts.
+  const r = await quota.chatReserve(ip, 'check', NOTE_USD, limits(env));
   if ('error' in r) return limited(r.error);
   if (env.MOCK_OPENAI === '1') {
     await quota.chatSettle(ip, r.id, NOTE_USD, NOTE_USD);
