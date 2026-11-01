@@ -114,7 +114,9 @@ function Bars({
   fmt?: (n: number) => string;
 }) {
   const total = rows.reduce((s, r) => s + r.n, 0);
-  const max = Math.max(1, ...rows.map((r) => r.n));
+  // The largest value fills the bar (dollars can all be under 1); 1 when
+  // everything is 0.
+  const max = Math.max(...rows.map((r) => r.n)) || 1;
   if (!rows.length) return <p className={note}>{x.noData}</p>;
   return (
     <>
