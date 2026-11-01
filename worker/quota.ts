@@ -16,6 +16,9 @@ const CHAT_IN_FLIGHT = 2;
 /** A request still in flight after this is taken as lost (its reservation
  * stays charged). */
 const FLIGHT_MS = 180_000;
+/** Tool-result requests allowed per counted message (pooled over the day):
+ * far more rounds than a turn takes, but they can't go on without messages. */
+const ROUNDS_PER_MSG = 12;
 
 interface Flight {
   id: string;
@@ -71,12 +74,15 @@ export class Quota extends DurableObject<Env> {
     await this.ctx.storage.delete(`active:${ip}`);
   }
 
-  /** Reserves a chat request costing up to `worst` dollars; `message`: it
-   * starts a new visitor message ('check': only refused if out of them).
-   * Returns its id, or why it can't run. */
+  /** Reserves a chat request costing up to `worst` dollars. `kind`:
+   * 'message' starts a new visitor message (counted); 'round' carries tool
+   * results within one (allowed up to ROUNDS_PER_MSG per counted message);
+   * 'check' is refused once out of messages but not counted (a voice note,
+   * whose transcript is sent as the message). Returns its id, or why it
+   * can't run. */
   async chatReserve(
     ip: string,
-    message: boolean | 'check',
+    kind: 'message' | 'round' | 'check',
     worst: number,
     limits: { msgs: number; usdIp: number; usdDay: number },
   ): Promise<{ id: string } | { error: ChatError }> {
@@ -87,14 +93,19 @@ export class Quota extends DurableObject<Env> {
     );
     if (flying.length >= CHAT_IN_FLIGHT) return { error: 'chat_busy' };
     const msgs = (await s.get<number>(`msgs:${ip}`)) ?? 0;
-    if (message && msgs >= limits.msgs) return { error: 'chat_limit_ip' };
+    const rounds = (await s.get<number>(`rounds:${ip}`)) ?? 0;
+    if (kind !== 'round' && msgs >= limits.msgs)
+      return { error: 'chat_limit_ip' };
+    if (kind === 'round' && rounds >= msgs * ROUNDS_PER_MSG)
+      return { error: 'chat_limit_ip' };
     const usd = (await s.get<number>(`usd:${ip}`)) ?? 0;
     if (usd + worst > limits.usdIp) return { error: 'chat_limit_ip' };
     const total = (await s.get<number>('usd')) ?? 0;
     if (total + worst > limits.usdDay) return { error: 'chat_limit_day' };
     const id = crypto.randomUUID();
     await s.put({
-      [`msgs:${ip}`]: msgs + (message === true ? 1 : 0),
+      [`msgs:${ip}`]: msgs + (kind === 'message' ? 1 : 0),
+      [`rounds:${ip}`]: rounds + (kind === 'round' ? 1 : 0),
       [`usd:${ip}`]: usd + worst,
       usd: total + worst,
       [`fly:${ip}`]: [...flying, { id, at: now }],

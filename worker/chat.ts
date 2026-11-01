@@ -199,16 +199,25 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   });
 
   // A request that ends with what the visitor wrote starts a new message;
-  // the ones after it in the turn carry tool results.
-  const last = body.input[body.input.length - 1] as { role?: unknown };
-  const message = last?.role === 'user';
+  // the ones after it in the turn end with tool results. Nothing else.
+  const last = body.input[body.input.length - 1] as {
+    role?: unknown;
+    type?: unknown;
+  };
+  const kind =
+    last?.role === 'user'
+      ? 'message'
+      : last?.type === 'function_call_output'
+        ? 'round'
+        : null;
+  if (!kind) return json({ error: 'bad_request' }, 400);
   const worst = chatWorstUsd(
     model,
     new TextEncoder().encode(pinned).length,
     c.maxTokens,
   );
   const quota = quotaOf(env);
-  const r = await quota.chatReserve(ip, message, worst, limits(env));
+  const r = await quota.chatReserve(ip, kind, worst, limits(env));
   if ('error' in r) return limited(r.error);
 
   let upstream: Response;
