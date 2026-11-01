@@ -120,7 +120,11 @@ const NOTES: Entry[] = [
   ),
   notes(
     'Availability and location',
-    'Based in Medellín, Colombia (UTC−5). Open to remote work.',
+    'Based in Medellín, Colombia (UTC−5). Open to job offers and freelance projects: on-site or hybrid in Medellín, or remote for companies abroad. Available to travel for work when needed, but not to relocate.',
+  ),
+  notes(
+    'Hobbies and fun facts',
+    'He plays soccer three to four times a week, as a goalkeeper. He also enjoys going to the gym and is a big fan of video games.',
   ),
   notes(
     'Other clouds and providers',
