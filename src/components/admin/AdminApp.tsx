@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ADMIN, type AdminCopy } from '../../i18n/admin';
 import { CATEGORIES, GOALS, INTENTS } from '../../lab/insights/taxonomy';
+import type { WorldMap } from '../../lab/insights/world';
 import { setLang, setTheme } from '../../scripts/prefs';
 import { I, Icon, iconBtn, label, mono, useHtml } from '../lab/ui';
 
@@ -23,6 +24,8 @@ interface Overview {
   intent: Row[];
   goal: Row[];
   topic: Row[];
+  /** Per Bogotá hour ('00'…'23') when the range is a single day. */
+  hours: { messages: Row[]; calls: Row[]; costs: Row[] } | null;
   /** Messages and conversations per demo (every case, from the events). */
   demos: Row[];
   /** USD per day and part (chat case, voice_note, voice). */
@@ -46,6 +49,21 @@ interface Report {
   goals: { goal: string; insight: string; message_ids: number[] }[];
 }
 type Lang = 'en' | 'es';
+interface TrafficRow {
+  k: string;
+  views: number;
+  visits: number;
+}
+/** Web Analytics (worker/admin.ts): hidden without its token. */
+type Traffic =
+  | { enabled: false }
+  | {
+      enabled: true;
+      hours: TrafficRow[];
+      paths: TrafficRow[];
+      countries: TrafficRow[];
+      referrers: TrafficRow[];
+    };
 type Status = keyof AdminCopy['status'];
 
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
@@ -54,6 +72,36 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) throw new Error(String(res.status));
   return (await res.json()) as T;
 }
+
+/** Bogotá day (UTC-5, no DST) of a moment, like the Worker's. */
+const bogota = (ms: number) =>
+  new Date(ms - 5 * 3_600_000).toISOString().slice(0, 10);
+const shiftDay = (day: string, n: number) =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+/** The longest range the API takes (worker/admin.ts, rangeOf), in days
+ * between `from` and `to`. */
+const MAX_SPAN = 366;
+interface Range {
+  from: string;
+  to: string;
+}
+const lastDays = (n: number, today: string): Range => ({
+  from: shiftDay(today, -(n - 1)),
+  to: today,
+});
+/** A month (YYYY-MM) as a range, up to today if it's the current one. */
+const monthRange = (month: string, today: string): Range => {
+  const [y, m] = month.split('-').map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  return { from: `${month}-01`, to: last > today ? today : last };
+};
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+/** Bogotá hour ('00'…'23') of a moment. */
+const bogotaHour = (ms: number) =>
+  new Date(ms - 5 * 3_600_000).toISOString().slice(11, 13);
 
 const num = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
 const fmtDay = (day: string, lang: Lang, long = false) =>
@@ -77,6 +125,8 @@ const daysBetween = (from: string, to: string) => {
 const card = 'border-line bg-panel border p-card';
 const h2 = 'text-ink m-0 text-[15px] font-semibold';
 const note = 'text-muted m-0 mt-1 text-[12px] leading-snug';
+const field =
+  'border-line2 bg-bg text-ink focus:border-accent h-8 border px-2 text-[12px] outline-none';
 const btn =
   'border-line2 text-ink hover:border-accent inline-flex h-8 cursor-pointer items-center gap-2 border bg-transparent px-3 text-[12px] disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -120,21 +170,24 @@ function Bars({
   if (!rows.length) return <p className={note}>{x.noData}</p>;
   return (
     <>
-      <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+      {/* One grid for every row, so all the bars get the same length
+          whatever the width of their values. */}
+      <ul className="m-0 grid list-none grid-cols-[minmax(0,9.5rem)_1fr_auto] items-center gap-x-3 gap-y-2.5 p-0 text-[13px]">
         {rows.map((r) => (
-          <li
-            key={r.key}
-            title={`${r.label}: ${fmt(r.n)} (${Math.round((r.n / total) * 100)}%)`}
-            className="grid grid-cols-[minmax(0,9.5rem)_1fr_auto] items-center gap-3 text-[13px]"
-          >
+          <li key={r.key} className="contents">
             <span className="text-body truncate">{r.label}</span>
-            <span className="bg-chip h-2.5 w-full">
+            <span
+              title={`${r.label}: ${fmt(r.n)} (${Math.round((r.n / total) * 100)}%)`}
+              className="bg-chip h-2.5 w-full"
+            >
               <span
                 className="bg-accent block h-full rounded-r-[4px]"
                 style={{ width: `${(r.n / max) * 100}%` }}
               />
             </span>
-            <span className={`${mono} text-ink text-[12px] tabular-nums`}>
+            <span
+              className={`${mono} text-ink text-right text-[12px] tabular-nums`}
+            >
               {fmt(r.n)}
               {r.extra && <span className="text-muted"> · {r.extra}</span>}
             </span>
@@ -170,59 +223,60 @@ function Bars({
   );
 }
 
-/** Messages per day as columns over a light grid, a date under every few
- * columns (every one in a week), and a tooltip beside the hovered column,
- * kept inside the chart. */
+/** One value per day (or per hour of a single day) as columns over a light
+ * grid, a date under every few columns (every one in a week), and a tooltip
+ * beside the hovered column, kept inside the chart. */
 const TIP_W = 200;
-function Activity({
-  data,
-  x,
+function DayColumns({
+  days,
+  values,
+  unit,
   lang,
+  tip,
+  onPick,
+  hourly = false,
 }: {
-  data: Overview;
-  x: AdminCopy;
+  /** Days (YYYY-MM-DD), or hours ('00'…'23') when `hourly`. */
+  days: string[];
+  values: number[];
+  /** What a value counts, for screen readers. */
+  unit: string;
   lang: Lang;
+  /** The tooltip's rows for a day, under its date. */
+  tip: (i: number) => ReactNode;
+  /** Clicking a column filters the dashboard to that day. */
+  onPick?: (day: string) => void;
+  hourly?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const [width, setWidth] = useState(0);
   const plot = useRef<HTMLDivElement>(null);
-  const days = daysBetween(data.from, data.to);
-  const per = days.map((day) => {
-    const msgs = data.messages.filter((m) => m.day === day);
-    const ev = (k: string) =>
-      num(data.activity.find((a) => a.day === day && a.kind === k)?.n);
-    return {
-      day,
-      total: msgs.reduce((s, m) => s + num(m.n), 0),
-      by: msgs.map((m) => ({ source: String(m.source), n: num(m.n) })),
-      calls: ev('voice_call'),
-      // What the day cost: chat, voice notes, calls and its insights.
-      cost:
-        data.costs
-          .filter((c) => c.day === day)
-          .reduce((s, c) => s + num(c.usd), 0) +
-        num(data.reports.find((r) => r.day === day)?.cost_usd),
-    };
-  });
   // A round top for the scale, so the grid reads in whole numbers.
-  const peak = Math.max(...per.map((p) => p.total));
+  const peak = Math.max(0, ...values);
   const top = peak <= 4 ? 4 : Math.ceil(peak / 4) * 4;
   const n = days.length;
-  const step = n <= 7 ? 1 : Math.ceil(n / 10);
+  const step = hourly ? 3 : n <= 7 ? 1 : Math.ceil(n / 10);
+  const pick = hourly ? undefined : onPick;
+  const long = (d: string) =>
+    hourly ? `${d}:00 – ${d}:59` : fmtDay(d, lang, true);
   const short = (day: string) =>
-    new Intl.DateTimeFormat(lang, {
-      timeZone: 'UTC',
-      ...(n <= 7
-        ? { weekday: 'short', day: 'numeric' }
-        : { day: 'numeric', month: 'short' }),
-    }).format(new Date(`${day}T12:00:00Z`));
+    hourly
+      ? `${Number(day)}h`
+      : new Intl.DateTimeFormat(lang, {
+          timeZone: 'UTC',
+          ...(n <= 7
+            ? { weekday: 'short', day: 'numeric' }
+            : { day: 'numeric', month: 'short' }),
+        }).format(new Date(`${day}T12:00:00Z`));
   const show = (i: number) => {
     setWidth(plot.current?.clientWidth ?? 0);
     setHover(i);
   };
-  const h = hover === null ? null : per[hover];
   // Beside the column: to its right, or its left near the right edge.
-  const cx = hover === null ? 0 : ((hover + 0.5) / n) * width;
+  // A column hovered before the days changed (a click filtering to one day
+  // keeps focus) may no longer exist.
+  const at = hover !== null && hover < n ? hover : null;
+  const cx = at === null ? 0 : ((at + 0.5) / n) * width;
   const left =
     cx + 12 + TIP_W <= width ? cx + 12 : Math.max(0, cx - 12 - TIP_W);
   const cols = { gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` };
@@ -254,60 +308,38 @@ function Activity({
           <span className="border-line2 block border-t" />
         </div>
         <div className="absolute inset-0 grid gap-[2px]" style={cols}>
-          {per.map((p, i) => (
+          {days.map((day, i) => (
             <button
-              key={p.day}
+              key={day}
               type="button"
-              aria-label={`${fmtDay(p.day, lang, true)}: ${p.total} ${x.kpi.messages}`}
+              aria-label={`${long(day)}: ${values[i]} ${unit}`}
               onMouseEnter={() => show(i)}
               onFocus={() => show(i)}
               onBlur={() => setHover(null)}
-              className={`flex h-full min-w-0 cursor-default items-end border-0 p-0 ${hover === i ? 'bg-chip' : 'bg-transparent'}`}
+              onClick={() => pick?.(day)}
+              className={`flex h-full min-w-0 items-end border-0 p-0 ${pick ? 'cursor-pointer' : 'cursor-default'} ${at === i ? 'bg-chip' : 'bg-transparent'}`}
             >
               <span
-                className={`block w-full rounded-t-[4px] ${hover === i ? 'bg-ink' : 'bg-accent'}`}
+                className={`block w-full rounded-t-[4px] ${at === i ? 'bg-ink' : 'bg-accent'}`}
                 style={{
-                  height: p.total
-                    ? `${Math.max(2, (p.total / top) * 100)}%`
+                  height: values[i]
+                    ? `${Math.max(2, (values[i] / top) * 100)}%`
                     : 0,
                 }}
               />
             </button>
           ))}
         </div>
-        {h && (
+        {at !== null && (
           <div
             role="status"
             className="border-line2 bg-bg text-body pointer-events-none absolute top-1 z-10 border p-2.5 text-[12px] shadow-lg"
             style={{ left, width: TIP_W }}
           >
             <div className="text-ink mb-1.5 font-semibold first-letter:uppercase">
-              {fmtDay(h.day, lang, true)}
+              {long(days[at])}
             </div>
-            <div className="flex justify-between gap-4">
-              <span>{x.kpi.messages}</span>
-              <span className={`${mono} text-ink`}>{h.total}</span>
-            </div>
-            {h.by.map((b) => (
-              <div
-                key={b.source}
-                className="text-muted flex justify-between gap-4 pl-2"
-              >
-                <span>
-                  {x.bySource[b.source as keyof AdminCopy['bySource']] ??
-                    b.source}
-                </span>
-                <span className={mono}>{b.n}</span>
-              </div>
-            ))}
-            <div className="flex justify-between gap-4">
-              <span>{x.kpi.calls}</span>
-              <span className={`${mono} text-ink`}>{h.calls}</span>
-            </div>
-            <div className="border-line mt-1.5 flex justify-between gap-4 border-t pt-1.5">
-              <span>{x.cost}</span>
-              <span className={`${mono} text-ink`}>{usd(h.cost)}</span>
-            </div>
+            {tip(at)}
           </div>
         )}
       </div>
@@ -329,6 +361,652 @@ function Activity({
         ))}
       </div>
     </div>
+  );
+}
+
+/** A label and its value in a tooltip. */
+const TipRow = ({
+  label: l,
+  value,
+  sub = false,
+  rule = false,
+}: {
+  label: string;
+  value: string | number;
+  sub?: boolean;
+  rule?: boolean;
+}) => (
+  <div
+    className={`flex justify-between gap-4 ${sub ? 'text-muted pl-2' : ''} ${rule ? 'border-line mt-1.5 border-t pt-1.5' : ''}`}
+  >
+    <span>{l}</span>
+    <span className={`${mono} ${sub ? '' : 'text-ink'}`}>{value}</span>
+  </div>
+);
+
+/** Messages per day, with each day's sources, calls and cost. */
+function Activity({
+  data,
+  x,
+  lang,
+  onPick,
+}: {
+  data: Overview;
+  x: AdminCopy;
+  lang: Lang;
+  onPick: (day: string) => void;
+}) {
+  // A single day goes by hour.
+  const hrs = data.hours;
+  if (hrs) {
+    const per = HOURS.map((h) => {
+      const msgs = hrs.messages.filter((m) => m.h === h);
+      return {
+        total: msgs.reduce((s, m) => s + num(m.n), 0),
+        by: msgs.map((m) => ({ source: String(m.source), n: num(m.n) })),
+        calls: num(hrs.calls.find((c) => c.h === h)?.n),
+        cost: num(hrs.costs.find((c) => c.h === h)?.usd),
+      };
+    });
+    return <ActivityChart days={HOURS} hourly per={per} x={x} lang={lang} />;
+  }
+  const days = daysBetween(data.from, data.to);
+  const per = days.map((day) => {
+    const msgs = data.messages.filter((m) => m.day === day);
+    return {
+      total: msgs.reduce((s, m) => s + num(m.n), 0),
+      by: msgs.map((m) => ({ source: String(m.source), n: num(m.n) })),
+      calls: num(
+        data.activity.find((a) => a.day === day && a.kind === 'voice_call')?.n,
+      ),
+      // What the day cost: chat, voice notes, calls and its insights.
+      cost:
+        data.costs
+          .filter((c) => c.day === day)
+          .reduce((s, c) => s + num(c.usd), 0) +
+        num(data.reports.find((r) => r.day === day)?.cost_usd),
+    };
+  });
+  return (
+    <ActivityChart days={days} per={per} x={x} lang={lang} onPick={onPick} />
+  );
+}
+
+interface ActivityBucket {
+  total: number;
+  by: { source: string; n: number }[];
+  calls: number;
+  cost: number;
+}
+function ActivityChart({
+  days,
+  per,
+  x,
+  lang,
+  onPick,
+  hourly = false,
+}: {
+  days: string[];
+  per: ActivityBucket[];
+  x: AdminCopy;
+  lang: Lang;
+  onPick?: (day: string) => void;
+  hourly?: boolean;
+}) {
+  return (
+    <DayColumns
+      days={days}
+      hourly={hourly}
+      values={per.map((p) => p.total)}
+      unit={x.kpi.messages}
+      lang={lang}
+      onPick={onPick}
+      tip={(i) => (
+        <>
+          <TipRow label={x.kpi.messages} value={per[i].total} />
+          {per[i].by.map((b) => (
+            <TipRow
+              key={b.source}
+              sub
+              label={
+                x.bySource[b.source as keyof AdminCopy['bySource']] ?? b.source
+              }
+              value={b.n}
+            />
+          ))}
+          <TipRow label={x.kpi.calls} value={per[i].calls} />
+          <TipRow rule label={x.cost} value={usd(per[i].cost)} />
+        </>
+      )}
+    />
+  );
+}
+
+/** The map's scale: the accent from a light tint to a deep shade, the same
+ * in both themes, so darker always means more and nothing depends on
+ * telling hues apart. */
+const SHADES = [
+  'color-mix(in oklab, var(--accent) 30%, white)',
+  'color-mix(in oklab, var(--accent) 60%, white)',
+  'var(--accent)',
+  'color-mix(in oklab, var(--accent) 65%, black)',
+  'color-mix(in oklab, var(--accent) 40%, black)',
+];
+
+/** Closes a popover on a click outside `ref` or Escape. */
+function useDismiss(
+  open: boolean,
+  ref: { current: HTMLElement | null },
+  close: () => void,
+) {
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    addEventListener('mousedown', onDown);
+    addEventListener('keydown', onKey);
+    return () => {
+      removeEventListener('mousedown', onDown);
+      removeEventListener('keydown', onKey);
+    };
+  }, [open, ref, close]);
+}
+
+/** A day picker in the dashboard's look (the native one can't be styled):
+ * a month grid, weeks from Monday, days outside [min, max] disabled. */
+function DatePicker({
+  value,
+  min = '2000-01-01',
+  max,
+  lang,
+  x,
+  label: name,
+  onPick,
+}: {
+  /** YYYY-MM-DD, or '' for none. */
+  value: string;
+  min?: string;
+  max: string;
+  lang: Lang;
+  x: AdminCopy;
+  label: string;
+  onPick: (day: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState((value || max).slice(0, 7));
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useMemo(() => () => setOpen(false), []);
+  useDismiss(open, ref, close);
+  const [y, m] = month.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const length = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  // Monday first: blanks before the 1st.
+  const lead = (first.getUTCDay() + 6) % 7;
+  const cells = [
+    ...Array.from({ length: lead }, () => ''),
+    ...Array.from(
+      { length },
+      (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`,
+    ),
+  ];
+  const weekdays = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(lang, {
+      weekday: 'narrow',
+      timeZone: 'UTC',
+    }).format(new Date(Date.UTC(2024, 0, 1 + i))),
+  );
+  const title = new Intl.DateTimeFormat(lang, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(first);
+  const shift = (n: number) =>
+    setMonth(new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7));
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={name}
+        onClick={() => {
+          setMonth((value || max).slice(0, 7));
+          setOpen((o) => !o);
+        }}
+        className={`${field} flex min-w-36 cursor-pointer items-center justify-between gap-3 text-left`}
+      >
+        <span className={value ? '' : 'text-muted'}>
+          {value ? fmtDay(value, lang) + ` ${value.slice(0, 4)}` : x.pickDate}
+        </span>
+        <Icon d={I.calendar} size={14} />
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-label={name}
+          className="border-line2 bg-bg absolute top-full left-0 z-20 mt-1 w-72 border p-3 shadow-lg"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label={x.prevMonth}
+              disabled={month <= min.slice(0, 7)}
+              className={`${iconBtn} size-7 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => shift(-1)}
+            >
+              ‹
+            </button>
+            <span className="text-ink text-[13px] font-semibold first-letter:uppercase">
+              {title}
+            </span>
+            <button
+              type="button"
+              aria-label={x.nextMonth}
+              disabled={month >= max.slice(0, 7)}
+              className={`${iconBtn} size-7 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => shift(1)}
+            >
+              ›
+            </button>
+          </div>
+          <div
+            className={`${mono} text-muted grid grid-cols-7 gap-1 text-center text-[10px] uppercase`}
+            aria-hidden="true"
+          >
+            {weekdays.map((d, i) => (
+              <span key={i} className="py-1">
+                {d}
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((d, i) =>
+              d ? (
+                <button
+                  key={d}
+                  type="button"
+                  disabled={d < min || d > max}
+                  aria-pressed={d === value}
+                  aria-label={fmtDay(d, lang, true)}
+                  onClick={() => {
+                    onPick(d);
+                    setOpen(false);
+                  }}
+                  className={`${mono} h-8 cursor-pointer border text-[12px] disabled:cursor-not-allowed disabled:opacity-30 ${
+                    d === value
+                      ? 'border-accent bg-accent text-on-accent'
+                      : d === max
+                        ? 'border-accent text-accent bg-transparent'
+                        : 'text-body hover:border-accent border-transparent bg-transparent'
+                  }`}
+                >
+                  {Number(d.slice(8))}
+                </button>
+              ) : (
+                <span key={`b${i}`} />
+              ),
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Month and year picker (Firefox has no native one): the year with arrows
+ * and its twelve months; months after `max` are disabled. */
+function MonthPicker({
+  value,
+  max,
+  lang,
+  x,
+  onPick,
+}: {
+  /** YYYY-MM, or '' when the range isn't a whole month. */
+  value: string;
+  max: string;
+  lang: Lang;
+  x: AdminCopy;
+  onPick: (month: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [year, setYear] = useState(Number((value || max).slice(0, 4)));
+  const ref = useRef<HTMLDivElement>(null);
+  const close = useMemo(() => () => setOpen(false), []);
+  useDismiss(open, ref, close);
+  const name = (m: number, style: 'short' | 'long') =>
+    new Intl.DateTimeFormat(lang, { month: style, timeZone: 'UTC' }).format(
+      new Date(Date.UTC(2000, m, 15)),
+    );
+  const maxYear = Number(max.slice(0, 4));
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
+          setYear(Number((value || max).slice(0, 4)));
+          setOpen((o) => !o);
+        }}
+        className={`${field} flex min-w-36 cursor-pointer items-center justify-between gap-3 text-left`}
+      >
+        <span className={value ? 'first-letter:uppercase' : 'text-muted'}>
+          {value
+            ? `${name(Number(value.slice(5)) - 1, 'long')} ${value.slice(0, 4)}`
+            : x.pickMonth}
+        </span>
+        <Icon d={I.calendar} size={14} />
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-label={x.month}
+          className="border-line2 bg-bg absolute top-full left-0 z-20 mt-1 w-64 border p-3 shadow-lg"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label={x.prevYear}
+              className={`${iconBtn} size-7`}
+              onClick={() => setYear((y) => y - 1)}
+            >
+              ‹
+            </button>
+            <span className={`${mono} text-ink text-[13px]`}>{year}</span>
+            <button
+              type="button"
+              aria-label={x.nextYear}
+              disabled={year >= maxYear}
+              className={`${iconBtn} size-7 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => setYear((y) => y + 1)}
+            >
+              ›
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {Array.from({ length: 12 }, (_, m) => {
+              const k = `${year}-${String(m + 1).padStart(2, '0')}`;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  disabled={k > max}
+                  aria-pressed={k === value}
+                  onClick={() => {
+                    onPick(k);
+                    setOpen(false);
+                  }}
+                  className={`${btn} justify-center capitalize ${k === value ? 'border-accent text-accent' : ''}`}
+                >
+                  {name(m, 'short')}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Countries shaded by a value, with a legend and a tooltip per country. */
+function CountryMap({
+  map,
+  values,
+  unit,
+  countryName,
+}: {
+  map: WorldMap;
+  values: { k: string; n: number }[];
+  unit: string;
+  countryName: (k: string | number | null) => string;
+}) {
+  const [hover, setHover] = useState<{
+    id: string;
+    x: number;
+    y: number;
+    w: number;
+  } | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const by = new Map(values.filter((v) => v.k).map((v) => [v.k, v.n]));
+  const max = Math.max(0, ...by.values());
+  const shade = (n: number) =>
+    SHADES[Math.min(SHADES.length - 1, Math.floor((n / max) * SHADES.length))];
+  const move = (id: string, e: { clientX: number; clientY: number }) => {
+    const r = box.current?.getBoundingClientRect();
+    if (r)
+      setHover({ id, x: e.clientX - r.left, y: e.clientY - r.top, w: r.width });
+  };
+  return (
+    <div ref={box} className="relative" onMouseLeave={() => setHover(null)}>
+      <svg
+        viewBox={`0 0 ${map.width} ${map.height}`}
+        className="block h-auto w-full"
+        role="img"
+        aria-label={values
+          .filter((v) => v.k)
+          .map((v) => `${countryName(v.k)}: ${v.n}`)
+          .join(', ')}
+      >
+        {map.shapes.map((c) => {
+          const n = by.get(c.id) ?? 0;
+          return (
+            <path
+              key={c.id}
+              d={c.d}
+              onMouseMove={(e) => move(c.id, e)}
+              className={`${n ? '' : 'fill-chip'} ${hover?.id === c.id ? 'stroke-ink' : 'stroke-panel'}`}
+              style={{
+                ...(n ? { fill: shade(n) } : {}),
+                strokeWidth: hover?.id === c.id ? 1.4 : 0.6,
+              }}
+            />
+          );
+        })}
+      </svg>
+      {hover && (
+        <div
+          role="status"
+          className="border-line2 bg-bg text-body pointer-events-none absolute z-10 border px-2.5 py-1.5 text-[12px] whitespace-nowrap shadow-lg"
+          style={{
+            top: Math.max(0, hover.y - 44),
+            ...(hover.x > hover.w / 2
+              ? { right: hover.w - hover.x + 12 }
+              : { left: hover.x + 12 }),
+          }}
+        >
+          <span className="text-ink font-semibold">
+            {countryName(hover.id)}
+          </span>
+          <span className={`${mono} text-ink ml-3`}>
+            {by.get(hover.id) ?? 0}
+          </span>
+          <span className="text-muted"> {unit}</span>
+        </div>
+      )}
+      {max > 0 && (
+        <div
+          className={`${mono} text-muted mt-2 flex items-center gap-1.5 text-[10px]`}
+          aria-hidden="true"
+        >
+          <span>1</span>
+          {SHADES.map((c) => (
+            <span
+              key={c}
+              className="border-line2 block h-2.5 w-6 border"
+              style={{ background: c }}
+            />
+          ))}
+          <span>{max}</span>
+          <span className="ml-1">{unit}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Site visits from Web Analytics, and how many visitors of each demo page
+ * went on to use it. */
+function TrafficView({
+  t,
+  data,
+  x,
+  lang,
+  countryName,
+  onPick,
+  map,
+}: {
+  t: Extract<Traffic, { enabled: true }>;
+  data: Overview;
+  x: AdminCopy;
+  lang: Lang;
+  countryName: (k: string | number | null) => string;
+  onPick: (day: string) => void;
+  map: WorldMap;
+}) {
+  // A single day goes by hour; longer ranges by Bogotá day (UTC-5), like
+  // every other count here.
+  const hourly = data.from === data.to;
+  const days = hourly ? HOURS : daysBetween(data.from, data.to);
+  const byDay = new Map<string, { views: number; visits: number }>();
+  for (const h of t.hours) {
+    const ms = Date.parse(h.k);
+    const day = hourly ? bogotaHour(ms) : bogota(ms);
+    const d = byDay.get(day) ?? { views: 0, visits: 0 };
+    byDay.set(day, { views: d.views + h.views, visits: d.visits + h.visits });
+  }
+  const per = days.map((d) => byDay.get(d) ?? { views: 0, visits: 0 });
+  const visits = per.reduce((s, p) => s + p.visits, 0);
+  const views = per.reduce((s, p) => s + p.views, 0);
+  const viewsOf = (path: string) =>
+    t.paths.find((p) => p.k === path)?.views ?? 0;
+  const convs = (k: string) => num(data.demos.find((d) => d.k === k)?.convs);
+  const labConvs = data.demos
+    .filter((d) => d.k !== 'cv')
+    .reduce((s, d) => s + num(d.convs), 0);
+  const calls = data.activity
+    .filter((a) => a.kind === 'voice_call')
+    .reduce((s, a) => s + num(a.n), 0);
+  const funnel = [
+    { path: '/lab/chat', used: labConvs, unit: x.convWord },
+    { path: '/lab/cv', used: convs('cv'), unit: x.convWord },
+    { path: '/lab/voice', used: calls, unit: x.callWord },
+  ];
+  return (
+    <Section
+      title={x.traffic}
+      sub={x.trafficNote
+        .replace('{visits}', String(visits))
+        .replace('{views}', String(views))}
+      className="mt-gutter"
+    >
+      <DayColumns
+        days={days}
+        hourly={hourly}
+        values={per.map((p) => p.visits)}
+        unit={x.visits}
+        lang={lang}
+        onPick={onPick}
+        tip={(i) => (
+          <>
+            <TipRow label={x.visits} value={per[i].visits} />
+            <TipRow label={x.views} value={per[i].views} />
+          </>
+        )}
+      />
+      <div className="mt-block">
+        <span className={label}>{x.visitorCountries}</span>
+        <div className="mt-3">
+          <CountryMap
+            map={map}
+            values={t.countries.map((c) => ({ k: c.k, n: c.visits }))}
+            unit={x.visits.toLowerCase()}
+            countryName={countryName}
+          />
+        </div>
+      </div>
+      <div className="mt-block gap-gutter grid md:grid-cols-3">
+        <div>
+          <span className={label}>{x.pages}</span>
+          <div className="mt-3">
+            <Bars
+              rows={t.paths.map((p) => ({
+                key: p.k,
+                label: p.k,
+                n: p.views,
+              }))}
+              x={x}
+            />
+          </div>
+        </div>
+        <div>
+          <span className={label}>{x.visitorCountries}</span>
+          <div className="mt-3">
+            <Bars
+              rows={t.countries.map((c) => ({
+                key: c.k,
+                label: countryName(c.k),
+                n: c.visits,
+              }))}
+              x={x}
+            />
+          </div>
+        </div>
+        <div>
+          <span className={label}>{x.referrers}</span>
+          <div className="mt-3">
+            <Bars
+              rows={t.referrers
+                .filter((r) => r.visits > 0)
+                .map((r) => ({
+                  key: r.k || 'direct',
+                  label: r.k || x.direct,
+                  n: r.visits,
+                }))}
+              x={x}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="mt-block">
+        <span className={label}>{x.conversion}</span>
+        <p className={note}>{x.conversionNote}</p>
+        <table className="mt-2 w-full border-collapse text-[13px]">
+          <thead>
+            <tr className="text-muted text-left text-[12px]">
+              <th className="py-1 font-normal">{x.page}</th>
+              <th className="py-1 text-right font-normal">{x.views}</th>
+              <th className="py-1 text-right font-normal">{x.used}</th>
+              <th className="py-1 text-right font-normal">{x.rate}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {funnel.map((f) => {
+              const v = viewsOf(f.path);
+              return (
+                <tr key={f.path} className="border-line border-t">
+                  <td className={`${mono} text-ink py-1.5 text-[12px]`}>
+                    {f.path}
+                  </td>
+                  <td className={`${mono} text-body py-1.5 text-right`}>{v}</td>
+                  <td className={`${mono} text-body py-1.5 text-right`}>
+                    {f.used} {f.unit}
+                  </td>
+                  <td className={`${mono} text-ink py-1.5 text-right`}>
+                    {v ? `${Math.round((f.used / v) * 100)}%` : '–'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Section>
   );
 }
 
@@ -641,20 +1319,28 @@ function DayView({
   );
 }
 
-export default function AdminApp() {
+export default function AdminApp({ map }: { map: WorldMap }) {
   const { es, dark } = useHtml();
   const lang: Lang = es ? 'es' : 'en';
   const x = ADMIN[lang];
-  const [days, setDays] = useState(30);
+  // Today in Bogotá, fixed for the page's life (reload for a new day).
+  const [today] = useState(() => bogota(Date.now()));
+  const [range, setRange] = useState<Range>(() => lastDays(30, today));
+  const q = `from=${range.from}&to=${range.to}`;
   const [data, setData] = useState<Overview | null>(null);
   const [err, setErr] = useState('');
   const [day, setDay] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  // Each answer keeps the range it's for: only the current range's shows.
+  const [trafficOf, setTrafficOf] = useState<{
+    q: string;
+    t: Traffic | null;
+  } | null>(null);
 
   useEffect(() => {
     // A slower answer for a range no longer selected is dropped.
     let current = true;
-    get<Overview>(`/admin/api/overview?days=${days}`)
+    get<Overview>(`/admin/api/overview?${q}`)
       .then((d) => {
         if (!current) return;
         setData(d);
@@ -666,7 +1352,22 @@ export default function AdminApp() {
     return () => {
       current = false;
     };
-  }, [days, tick]);
+  }, [q, tick]);
+  // Site traffic apart: it's a slower call to Cloudflare and may be off.
+  useEffect(() => {
+    let current = true;
+    get<Traffic>(`/admin/api/traffic?${q}`)
+      .then((t) => {
+        if (!current) return;
+        setTrafficOf({ q, t });
+      })
+      .catch(() => {
+        if (current) setTrafficOf({ q, t: null });
+      });
+    return () => {
+      current = false;
+    };
+  }, [q, tick]);
 
   const labelOf = (
     o: Record<string, { en: string; es: string }>,
@@ -682,6 +1383,34 @@ export default function AdminApp() {
       n: num(r.n),
       extra: r.days ? x.days.replace('{n}', String(r.days)) : undefined,
     }));
+
+  const traffic = trafficOf?.q === q ? trafficOf.t : null;
+  const trafficErr = trafficOf?.q === q && trafficOf.t === null;
+  const same = (r: Range) => r.from === range.from && r.to === range.to;
+  const presets = [
+    { key: 'today', label: x.today, r: { from: today, to: today } },
+    ...[7, 30, 90].map((n) => ({
+      key: String(n),
+      label: x.days.replace('{n}', String(n)),
+      r: lastDays(n, today),
+    })),
+  ];
+  const single = range.from === range.to;
+  // One day back or forward; from a longer range, it starts at its last day.
+  const stepDay = (n: number) => {
+    const base = single ? shiftDay(range.from, n) : range.to;
+    const day = base > today ? today : base;
+    setRange({ from: day, to: day });
+  };
+  const pickDay = (day: string) => {
+    setRange({ from: day, to: day });
+    scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const span = daysBetween(range.from, range.to).length;
+  const rangeText =
+    range.from === range.to
+      ? fmtDay(range.from, lang, true)
+      : `${fmtDay(range.from, lang)} – ${fmtDay(range.to, lang)} ${range.to.slice(0, 4)} · ${x.days.replace('{n}', String(span))}`;
 
   const sum = (list: Row[] | undefined, pick: (r: Row) => boolean, f = 'n') =>
     (list ?? []).filter(pick).reduce((s, r) => s + num(r[f]), 0);
@@ -762,18 +1491,6 @@ export default function AdminApp() {
           <p className={note}>{x.subtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className={label}>{x.range}</span>
-          {[7, 30, 90].map((n) => (
-            <button
-              key={n}
-              type="button"
-              aria-pressed={days === n}
-              onClick={() => setDays(n)}
-              className={`${btn} ${days === n ? 'border-accent text-accent' : ''}`}
-            >
-              {x.days.replace('{n}', String(n))}
-            </button>
-          ))}
           {(['en', 'es'] as const).map((l) => (
             <button
               key={l}
@@ -796,6 +1513,109 @@ export default function AdminApp() {
         </div>
       </header>
 
+      {/* Range: presets, a month, or any two days (a single day too). */}
+      <div
+        className={`${card} mt-block flex flex-wrap items-end gap-x-5 gap-y-3`}
+        style={{ colorScheme: dark ? 'dark' : 'light' }}
+      >
+        <div className="flex flex-col gap-1.5">
+          <span className={label}>{x.range}</span>
+          <div className="flex flex-wrap gap-2">
+            {presets.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                aria-pressed={same(p.r)}
+                onClick={() => setRange(p.r)}
+                className={`${btn} ${same(p.r) ? 'border-accent text-accent' : ''}`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className={label}>{x.month}</span>
+          <MonthPicker
+            value={
+              range.from.endsWith('-01') &&
+              same(monthRange(range.from.slice(0, 7), today))
+                ? range.from.slice(0, 7)
+                : ''
+            }
+            max={today.slice(0, 7)}
+            lang={lang}
+            x={x}
+            onPick={(m) => setRange(monthRange(m, today))}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className={label}>{x.day}</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label={x.prevDay}
+              className={`${iconBtn} size-8`}
+              onClick={() => stepDay(-1)}
+            >
+              ‹
+            </button>
+            <DatePicker
+              label={x.day}
+              max={today}
+              value={single ? range.from : ''}
+              lang={lang}
+              x={x}
+              onPick={(d) => setRange({ from: d, to: d })}
+            />
+            <button
+              type="button"
+              aria-label={x.nextDay}
+              disabled={single && range.from >= today}
+              className={`${iconBtn} size-8 disabled:cursor-not-allowed disabled:opacity-40`}
+              onClick={() => stepDay(1)}
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              aria-pressed={single && range.from === today}
+              onClick={() => setRange({ from: today, to: today })}
+              className={`${btn} ${single && range.from === today ? 'border-accent text-accent' : ''}`}
+            >
+              {x.today}
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className={label}>{x.fromDay}</span>
+          <DatePicker
+            label={x.fromDay}
+            min={shiftDay(range.to, -MAX_SPAN)}
+            max={range.to}
+            value={range.from}
+            lang={lang}
+            x={x}
+            onPick={(d) => setRange({ ...range, from: d })}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className={label}>{x.toDay}</span>
+          <DatePicker
+            label={x.toDay}
+            min={range.from}
+            max={[today, shiftDay(range.from, MAX_SPAN)].sort()[0]}
+            value={range.to}
+            lang={lang}
+            x={x}
+            onPick={(d) => setRange({ ...range, to: d })}
+          />
+        </div>
+        <p className="text-ink m-0 ml-auto self-center text-[14px] font-semibold first-letter:uppercase">
+          {rangeText}
+        </p>
+      </div>
+
       {err && (
         <div className={`${card} mt-block flex flex-wrap items-center gap-3`}>
           <p className="text-warn m-0 text-[13px]">
@@ -812,7 +1632,9 @@ export default function AdminApp() {
       )}
       {!data && !err && <p className={`${note} mt-block`}>{x.loading}</p>}
 
-      {data && (
+      {/* After a failed load, the previous range's data isn't shown under
+          the new range's label. */}
+      {data && !(err && (data.from !== range.from || data.to !== range.to)) && (
         <>
           <div className="mt-block gap-gutter grid grid-cols-2 md:grid-cols-4">
             {kpis.map(([k, v]) => (
@@ -828,12 +1650,31 @@ export default function AdminApp() {
           </div>
 
           <Section
-            title={x.activity}
-            sub={x.activityNote}
+            title={data.hours ? x.activityHourly : x.activity}
+            sub={data.hours ? x.activityNote : `${x.activityNote} ${x.pickDay}`}
             className="mt-gutter"
           >
-            <Activity data={data} x={x} lang={lang} />
+            <Activity data={data} x={x} lang={lang} onPick={pickDay} />
           </Section>
+
+          {/* Only with the overview of the same range: the conversion table
+              and the day grouping use both. */}
+          {traffic?.enabled &&
+            data.from === range.from &&
+            data.to === range.to && (
+              <TrafficView
+                t={traffic}
+                data={data}
+                x={x}
+                lang={lang}
+                countryName={countryName}
+                onPick={pickDay}
+                map={map}
+              />
+            )}
+          {trafficErr && (
+            <p className={`${note} mt-gutter`}>{x.trafficError}</p>
+          )}
 
           <div className="mt-gutter gap-gutter grid md:grid-cols-2">
             <Section title={x.categories}>
@@ -865,6 +1706,16 @@ export default function AdminApp() {
               />
             </Section>
             <Section title={x.countries} sub={x.countriesNote}>
+              <CountryMap
+                map={map}
+                values={data.countries.map((c) => ({
+                  k: String(c.k ?? ''),
+                  n: num(c.n),
+                }))}
+                unit={x.usersWord}
+                countryName={countryName}
+              />
+              <div className="mt-4" />
               <Bars
                 rows={data.countries.map((c) => ({
                   key: String(c.k),
