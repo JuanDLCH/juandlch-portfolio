@@ -8,7 +8,7 @@ import tailwindcss from '@tailwindcss/vite';
 // https://astro.build/config
 export default defineConfig({
   // Production origin: absolute URLs for link previews (og:image, canonical).
-  site: 'https://juandlch-portfolio.juandiego0329.workers.dev',
+  site: 'https://juandlch.dev',
   // Old per-language URLs keep working and pick the language.
   redirects: {
     '/en': '/?lang=en',
