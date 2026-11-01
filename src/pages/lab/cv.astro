@@ -4,7 +4,10 @@ import Layout from '../../layouts/Layout.astro';
 ---
 
 <Layout
-  title="Chat with my CV — Juan Diego Londoño"
+  title={{
+    en: 'Chat with my CV — Juan Diego Londoño',
+    es: 'Chatea con mi CV — Juan Diego Londoño',
+  }}
   description="Ask an AI grounded in Juan Diego's CV, case studies and portfolio about his experience, projects and stack. Live, no key needed."
 >
   <ChatApp client:load only="meet" />

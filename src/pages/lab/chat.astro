@@ -4,7 +4,10 @@ import Layout from '../../layouts/Layout.astro';
 ---
 
 <Layout
-  title="Multimodal Chat — JuanDLCH Lab"
+  title={{
+    en: 'Multimodal Chat — JuanDLCH Lab',
+    es: 'Chat multimodal — Laboratorio JuanDLCH',
+  }}
   description="Multimodal chat demo, live and with no key needed: tool calls, images, PDFs and voice input."
 >
   <ChatApp client:load />

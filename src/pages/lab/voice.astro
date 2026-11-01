@@ -10,7 +10,10 @@ if (!import.meta.env.DEV && !import.meta.env.PUBLIC_TURNSTILE_SITEKEY)
 ---
 
 <Layout
-  title="Talk to Sophie — JuanDLCH Voice Lab"
+  title={{
+    en: 'Talk to Sophie — JuanDLCH Voice Lab',
+    es: 'Habla con Sophie — Laboratorio de voz JuanDLCH',
+  }}
   description="A realtime voice agent grounded in Juan Diego's CV and portfolio. Ask out loud about his experience, projects and stack, in English or Spanish."
 >
   <VoiceApp client:load />
