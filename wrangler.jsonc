@@ -7,6 +7,9 @@
   "name": "juandlch-portfolio",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
+  // Only juandlch.dev: the workers.dev copy of the site would be a duplicate
+  // without Cloudflare Access on /admin.
+  "workers_dev": false,
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
@@ -47,7 +50,7 @@
   "vars": {
     // The production origin(s), comma-separated (dev: .dev.vars). Empty, every
     // session is refused.
-    "SITE_ORIGIN": "https://juandlch.dev,https://juandlch-portfolio.juandiego0329.workers.dev",
+    "SITE_ORIGIN": "https://juandlch.dev",
     "VOICE_MODEL": "gpt-realtime-2.1-mini",
     "VOICE_NAME": "coral",
     "VOICE_REASONING": "",
