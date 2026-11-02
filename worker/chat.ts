@@ -10,6 +10,7 @@
 // - POST /api/chat/v1/audio/transcriptions: voice notes (the transcript counts
 //   as a message once sent).
 import { CASES } from '../src/lab/chat/cases';
+import { functionTool } from '../src/lab/chat/tool-defs';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
 import { countryOf, saveMessage, track } from './metrics';
@@ -149,7 +150,8 @@ function mockStream(model: string) {
 }
 
 /** Whether anything in the input (tool outputs included) references
- * content by URL or file id instead of carrying it inline. */
+ * content by URL or file id instead of carrying it inline, or asks for an
+ * image detail other than the usual ones. */
 function remote(v: unknown): boolean {
   if (Array.isArray(v)) return v.some(remote);
   if (!v || typeof v !== 'object') return false;
@@ -160,7 +162,25 @@ function remote(v: unknown): boolean {
     !(typeof o.image_url === 'string' && o.image_url.startsWith('data:'))
   )
     return true;
+  if ('detail' in o && !DETAILS.has(String(o.detail))) return true;
   return Object.values(o).some(remote);
+}
+const DETAILS = new Set(['auto', 'low', 'high']);
+
+/** The items a chat turn is made of: the visitor's messages, the model's own
+ * output replayed (answers, reasoning, tool calls) and tool results. No
+ * system or developer messages: the case's instructions are the only ones. */
+const ITEM_TYPES = new Set([
+  'reasoning',
+  'function_call',
+  'function_call_output',
+]);
+function itemOk(v: unknown) {
+  if (!v || typeof v !== 'object') return false;
+  const o = v as { type?: unknown; role?: unknown };
+  if (o.type === undefined || o.type === 'message')
+    return o.role === 'user' || o.role === 'assistant';
+  return typeof o.type === 'string' && ITEM_TYPES.has(o.type);
 }
 
 /** Counts a visitor message and, for the profile agent, keeps its text
@@ -224,12 +244,15 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   // Images and files only inline: what a URL or a file id points to can't be
   // priced from the body, so it could cost past the reservation.
   if (remote(body.input)) return json({ error: 'remote_content' }, 400);
-  // Only the case's own function tools.
-  const tools = Array.isArray(body.tools) ? body.tools : [];
+  if (!body.input.every(itemOk)) return json({ error: 'bad_request' }, 400);
+  // The case's own function tools, as declared here: the page's copy is
+  // ignored, so a visitor can't rewrite a tool's description or schema.
+  const asked = Array.isArray(body.tools) ? body.tools : [];
   const allowed = new Set(c.clientTools ?? []);
-  for (const t of tools as { type?: unknown; name?: unknown }[])
+  for (const t of asked as { type?: unknown; name?: unknown }[])
     if (t?.type !== 'function' || !allowed.has(String(t.name)))
       return json({ error: 'tool' }, 400);
+  const tools = asked.length ? (c.clientTools ?? []).map(functionTool) : [];
   const efforts = new Set([c.effort, c.docs?.effortMany, 'low']);
   const effort = efforts.has(body.reasoning?.effort as typeof c.effort)
     ? body.reasoning?.effort
@@ -303,12 +326,26 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
     return json({ error: 'upstream' }, 502);
   }
   if (!upstream.ok || !upstream.body) {
-    // Refused before running: nothing to pay. The SDK reads OpenAI's error.
+    // Refused before running: nothing to pay. The page only needs the error's
+    // code; OpenAI's message can name the account, so it isn't passed on.
     await quota.chatSettle(ip, r.id, worst, 0);
-    return new Response(upstream.body, {
-      status: upstream.status,
-      headers: { 'Content-Type': 'application/json', [LEFT]: String(r.left) },
-    });
+    const err = (
+      (await upstream.json().catch(() => null)) as {
+        error?: { code?: unknown; type?: unknown };
+      } | null
+    )?.error;
+    const code = typeof err?.code === 'string' ? err.code : 'upstream';
+    return json(
+      {
+        error: {
+          code,
+          type: typeof err?.type === 'string' ? err.type : undefined,
+          message: code,
+        },
+      },
+      upstream.status,
+      { [LEFT]: String(r.left) },
+    );
   }
   const [toVisitor, toMeter] = upstream.body.tee();
   ctx.waitUntil(
