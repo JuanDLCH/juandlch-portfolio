@@ -105,11 +105,18 @@ export class VoiceCall extends DurableObject<Env> {
         if (!tries) await new Promise((r) => setTimeout(r, 500));
       }
     // Without the sideband nothing checks the session or the cost: the call
-    // doesn't start. startSession (worker/index.ts) hangs it up and gives the
-    // visitor's quota (or resume) back.
+    // doesn't start. It's hung up here (retried by the alarm until OpenAI
+    // confirms), and startSession (worker/index.ts) gives the visitor's quota
+    // (or resume) back.
     if (!this.ws && this.env.MOCK_OPENAI !== '1') {
-      await this.ctx.storage.deleteAlarm();
-      await this.ctx.storage.deleteAll();
+      if (await hangup(this.env, call.callId)) {
+        await this.ctx.storage.deleteAlarm();
+        await this.ctx.storage.deleteAll();
+      } else {
+        // Keep the call on record: the alarm retries the hangup.
+        await this.ctx.storage.put('ending', 'no sideband');
+        await this.ctx.storage.setAlarm(Date.now() + RETRY_MS);
+      }
       throw new Error('no sideband');
     }
   }
