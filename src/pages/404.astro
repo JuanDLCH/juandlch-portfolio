@@ -1,0 +1,40 @@
+---
+import Layout from '../layouts/Layout.astro';
+import T from '../components/T.astro';
+import { getContent, pick } from '../i18n';
+
+const { x } = getContent();
+---
+
+<Layout
+  title={{
+    en: `${pick(x.notFoundTitle, 'en')} — Juan Diego Londoño`,
+    es: `${pick(x.notFoundTitle, 'es')} — Juan Diego Londoño`,
+  }}
+  description={pick(x.shareDesc, 'en')}
+  noindex
+>
+  <main class="py-section mx-auto flex min-h-svh max-w-[1200px] flex-col items-center justify-center gap-6 px-[clamp(16px,4vw,48px)] text-center">
+    <p class="eyebrow">404</p>
+    <h1 class="text-h2 font-medium">
+      <T v={x.notFoundTitle} />
+    </h1>
+    <p class="text-lead text-muted">
+      <T v={x.notFoundText} />
+    </p>
+    <div class="flex flex-wrap justify-center gap-3">
+      <a
+        href="/"
+        class="jd-card border-accent text-accent inline-flex min-h-[44px] items-center border px-6 text-[15px] font-medium no-underline"
+      >
+        <T v={x.notFoundHome} />
+      </a>
+      <a
+        href="/lab/voice"
+        class="jd-card border-line2 inline-flex min-h-[44px] items-center border px-6 text-[15px] font-medium no-underline"
+      >
+        <T v={x.notFoundSophie} />
+      </a>
+    </div>
+  </main>
+</Layout>

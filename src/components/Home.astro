@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getContent, pick } from '../i18n';
+import { CONTACT } from '../lab/chat/contact';
 import About from './About.astro';
 import BackToTop from './BackToTop.astro';
 import SophieDock from './SophieDock.astro';
@@ -29,9 +30,22 @@ const {
 ---
 
 <Layout
-  title={{ en: 'JuanDLCH — Portfolio', es: 'JuanDLCH — Portafolio' }}
+  title={{ en: pick(x.shareTitle, 'en'), es: pick(x.shareTitle, 'es') }}
   description={pick(x.shareDesc, 'en')}
-  shareTitle={pick(x.shareTitle, 'en')}
+  schema={{
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: 'Juan Diego Londoño',
+    jobTitle: 'AI Engineer',
+    url: 'https://juandlch.dev',
+    email: `mailto:${CONTACT.email}`,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Medellín',
+      addressCountry: 'CO',
+    },
+    sameAs: [CONTACT.linkedin, CONTACT.github],
+  }}
 >
   <Header x={x} />
   <div class="mx-auto max-w-[1200px] px-[clamp(16px,4vw,48px)]">

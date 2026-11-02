@@ -10,6 +10,11 @@ export type RawFlowNode = {
 const EN = {
   // Link previews (LinkedIn, WhatsApp, Slack…): crawlers read the English one.
   shareTitle: 'Juan Diego Londoño — AI Engineer',
+  // The 404 page.
+  notFoundTitle: 'Page not found',
+  notFoundText: 'This page doesn’t exist, or it moved.',
+  notFoundHome: 'Back to the portfolio',
+  notFoundSophie: 'Talk to Sophie',
   shareDesc:
     'I build agents, realtime voice and document AI that run inside real software, on AWS. Talk to my voice agent or chat with my CV: live demos, no sign-up.',
   navLabel: 'Primary',
@@ -135,6 +140,10 @@ const EN = {
 
 const ES: typeof EN = {
   shareTitle: 'Juan Diego Londoño — Ingeniero de IA',
+  notFoundTitle: 'Página no encontrada',
+  notFoundText: 'Esta página no existe, o cambió de lugar.',
+  notFoundHome: 'Volver al portafolio',
+  notFoundSophie: 'Habla con Sophie',
   shareDesc:
     'Construyo agentes, voz en tiempo real e IA documental que funcionan dentro de software real, en AWS. Habla con mi agente de voz o chatea con mi CV: demos en vivo, sin registro.',
   navLabel: 'Principal',
