@@ -134,6 +134,10 @@ const BUILD: Entry[] = [
     "Sophie is a real-time voice agent built on the OpenAI Realtime API over WebRTC. The browser never gets a key: it sends its connection offer to the Worker, which creates the call on the server with fixed instructions, and a Durable Object hangs up at the time limit or if a call costs too much. A five-minute budget can be paused and resumed, the greeting is recorded with Sophie's own voice, and her animated face reacts to who is speaking, smiles and winks.",
   ),
   build(
+    'His CV, always up to date',
+    'His CV has its own CI/CD pipeline: it lives as code in a separate repository, and every time he changes it a GitHub Actions workflow builds the English and Spanish PDFs (checking each stays on one page) and a structured data version of it. This site reads both straight from that repository, cached for an hour: the "My CV" downloads, this chat and its CV citations, and Sophie all use the latest version. So when his work changes he only updates his CV, and the portfolio and its AI agents stay in sync without redeploying anything.',
+  ),
+  build(
     'Metrics and the daily AI report',
     "He measures how the site is used: visits by real people from the site's own counter, which leaves out bots (bot user agents, automated browsers, data-center networks) and his own visits, plus use, cost and country per demo, in a Cloudflare D1 database (anonymous: no IPs, emails and phone numbers masked, deleted after 180 days). Every night a batch job classifies what visitors asked the profile agents with a small model (topic, intent and what each visitor was after) and a stronger model writes a short report of what people were most interested in, citing their messages; the code checks every citation and computes every count, so the report cannot make things up. He reads it all in a private dashboard behind Cloudflare Access, with charts, a world map, costs and how many visitors of each demo go on to use it.",
   ),
