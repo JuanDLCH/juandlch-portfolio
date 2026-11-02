@@ -25,7 +25,28 @@ interface Flight {
   at: number;
 }
 
+/** Requests counted per IP, per minute (in memory: see `rate`). */
+const RATE_MS = 60_000;
+
 export class Quota extends DurableObject<Env> {
+  /** Requests per IP in the current minute. Kept in memory only, so it costs
+   * no storage writes; if the instance is evicted the counts start over,
+   * which only makes the limit looser for a moment. */
+  private window = 0;
+  private counts = new Map<string, number>();
+
+  /** Counts a request from `ip`: false once it's over `max` this minute. */
+  async rate(ip: string, max: number) {
+    const now = Math.floor(Date.now() / RATE_MS);
+    if (now !== this.window) {
+      this.window = now;
+      this.counts.clear();
+    }
+    const n = (this.counts.get(ip) ?? 0) + 1;
+    this.counts.set(ip, n);
+    return n <= max;
+  }
+
   /** Reserves a session for `ip`, active until `until` (ms). */
   async reserve(
     ip: string,
