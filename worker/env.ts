@@ -5,8 +5,6 @@ export interface Env {
   /** The built site (dist/), when this Worker serves it. */
   ASSETS?: Fetcher;
   QUOTA: DurableObjectNamespace<Quota>;
-  /** Requests per IP to /api/* (optional: without it, no limit). */
-  API_LIMIT?: RateLimit;
   CALL: DurableObjectNamespace<VoiceCall>;
   /** Lab metrics and visitor messages (worker/metrics.ts). Optional: without it
    * nothing is recorded. */
@@ -33,6 +31,8 @@ export interface Env {
   CHAT_MSGS_PER_IP: string;
   CHAT_USD_PER_IP: string;
   CHAT_USD_PER_DAY: string;
+  /** Requests per IP per minute to /api/* (counted in Quota). */
+  API_PER_MIN: string;
   /** Daily insights (worker/insights.ts): the model that labels messages and
    * the one that writes the report (either empty: off), conversations labeled
    * per day, and the most a day's labeling may cost (USD, estimated). */

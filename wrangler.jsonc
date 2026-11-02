@@ -20,15 +20,6 @@
     // The API is the Worker's; everything else is the static build.
     "run_worker_first": ["/api/*", "/admin/api/*", "/cv/*"],
   },
-  // Requests per IP to /api/* (worker/index.ts): far above what the pages
-  // send, it only stops scripts hammering the API (and D1 writes).
-  "ratelimits": [
-    {
-      "name": "API_LIMIT",
-      "namespace_id": "1001",
-      "simple": { "limit": 60, "period": 60 },
-    },
-  ],
   "durable_objects": {
     "bindings": [
       { "name": "QUOTA", "class_name": "Quota" },
@@ -66,6 +57,9 @@
     "CHAT_MSGS_PER_IP": "60",
     "CHAT_USD_PER_IP": "0.40",
     "CHAT_USD_PER_DAY": "10",
+    // Requests per IP per minute to /api/* (worker/index.ts): far above what
+    // the pages send, it only stops scripts hammering the API (and D1 writes).
+    "API_PER_MIN": "60",
     // Daily insights over the visitors' messages: a cheap model labels each
     // message (validated in code), a stronger one writes the report (either
     // empty: off).

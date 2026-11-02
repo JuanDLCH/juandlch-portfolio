@@ -165,12 +165,16 @@ export default {
       return json({ error: 'origin' }, 403);
     // Scripts hammering the API (the quotas cap spending, not requests).
     // Ending a call is exempt: a refused hangup would leave it running.
-    if (
-      env.API_LIMIT &&
-      url.pathname !== '/api/voice/end' &&
-      !(await env.API_LIMIT.limit({ key: await ipHash(env, req) })).success
-    )
-      return refuse('rate', 429);
+    // Counted in the day's Quota (exact, unlike Cloudflare's rate-limiting
+    // binding, which let hundreds through in a burst).
+    if (url.pathname !== '/api/voice/end') {
+      const day = new Date().toISOString().slice(0, 10);
+      const ok = await env.QUOTA.get(env.QUOTA.idFromName(day)).rate(
+        await ipHash(env, req),
+        Number(env.API_PER_MIN),
+      );
+      if (!ok) return refuse('rate', 429);
+    }
     switch (url.pathname) {
       case '/api/hit':
         return hit(req, env, ctx);
