@@ -104,7 +104,7 @@ const EN = {
   awsBody:
     'I pick the right model for each job (Claude is my go-to) and run agents on Bedrock AgentCore, connected to automated workflows on AWS. I also gave technical support to my company’s AWS Generative AI Competency certification.',
   awsFlex:
-    'AWS is my focus, not my limit — I work with whichever cloud or model provider a project requires.',
+    'AWS is my focus, not my limit — I work with whichever cloud or model provider a project requires, Google Cloud and Cloudflare among them.',
   awsIconsLabel: 'AWS services I work with',
   toolboxLabel: 'Full toolbox',
   ragTitle: 'Retrieval & RAG',
@@ -229,7 +229,7 @@ const ES: typeof EN = {
   awsBody:
     'Elijo el modelo adecuado para cada caso (Claude es mi favorito) y monto los agentes sobre Bedrock AgentCore, conectados a procesos automáticos en AWS. También di soporte técnico a la certificación AWS Generative AI Competency de la compañía.',
   awsFlex:
-    'AWS es mi enfoque, no mi límite — trabajo con la nube o el proveedor de modelos que cada proyecto requiera.',
+    'AWS es mi enfoque, no mi límite — trabajo con la nube o el proveedor de modelos que cada proyecto requiera, Google Cloud y Cloudflare entre ellas.',
   awsIconsLabel: 'Servicios de AWS con los que trabajo',
   toolboxLabel: 'Caja de herramientas completa',
   ragTitle: 'Recuperación y RAG',
@@ -687,7 +687,7 @@ function build(isEs: boolean) {
     ],
     [
       isEs ? 'LLMOps y entrega' : 'LLMOps & delivery',
-      'LangSmith · CloudWatch · Docker · Terraform · AWS SAM · GitHub Actions · CI/CD · Linux',
+      'LangSmith · CloudWatch · Docker · Terraform · AWS SAM · GitHub Actions · CI/CD · Linux · Google Cloud · Cloudflare Workers',
     ],
   ].map(function (g: string[]) {
     return { title: g[0], items: g[1] };
