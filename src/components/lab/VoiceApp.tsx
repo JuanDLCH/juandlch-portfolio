@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CHAT } from '../../i18n/chat';
 import { VOICE, type VoiceCopy } from '../../i18n/voice';
-import { contactInput } from '../../lab/chat/contact';
+import { CONTACT, contactInput } from '../../lab/chat/contact';
 import { WRAP_UP_S } from '../../lab/voice/prompt';
 import {
   VoiceError,
@@ -940,12 +940,26 @@ export default function VoiceApp() {
               </p>
             )}
             {failed && (
-              <a
-                href="/lab/cv"
-                className={`${mono} text-accent text-[11px] tracking-[0.06em] uppercase`}
-              >
-                {x.textChat} →
-              </a>
+              <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
+                <a
+                  href="/lab/cv"
+                  className={`${mono} text-accent text-[11px] tracking-[0.06em] uppercase`}
+                >
+                  {x.textChat} →
+                </a>
+                {/* Out of calls: the person can still reach Juan Diego. */}
+                {(ended === 'limit_ip' || ended === 'limit_day') &&
+                  CONTACT.booking && (
+                    <a
+                      href={CONTACT.booking}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${mono} text-accent text-[11px] tracking-[0.06em] uppercase`}
+                    >
+                      {x.bookCall} →
+                    </a>
+                  )}
+              </div>
             )}
             {/* Turnstile shows here only if Cloudflare needs an interaction. */}
             <div ref={captchaRef} />

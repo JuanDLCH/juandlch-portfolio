@@ -249,7 +249,7 @@ const EN = {
     chatLimitIp:
       'That’s today’s 60 messages on my key. Want to keep going? Book a call with Juan Diego, or talk to Sophie in the Voice Lab.',
     chatLimitDay:
-      'The demo has run out of messages for today. Come back tomorrow, or book a call with Juan Diego and he’ll show it to you live.',
+      'A lot of people have tried this demo today, and it has used up its budget for the day. Please come back tomorrow, or book a call with Juan Diego and he’ll walk you through it live.',
     captcha: 'I couldn’t check that you’re not a bot. Try again.',
     imageUnreadable:
       'I couldn’t open that image: it may be damaged. Try another copy.',
@@ -538,7 +538,7 @@ const ES: typeof EN = {
     chatLimitIp:
       'Ya usaste los 60 mensajes de hoy con mi llave. ¿Quieres seguir? Agenda una llamada con Juan Diego o habla con Sophie en el Voice Lab.',
     chatLimitDay:
-      'La demo se quedó sin mensajes por hoy. Vuelve mañana, o agenda una llamada con Juan Diego y te la muestra en vivo.',
+      'Hoy muchas personas han probado esta demo y ya se agotó su presupuesto del día. Vuelve mañana, o agenda una llamada con Juan Diego y te la muestra en vivo.',
     captcha: 'No pude comprobar que no eres un bot. Inténtalo de nuevo.',
     imageUnreadable:
       'No pude abrir esa imagen: puede estar dañada. Prueba con otra copia.',

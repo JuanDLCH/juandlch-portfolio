@@ -54,9 +54,9 @@ const EN = {
   },
   errors: {
     limit_ip:
-      'You’ve used today’s call. Come back tomorrow, or keep asking in the text chat.',
+      'You’ve used today’s call. Come back tomorrow, keep asking in the text chat, or book a call with Juan Diego.',
     limit_day:
-      'Sophie has talked a lot today and is out of calls. Come back tomorrow, or ask in the text chat.',
+      'A lot of people have talked to Sophie today, and she has used up her budget for the day. Please come back tomorrow, ask in the text chat, or book a call with Juan Diego.',
     busy: 'You already have a call open, maybe in another tab. End it and try again.',
     captcha: 'We couldn’t check that you’re not a bot. Try again.',
     unavailable: 'Sophie can’t connect right now. Try again in a moment.',
@@ -84,6 +84,7 @@ const EN = {
   droppedPaused:
     'The call dropped. You still have {t}: resume and Sophie picks up where you left off.',
   textChat: 'Chat with my CV',
+  bookCall: 'Book a call',
   reachOut: 'Want to keep talking? Reach Juan Diego directly:',
 };
 
@@ -139,9 +140,9 @@ const ES: typeof EN = {
   },
   errors: {
     limit_ip:
-      'Ya usaste tu llamada de hoy. Vuelve mañana o sigue preguntando en el chat de texto.',
+      'Ya usaste tu llamada de hoy. Vuelve mañana, sigue preguntando en el chat de texto o agenda una llamada con Juan Diego.',
     limit_day:
-      'Sophie habló mucho hoy y se quedó sin llamadas. Vuelve mañana o pregunta en el chat de texto.',
+      'Hoy muchas personas han hablado con Sophie y ya se agotó su presupuesto del día. Vuelve mañana, pregunta en el chat de texto o agenda una llamada con Juan Diego.',
     busy: 'Ya tienes una llamada abierta, quizá en otra pestaña. Ciérrala y vuelve a intentarlo.',
     captcha: 'No pudimos comprobar que no eres un bot. Vuelve a intentarlo.',
     unavailable:
@@ -165,6 +166,7 @@ const ES: typeof EN = {
   droppedPaused:
     'Se cayó la llamada. Aún te quedan {t}: reanuda y Sophie sigue donde iban.',
   textChat: 'Chatear con mi CV',
+  bookCall: 'Agendar llamada',
   reachOut:
     '¿Quieres seguir la conversación? Escríbele a Juan Diego directamente:',
 };
