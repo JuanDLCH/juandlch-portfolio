@@ -5,6 +5,8 @@ export interface Env {
   /** The built site (dist/), when this Worker serves it. */
   ASSETS?: Fetcher;
   QUOTA: DurableObjectNamespace<Quota>;
+  /** Requests per IP to /api/* (optional: without it, no limit). */
+  API_LIMIT?: RateLimit;
   CALL: DurableObjectNamespace<VoiceCall>;
   /** Lab metrics and visitor messages (worker/metrics.ts). Optional: without it
    * nothing is recorded. */
