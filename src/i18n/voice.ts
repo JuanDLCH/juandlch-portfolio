@@ -63,6 +63,14 @@ const EN = {
     mic: 'Sophie needs your microphone to hear you. Allow it in your browser and try again.',
     network: 'No connection. Check your network and try again.',
   },
+  // In an app's built-in browser (LinkedIn, Instagram…), where the microphone
+  // is often blocked: shown under Start, and instead of the mic error.
+  inApp:
+    'In an app’s built-in browser the mic may not work. Open this page in Chrome or Safari.',
+  micInApp:
+    'This app’s browser doesn’t let Sophie use your microphone. Open the page in Chrome or Safari.',
+  copyLink: 'Copy link',
+  copied: 'Link copied',
   // Under Start, before a call. Keep in sync with MAX_PER_IP and SESSION_S
   // (wrangler.jsonc) and the 30 min a resume is kept (worker/call.ts).
   limits: '1 call a day · up to 5 min · pause and resume within 30 min',
@@ -141,6 +149,12 @@ const ES: typeof EN = {
     mic: 'Sophie necesita tu micrófono para escucharte. Permítelo en el navegador y vuelve a intentarlo.',
     network: 'Sin conexión. Revisa tu red y vuelve a intentarlo.',
   },
+  inApp:
+    'En el navegador interno de una app el micrófono puede no funcionar. Abre esta página en Chrome o Safari.',
+  micInApp:
+    'El navegador de esta app no deja que Sophie use tu micrófono. Abre la página en Chrome o Safari.',
+  copyLink: 'Copiar enlace',
+  copied: 'Enlace copiado',
   limits: '1 llamada al día · hasta 5 min · pausa y reanuda en 30 min',
   stored: 'Lo que dices se guarda de forma anónima para mejorar esta demo',
   resume: 'Reanudar',

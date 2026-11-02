@@ -1,0 +1,47 @@
+---
+import Layout from '../layouts/Layout.astro';
+import T from '../components/T.astro';
+import { getContent, pick } from '../i18n';
+
+const { x } = getContent();
+const sections = [
+  [x.privacyVisitsH, x.privacyVisits],
+  [x.privacyLabH, x.privacyLab],
+  [x.privacyAiH, x.privacyAi],
+  [x.privacyLimitsH, x.privacyLimits],
+  [x.privacyContactH, x.privacyContact],
+] as const;
+---
+
+<Layout
+  title={{
+    en: `${pick(x.privacyLink, 'en')} — Juan Diego Londoño`,
+    es: `${pick(x.privacyLink, 'es')} — Juan Diego Londoño`,
+  }}
+  description={pick(x.privacyIntro, 'en')}
+>
+  <main class="py-section mx-auto max-w-[68ch] px-[clamp(16px,4vw,48px)]">
+    <a
+      href="/"
+      class="mono text-muted hover:text-ink text-[11px] tracking-[0.08em] uppercase no-underline"
+    >
+      ← JuanDLCH
+    </a>
+    <h1 class="text-h2 mt-block font-medium">
+      <T v={x.privacyLink} />
+    </h1>
+    <p class="text-lead text-body mt-4">
+      <T v={x.privacyIntro} />
+    </p>
+    {sections.map(([h, body]) => (
+      <section class="mt-block">
+        <h2 class="text-h3 text-ink font-semibold">
+          <T v={h} />
+        </h2>
+        <p class="text-sub text-body mt-2 leading-relaxed">
+          <T v={body} />
+        </p>
+      </section>
+    ))}
+  </main>
+</Layout>

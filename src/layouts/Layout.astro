@@ -10,8 +10,10 @@ interface Props {
   shareTitle?: string;
   /** Private pages (the dashboard): not indexed and not counted. */
   noindex?: boolean;
+  /** Structured data for search engines (JSON-LD), e.g. the landing's Person. */
+  schema?: Record<string, unknown>;
 }
-const { title, description, shareTitle, noindex = false } = Astro.props;
+const { title, description, shareTitle, noindex = false, schema } = Astro.props;
 const titles = typeof title === 'string' ? { en: title, es: title } : title;
 // Link previews (Open Graph, Twitter card) need absolute URLs.
 const url = new URL(Astro.url.pathname, Astro.site);
@@ -56,6 +58,13 @@ const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
       rel="stylesheet"
     />
     <title data-title={JSON.stringify(titles)}>{titles.en}</title>
+    {schema && (
+      <script
+        is:inline
+        type="application/ld+json"
+        set:html={JSON.stringify(schema).replace(/</g, '\\u003c')}
+      />
+    )}
     <!-- Same-tab navigation between pages keeps JS state alive (Lab demos). -->
     <ClientRouter />
     <script is:inline>

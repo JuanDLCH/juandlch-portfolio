@@ -179,6 +179,19 @@ export default function VoiceApp() {
   // The page language is only known after hydration (the server render is
   // English), so the greeting waits for it.
   const hydrated = useHydrated();
+  // Apps' built-in browsers (where links from LinkedIn open) often block the
+  // microphone: say so up front, and offer the link to open elsewhere.
+  const inApp =
+    hydrated &&
+    /LinkedInApp|FBAN|FBAV|Instagram|MicroMessenger|Line\/|; wv\)/.test(
+      navigator.userAgent,
+    );
+  const [copied, setCopied] = useState(false);
+  const copyLink = () =>
+    void navigator.clipboard
+      ?.writeText(location.href.split('#')[0])
+      .then(() => setCopied(true))
+      .catch(() => {});
   const lang = es ? 'es' : 'en';
   const x = VOICE[lang];
 
@@ -615,7 +628,9 @@ export default function VoiceApp() {
     caption = {
       who: '',
       text: failed
-        ? x.errors[ended as StartError]
+        ? ended === 'mic' && inApp
+          ? x.micInApp
+          : x.errors[ended as StartError]
         : resumable
           ? fillLeft(ended === 'dropped' ? x.droppedPaused : x.paused)
           : x.ended[ended as 'time' | 'user' | 'dropped'],
@@ -904,7 +919,24 @@ export default function VoiceApp() {
               >
                 {x.limits}
                 <br />
-                {x.stored}
+                <a
+                  href="/privacy"
+                  className="text-inherit underline-offset-2 hover:underline"
+                >
+                  {x.stored}
+                </a>
+              </p>
+            )}
+            {inApp && !live && phase.at !== 'connecting' && (
+              <p className="text-warn m-0 max-w-[36ch] text-center text-[13px]">
+                {x.inApp}{' '}
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="text-accent cursor-pointer border-0 bg-transparent p-0 underline underline-offset-4"
+                >
+                  {copied ? x.copied : x.copyLink}
+                </button>
               </p>
             )}
             {failed && (

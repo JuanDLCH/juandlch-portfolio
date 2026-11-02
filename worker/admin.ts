@@ -1,6 +1,7 @@
 // The insights dashboard's API (/admin/api/*, read by src/components/admin/).
-// Cloudflare Access guards /admin on juandlch.dev, but the workers.dev host
-// serves this Worker too without it, so every request must carry a valid
+// Cloudflare Access guards /admin on juandlch.dev; in case another route
+// reaches this Worker without it (workers.dev, if turned back on), every
+// request must also carry a valid
 // Access JWT (Cf-Access-Jwt-Assertion): RS256, signed by one of the team's
 // keys, for this application's AUD, not expired. In dev (localhost only),
 // ADMIN_DEV=1 skips it.
