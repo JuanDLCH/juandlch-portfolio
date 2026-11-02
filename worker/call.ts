@@ -9,6 +9,7 @@
 // resume with the time left instead of starting a new call.
 import { DurableObject } from 'cloudflare:workers';
 import type { RealtimeSessionCreateRequest } from 'openai/resources/realtime/realtime';
+import { WRAP_UP_NOTE } from '../src/lab/voice/prompt';
 import type { Env } from './env';
 import { saveMessage, track } from './metrics';
 import { hangup, sideband } from './openai';
@@ -51,7 +52,24 @@ const fingerprint = (s: Partial<RealtimeSessionCreateRequest>) =>
     s.instructions,
     s.audio?.output?.voice,
     (s.tools ?? []).map((t) => ('name' in t ? t.name : t.type)),
+    s.max_output_tokens,
   ]);
+
+/** System messages the page itself adds to a call (rtc.ts). Any other one is
+ * someone steering Sophie from the browser's console. */
+const SYSTEM_NOTES = new Set([WRAP_UP_NOTE]);
+
+interface Item {
+  type?: string;
+  role?: string;
+  content?: { text?: unknown }[];
+}
+const strangeSystem = (item: Item | undefined) =>
+  item?.type === 'message' &&
+  (item.role === 'system' || item.role === 'developer') &&
+  !(item.content ?? []).every(
+    (c) => typeof c.text === 'string' && SYSTEM_NOTES.has(c.text),
+  );
 
 export class VoiceCall extends DurableObject<Env> {
   private ws: WebSocket | null = null;
@@ -75,14 +93,21 @@ export class VoiceCall extends DurableObject<Env> {
     this.expected = fingerprint(session);
     this.thread = call.thread ?? call.callId;
     this.lang = call.lang ?? '';
-    try {
-      this.ws = await sideband(this.env, call.callId);
-      this.ws?.addEventListener('message', (e) => this.watch(e.data));
-      this.ws?.addEventListener('close', () => (this.ws = null));
-    } catch (err) {
-      // The alarm still ends the call.
-      console.error(`sideband ${call.callId}: ${String(err)}`);
-    }
+    // Two tries: a lost sideband ends the call (below).
+    for (let tries = 0; tries < 2 && !this.ws; tries++)
+      try {
+        this.ws = await sideband(this.env, call.callId);
+        this.ws?.addEventListener('message', (e) => this.watch(e.data));
+        this.ws?.addEventListener('close', () => (this.ws = null));
+        if (!this.ws) break; // mock: no sideband
+      } catch (err) {
+        console.error(`sideband ${call.callId}: ${String(err)}`);
+        if (!tries) await new Promise((r) => setTimeout(r, 500));
+      }
+    // Without the sideband nothing checks the session or the cost: end the
+    // call now rather than let it run unwatched until the alarm.
+    if (!this.ws && this.env.MOCK_OPENAI !== '1')
+      await this.finish('no sideband');
   }
 
   /** Seconds used by this (ended) call and the ones it resumed, and their
@@ -127,6 +152,7 @@ export class VoiceCall extends DurableObject<Env> {
       session?: Partial<RealtimeSessionCreateRequest>;
       response?: { usage?: RealtimeUsage };
       transcript?: string;
+      item?: Item;
     };
     try {
       event = JSON.parse(data);
@@ -139,6 +165,12 @@ export class VoiceCall extends DurableObject<Env> {
       fingerprint(event.session) !== this.expected
     )
       void this.finish('session changed');
+    if (
+      (event.type === 'conversation.item.added' ||
+        event.type === 'conversation.item.created') &&
+      strangeSystem(event.item)
+    )
+      void this.finish('system message');
     // What the visitor said, for the analysis (worker/metrics.ts).
     if (
       event.type === 'conversation.item.input_audio_transcription.completed' &&
