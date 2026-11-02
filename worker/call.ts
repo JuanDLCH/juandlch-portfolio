@@ -104,10 +104,14 @@ export class VoiceCall extends DurableObject<Env> {
         console.error(`sideband ${call.callId}: ${String(err)}`);
         if (!tries) await new Promise((r) => setTimeout(r, 500));
       }
-    // Without the sideband nothing checks the session or the cost: end the
-    // call now rather than let it run unwatched until the alarm.
-    if (!this.ws && this.env.MOCK_OPENAI !== '1')
-      await this.finish('no sideband');
+    // Without the sideband nothing checks the session or the cost: the call
+    // doesn't start. startSession (worker/index.ts) hangs it up and gives the
+    // visitor's quota (or resume) back.
+    if (!this.ws && this.env.MOCK_OPENAI !== '1') {
+      await this.ctx.storage.deleteAlarm();
+      await this.ctx.storage.deleteAll();
+      throw new Error('no sideband');
+    }
   }
 
   /** Seconds used by this (ended) call and the ones it resumed, and their
