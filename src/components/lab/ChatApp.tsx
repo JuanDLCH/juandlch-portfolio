@@ -1398,7 +1398,12 @@ export default function ChatApp({
                   </span>
                 )}
                 {!BYOK && c.id === 'meet' && (
-                  <span className="basis-full">{x.stored}</span>
+                  <a
+                    href="/privacy"
+                    className="basis-full text-inherit underline-offset-2 hover:underline"
+                  >
+                    {x.stored}
+                  </a>
                 )}
               </div>
             </div>

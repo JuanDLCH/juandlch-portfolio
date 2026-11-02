@@ -12,6 +12,25 @@ const EN = {
   shareTitle: 'Juan Diego Londoño — AI Engineer',
   shareDesc:
     'I build agents, realtime voice and document AI that run inside real software, on AWS. Talk to my voice agent or chat with my CV: live demos, no sign-up.',
+  // The privacy note (/privacy), linked from the footer and the labs.
+  privacyLink: 'Privacy',
+  privacyIntro:
+    'This site has no accounts, ads or tracking cookies. Here is what it keeps, and why.',
+  privacyVisitsH: 'Visits',
+  privacyVisits:
+    'Each page view records the page, the site you came from and your country. No IP address, user agent or cookie is stored. Cloudflare Web Analytics counts visits without cookies too. Your theme and language choice stay in your browser.',
+  privacyLabH: 'The AI demos',
+  privacyLab:
+    'What you write to “Meet my AI” and the CV chat, and what you say to Sophie (as text), is stored without your name or IP, with emails and phone numbers masked, to see what visitors ask and improve the demos (a nightly job, also on OpenAI, groups them by topic). Usage and cost per demo are counted too. All of it is deleted after 180 days. The other demos only count usage: their messages aren’t kept.',
+  privacyAiH: 'Who processes it',
+  privacyAi:
+    'Messages, files and voice go to OpenAI to get the answers (they aren’t used to train its models). Cloudflare hosts the site and checks you’re not a bot (Turnstile). Files you give the document demo are read in your browser; only the passages and pages the AI asks for are sent.',
+  privacyLimitsH: 'Limits',
+  privacyLimits:
+    'To keep the demos free, daily limits are counted per network with a one-way code of your IP address, held for two days and never stored with what you write.',
+  privacyContactH: 'Questions or deletion',
+  privacyContact:
+    'Write to juandiego0329@gmail.com and tell me roughly when you used a demo, and I’ll delete what you sent.',
   navLabel: 'Primary',
   navWork: 'Work',
   navLab: 'Lab',
@@ -137,6 +156,24 @@ const ES: typeof EN = {
   shareTitle: 'Juan Diego Londoño — Ingeniero de IA',
   shareDesc:
     'Construyo agentes, voz en tiempo real e IA documental que funcionan dentro de software real, en AWS. Habla con mi agente de voz o chatea con mi CV: demos en vivo, sin registro.',
+  privacyLink: 'Privacidad',
+  privacyIntro:
+    'Este sitio no tiene cuentas, anuncios ni cookies de rastreo. Esto es lo que guarda, y para qué.',
+  privacyVisitsH: 'Visitas',
+  privacyVisits:
+    'Cada visita registra la página, el sitio del que vienes y tu país. No se guarda tu dirección IP, tu navegador ni cookies. Cloudflare Web Analytics también cuenta visitas sin cookies. Tu tema e idioma se recuerdan solo en tu navegador.',
+  privacyLabH: 'Las demos de IA',
+  privacyLab:
+    'Lo que escribes a “Meet my AI” y al chat del CV, y lo que le dices a Sophie (como texto), se guarda sin tu nombre ni tu IP, con correos y teléfonos ocultos, para ver qué preguntan los visitantes y mejorar las demos (un proceso nocturno, también con OpenAI, los agrupa por tema). También se cuenta el uso y el costo de cada demo. Todo se borra a los 180 días. Las demás demos solo cuentan el uso: sus mensajes no se guardan.',
+  privacyAiH: 'Quién lo procesa',
+  privacyAi:
+    'Los mensajes, archivos y voz van a OpenAI para obtener las respuestas (no se usan para entrenar sus modelos). Cloudflare aloja el sitio y verifica que no seas un bot (Turnstile). Los archivos que le das a la demo de documentos se leen en tu navegador; solo se envían los pasajes y páginas que la IA pide.',
+  privacyLimitsH: 'Límites',
+  privacyLimits:
+    'Para que las demos sigan siendo gratis, los límites diarios se cuentan por red con un código irreversible de tu IP, que se guarda dos días y nunca junto a lo que escribes.',
+  privacyContactH: 'Preguntas o borrado',
+  privacyContact:
+    'Escríbeme a juandiego0329@gmail.com con la fecha aproximada en que usaste una demo y borro lo que enviaste.',
   navLabel: 'Principal',
   navWork: 'Trabajo',
   navLab: 'Lab',
