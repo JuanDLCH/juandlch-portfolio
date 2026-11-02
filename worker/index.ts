@@ -6,7 +6,8 @@
 // quota. Every call is cut by its VoiceCall alarm after SESSION_S seconds.
 import type { Env } from './env';
 import { admin } from './admin';
-import { cv } from './cv';
+import { cv, liveCv } from './cv';
+import { profileText } from '../src/lab/chat/profile';
 import { hit } from './hits';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, turnstileOk } from './http';
@@ -24,16 +25,10 @@ const CALL_ID = /^rtc_[\w-]{1,100}$/;
 /** Shorter remainders aren't worth a resume: a new call starts instead. */
 const MIN_RESUME_S = 10;
 
-// The profile text changes only with a deploy; keep it per isolate.
-let profile: { text: string; at: number } | null = null;
-async function loadProfile(env: Env, req: Request) {
-  if (profile && Date.now() - profile.at < 600_000) return profile.text;
-  const path = '/lab/voice-profile.txt';
-  let res = await env.ASSETS?.fetch(new URL(path, req.url));
-  if (!res?.ok) res = await fetch(new URL(path, origins(env)[0]));
-  if (!res.ok) throw new Error(`profile ${res.status}`);
-  profile = { text: await res.text(), at: Date.now() };
-  return profile.text;
+// Sophie's profile: the live CV (from the CV repo, worker/cv.ts) plus the
+// portfolio copy, stories and notes, as text.
+async function loadProfile(env: Env) {
+  return profileText((await liveCv(env)).cv);
 }
 
 async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
@@ -92,7 +87,7 @@ async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
 
   let call: { sdp: string; callId: string } | null = null;
   try {
-    const session = sessionConfig(env, await loadProfile(env, req), lang);
+    const session = sessionConfig(env, await loadProfile(env), lang);
     call = await createCall(env, sdp, session);
     // A few seconds of grace for the connection to come up.
     const endsAt = Date.now() + (seconds + 5) * 1000;

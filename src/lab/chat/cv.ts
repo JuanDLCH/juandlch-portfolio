@@ -1,7 +1,10 @@
-// Juan Diego's CV as data, transcribed from the private JuanDLCH/cv repo
-// (versions/base.en.html, the source of the PDFs at /cv/*.pdf). The profile
-// tools search it, and the chat's CV viewer renders it with the cited items
-// highlighted, so every item has a stable id. Keep it in sync with the PDF.
+// Juan Diego's CV as data. The live copy is the CV repo's
+// dist/base.en/cv.json (built from versions/base.en.html with the PDFs), served
+// by the Worker at /cv/cv.json (worker/cv.ts) and read by the chat's profile
+// tools and CV viewer (cv-live.ts) and by Sophie's profile, so a CV change
+// reaches the agents without a deploy. The data below is the bundled fallback
+// (refresh it from cv.json now and then). Answers cite items by id, so ids
+// are stable.
 // The CV downloads: the Worker serves them from the CV repo (worker/cv.ts),
 // so a new CV reaches the site without a deploy.
 export const CV_PDF_EN = '/cv/Juan-Londono_AI-Engineer.pdf';
@@ -78,7 +81,7 @@ export const CV: CvSection[] = [
             id: 'skills-ai',
             cite: 'Skills: AI / LLM',
             label: 'AI / LLM',
-            text: 'AI agents, agentic workflows, LangGraph, LangChain, LlamaIndex, MCP, RAG (hybrid search, reranking), embeddings, vector search, prompt engineering, tool/function calling, structured outputs, Claude, OpenAI, Amazon Nova',
+            text: 'AI agents, agentic workflows, LangGraph, LangChain, LlamaIndex, MCP, RAG (hybrid search, reranking), embeddings, vector search, prompt engineering, tool/function calling, structured outputs, Claude, OpenAI, Gemini, Amazon Nova',
           },
           {
             id: 'skills-llmops',
@@ -90,13 +93,13 @@ export const CV: CvSection[] = [
             id: 'skills-voice',
             cite: 'Skills: Voice & Documents',
             label: 'Voice & Documents',
-            text: 'Deepgram, ElevenLabs, Amazon Transcribe, WebSockets, WebRTC, Textract, OCR, speech-to-text, text-to-speech',
+            text: 'Deepgram, ElevenLabs, Amazon Transcribe, Google Cloud STT/TTS, WebSockets, WebRTC, Textract, OCR',
           },
           {
             id: 'skills-aws',
             cite: 'Skills: AWS / Cloud',
-            label: 'AWS / Cloud',
-            text: 'Bedrock, Bedrock AgentCore, Lambda, Step Functions, EventBridge, API Gateway, DynamoDB, Aurora, S3, CloudWatch, ECS/Fargate',
+            label: 'AWS',
+            text: 'Bedrock, Bedrock AgentCore, Lambda, Step Functions, EventBridge, API Gateway, DynamoDB, Aurora, S3, CloudWatch, ECS/Fargate and more | Cloudflare: Workers, Durable Objects, D1, Cron Triggers, Zero Trust Access, Turnstile',
           },
           {
             id: 'skills-backend',
@@ -108,7 +111,7 @@ export const CV: CvSection[] = [
             id: 'skills-frontend',
             cite: 'Skills: Frontend & Integrations',
             label: 'Frontend',
-            text: 'React, Next.js, Tailwind CSS, Angular, Vue | Integrations: WhatsApp Cloud API, HubSpot, Twilio, n8n, webhooks',
+            text: 'React, Next.js, Tailwind, Angular, Vue | Integrations: WhatsApp API, Google Maps (GCP), HubSpot, Twilio, n8n',
           },
         ],
       },
@@ -206,6 +209,12 @@ export const CV: CvSection[] = [
             text: 'realtime voice agents for order taking: streaming STT/TTS, interruption handling and tool calls into ordering systems.',
           },
           {
+            id: 'client-portfolio',
+            cite: 'Personal project: juandlch.dev',
+            label: 'juandlch.dev (personal)',
+            text: 'live AI lab (chat + realtime voice agents) on Cloudflare Workers, Durable Objects and D1, with per-IP and per-call cost caps, Turnstile, and an admin guarded by Zero Trust Access.',
+          },
+          {
             id: 'client-chatbots',
             cite: 'Client work: chatbots',
             label: 'Multicines, InsureHero, El Hornero, Sushicorp, JXBS',
@@ -268,17 +277,82 @@ export const CV: CvSection[] = [
   },
 ];
 
+export interface CvData {
+  head: typeof CV_HEAD;
+  sections: CvSection[];
+}
+
+/** The CV built with the site. */
+export const BUNDLED_CV: CvData = { head: CV_HEAD, sections: CV };
+
+const SECTION_IDS: CvSection['id'][] = [
+  'summary',
+  'skills',
+  'experience',
+  'client_work',
+  'education_languages',
+  'certifications',
+];
+
+const str = (v: unknown, max = 2000): v is string =>
+  typeof v === 'string' && v.length > 0 && v.length <= max;
+const opt = (v: unknown) => v === undefined || str(v);
+const isItem = (v: unknown): v is CvItem => {
+  const i = v as Partial<CvItem> | null;
+  return (
+    !!i &&
+    str(i.id, 64) &&
+    /^[\w-]+$/.test(i.id) &&
+    str(i.cite, 200) &&
+    str(i.text) &&
+    opt(i.label)
+  );
+};
+
+/** A cv.json from the CV repo, if it has the expected shape (unknown
+ * section ids, duplicate item ids or missing fields reject it). */
+export function parseCv(raw: unknown): CvData | null {
+  const d = raw as {
+    head?: Partial<CvData['head']>;
+    sections?: unknown;
+  } | null;
+  const h = d?.head;
+  if (!h || !str(h.name, 200) || !str(h.headline, 300) || !str(h.contact, 500))
+    return null;
+  if (!isItem(h.stats) || !Array.isArray(d.sections)) return null;
+  const ids = new Set<string>([h.stats.id]);
+  for (const s of d.sections as Partial<CvSection>[]) {
+    if (!s || !SECTION_IDS.includes(s.id as CvSection['id'])) return null;
+    if (!str(s.title, 200) || !Array.isArray(s.blocks)) return null;
+    if (s.bullets !== undefined && typeof s.bullets !== 'boolean') return null;
+    for (const b of s.blocks as Partial<CvBlock>[]) {
+      if (!b || !opt(b.heading) || !opt(b.meta) || !Array.isArray(b.items))
+        return null;
+      for (const it of b.items) {
+        if (!isItem(it) || ids.has(it.id)) return null;
+        ids.add(it.id);
+      }
+    }
+  }
+  return {
+    head: h as CvData['head'],
+    sections: d.sections as CvSection[],
+  };
+}
+
 /** Link that opens the CV viewer on these items (the PDF itself without JS). */
 export const cvLink = (origin: string, id: string) =>
   `${new URL(cvPdf, origin).href}#cv=${id}`;
 
 /** CV item id from a citation link, or null if it isn't one. */
 export const cvLinkId = (href: string) => {
-  if (typeof location === 'undefined') return null;
+  // Browser only (the Worker imports this file too).
+  const here = (globalThis as { location?: { origin: string } }).location;
+  if (!here) return null;
   try {
     const u = new URL(href);
-    if (u.origin !== location.origin) return null;
-    if (u.pathname !== new URL(cvPdf, location.origin).pathname) return null;
+    if (u.origin !== here.origin) return null;
+    if (u.pathname !== new URL(cvPdf, here.origin).pathname) return null;
     return /^#cv=([\w-]+)$/.exec(u.hash)?.[1] ?? null;
   } catch {
     return null;

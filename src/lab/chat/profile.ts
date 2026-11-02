@@ -1,11 +1,12 @@
-// Knowledge base of the "Meet my AI" chat case: the CV (cv.ts) plus the
-// portfolio's own copy and a few notes. Loaded lazily by the profile tools in
-// tools.ts, so it stays out of the page bundle. Data is in English; the model
-// translates it. The voice agent gets the same data as plain text
-// (profileText), written at build time by src/pages/lab/voice-profile.txt.ts.
+// Knowledge base of the "Meet my AI" chat case: the CV (the live cv.json from
+// the CV repo, or the bundled copy in cv.ts) plus the portfolio's own copy,
+// how the site is built, project stories and notes. Loaded lazily by the
+// profile tools in tools.ts, so it stays out of the page bundle. Data is in
+// English; the model translates it. The voice agent gets the same data as
+// plain text (profileText), built by the Worker when each call starts.
 import { content } from '../../i18n/content';
-import { CV, CV_HEAD, cvLink } from './cv';
-import type { ProfileSection as Section } from './tools';
+import { BUNDLED_CV, cvLink, type CvData } from './cv';
+import type { ProfileSection as Section } from './profile-sections';
 
 export interface Entry {
   section: Section;
@@ -20,8 +21,13 @@ export interface Entry {
 
 const en = content.en;
 
-/** Every entry, with source links on `origin`. */
-export const buildProfile = (origin: string): Entry[] => {
+/** Every entry, with source links on `origin`, from `cv` (the live CV from
+ * the CV repo, or the bundled copy). */
+export const buildProfile = (
+  origin: string,
+  cv: CvData = BUNDLED_CV,
+): Entry[] => {
+  const { head: CV_HEAD, sections: CV } = cv;
   const site = (section: string, anchor: string) => ({
     label: `Portfolio · ${section}`,
     url: new URL(`/#${anchor}`, origin).href,
@@ -208,10 +214,10 @@ const NOTES: Entry[] = [
 
 /** The whole profile as compact text, one line per entry under its group,
  * for prompts that take it inline (no links: the voice agent can't cite). */
-export const profileText = () => {
+export const profileText = (cv: CvData = BUNDLED_CV) => {
   const lines: string[] = [];
   let group = '';
-  for (const e of buildProfile('https://example.invalid')) {
+  for (const e of buildProfile('https://example.invalid', cv)) {
     const g = e.group ?? e.source.label;
     if (g !== group) lines.push('', `## ${(group = g)}`);
     lines.push(`- ${e.title}: ${e.text}`);

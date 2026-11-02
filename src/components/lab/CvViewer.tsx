@@ -1,7 +1,10 @@
-// The CV rendered from src/lab/chat/cv.ts, with the items an answer cites
-// highlighted. Shown in the chat's CV dialog when a CV citation is clicked.
+// The CV rendered from its data (the live cv.json, see cv-live.ts), with the
+// items an answer cites highlighted. Shown in the chat's CV dialog when a CV
+// citation is clicked.
+import { useStore } from '@nanostores/react';
 import { useEffect, useRef } from 'react';
-import { CV, CV_HEAD, type CvItem } from '../../lab/chat/cv';
+import { type CvItem } from '../../lab/chat/cv';
+import { $cv, loadCv } from '../../lab/chat/cv-live';
 
 // Background, not outline: highlighted items wrap over several lines.
 const mark = 'bg-accent/20 text-ink box-decoration-clone px-0.5';
@@ -15,6 +18,10 @@ export default function CvViewer({
   /** Item whose citation was clicked; scrolled into view. */
   focus: string;
 }) {
+  const { head: CV_HEAD, sections: CV } = useStore($cv);
+  useEffect(() => {
+    void loadCv();
+  }, []);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current

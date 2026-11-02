@@ -1,6 +1,7 @@
 // Client-side tools for the chat lab. They run in the visitor's browser; the
 // profile is Juan Diego's CV and portfolio, the menu and orders are fake demo
 // data (order.ts, insurance.ts), weather comes from Open-Meteo (no key).
+import { PROFILE_SECTIONS, type ProfileSection } from './profile-sections';
 import type Anthropic from '@anthropic-ai/sdk';
 import { IMAGE_TYPES } from '../attachments';
 import type { ChatSession } from '../store';
@@ -857,30 +858,21 @@ const getTime: ClientTool = {
 
 // Profile tools of the "Meet my AI" case. The data (profile.ts) loads on the
 // first call; each entry carries the source the model must cite.
-export const PROFILE_SECTIONS = [
-  'summary',
-  'skills',
-  'experience',
-  'client_work',
-  'education_languages',
-  'certifications',
-  'portfolio_work',
-  'portfolio_stack',
-  'portfolio_principles',
-  'portfolio_approach',
-  'portfolio_build',
-  'stories',
-  'notes',
-] as const;
-export type ProfileSection = (typeof PROFILE_SECTIONS)[number];
+export { PROFILE_SECTIONS, type ProfileSection };
 
 // `group` labels the tool card ("CV · Experience"); `source` is what the
 // model cites.
-const loadProfile = async () =>
-  (await import('./profile')).buildProfile(location.origin).map((e) => ({
+// Built from the live CV (cv-live.ts), so a CV change needs no deploy.
+const loadProfile = async () => {
+  const [{ buildProfile }, { loadCv }] = await Promise.all([
+    import('./profile'),
+    import('./cv-live'),
+  ]);
+  return buildProfile(location.origin, await loadCv()).map((e) => ({
     ...e,
     group: e.group ?? e.source.label,
   }));
+};
 
 // Lowercase, accents removed, split into words.
 const words = (s: string) =>

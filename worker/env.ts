@@ -15,8 +15,7 @@ export interface Env {
   /** Key of the HMAC that pseudonymizes IPs in the quota. */
   IP_SALT: string;
   // Vars (wrangler.jsonc).
-  /** Origins allowed to start sessions, comma-separated. The first one also
-   * serves voice-profile.txt when ASSETS doesn't have it (dev). */
+  /** Origins allowed to start sessions, comma-separated (production first). */
   SITE_ORIGIN: string;
   VOICE_MODEL: string;
   VOICE_NAME: string;

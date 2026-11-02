@@ -47,7 +47,7 @@ export const CONTACT_TOOL = {
   },
 } as const;
 
-/** Sophie's instructions, with the profile (voice-profile.txt) inline. */
+/** Sophie's instructions, with the profile (profileText, from the live CV) inline. */
 export const voiceInstructions = (profile: string, pageLang: 'en' | 'es') =>
   [
     '# Role and objective',
