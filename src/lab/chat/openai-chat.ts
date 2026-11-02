@@ -7,7 +7,7 @@
 // every request, reasoning included (encrypted).
 import type OpenAI from 'openai';
 import type { ChatItem, ChatSession, UserInput } from '../store';
-import { MODELS, caseEffort, type ChatCase } from './cases';
+import { BYOK, MODELS, caseEffort, type ChatCase } from './cases';
 import {
   CaptchaError,
   LAB_API,
@@ -398,6 +398,9 @@ export async function runTurn(
     cb.update(clone(s));
     if (cb.signal.aborted) return null;
     if (err instanceof CaptchaError) return 'captcha';
+    // Out of API credit: the visitor's own key, or the site's (its OpenAI
+    // budget is spent, which looks to visitors like the day's limit).
+    const outOfCredit = BYOK ? 'quota' : 'chatLimitDay';
     // The site's Worker: daily limits, and a token for another IP.
     if (err instanceof OpenAISdk.APIError) {
       if (err.code === 'chat_limit_ip') {
@@ -418,7 +421,7 @@ export async function runTurn(
     )
       return 'model';
     if (err instanceof OpenAISdk.RateLimitError)
-      return err.code === 'insufficient_quota' ? 'quota' : 'rate';
+      return err.code === 'insufficient_quota' ? outOfCredit : 'rate';
     if (err instanceof OpenAISdk.InternalServerError) return 'overloaded';
     // OpenAI's error responses carry no CORS header, so the browser hides
     // them: a rejected key looks like a dropped connection. Only call it a
@@ -432,7 +435,7 @@ export async function runTurn(
         err.code === 'insufficient_quota' ||
         /credit|quota/i.test(err.message)
       )
-        return 'quota';
+        return outOfCredit;
       if (err.code === 'rate_limit_exceeded') return 'rate';
       if (err.code === 'server_error') return 'overloaded';
     }
