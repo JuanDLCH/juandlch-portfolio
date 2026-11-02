@@ -2,7 +2,7 @@
 // page: both languages share it (?lang= only picks one).
 import type { APIRoute } from 'astro';
 
-const PAGES = ['/', '/lab/voice', '/lab/chat', '/lab/cv'];
+const PAGES = ['/', '/lab/voice', '/lab/chat', '/lab/cv', '/privacy'];
 
 export const GET: APIRoute = ({ site }) =>
   new Response(

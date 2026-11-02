@@ -919,7 +919,12 @@ export default function VoiceApp() {
               >
                 {x.limits}
                 <br />
-                {x.stored}
+                <a
+                  href="/privacy"
+                  className="text-inherit underline-offset-2 hover:underline"
+                >
+                  {x.stored}
+                </a>
               </p>
             )}
             {inApp && !live && phase.at !== 'connecting' && (
