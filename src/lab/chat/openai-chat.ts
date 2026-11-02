@@ -16,7 +16,7 @@ import {
   labToken,
   setChatLeft,
 } from './lab';
-import { CLIENT_TOOLS } from './tools';
+import { functionTool } from './tool-defs';
 import {
   PAGES_DROPPED,
   clone,
@@ -78,18 +78,6 @@ const userMessage = (input: UserInput): Item => ({
     ...(input.text ? [{ type: 'input_text' as const, text: input.text }] : []),
   ],
 });
-
-// Client tools are declared once, in Anthropic's shape (tools.ts).
-const functionTool = (name: string): OpenAI.Responses.FunctionTool => {
-  const { def } = CLIENT_TOOLS[name];
-  return {
-    type: 'function',
-    name: def.name,
-    description: def.description,
-    parameters: def.input_schema as Record<string, unknown>,
-    strict: false,
-  };
-};
 
 const searchSummary = (
   item: OpenAI.Responses.ResponseFunctionWebSearch,
