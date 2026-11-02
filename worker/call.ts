@@ -245,9 +245,12 @@ export class VoiceCall extends DurableObject<Env> {
       /* already closed */
     }
     this.ws = null;
-    await this.env.QUOTA.get(this.env.QUOTA.idFromName(call.day)).release(
-      call.ip,
-    );
+    // A call that never started (no sideband) had its slot given back by
+    // startSession already; by now it may belong to the visitor's next call.
+    if (first !== 'no sideband')
+      await this.env.QUOTA.get(this.env.QUOTA.idFromName(call.day)).release(
+        call.ip,
+      );
     await track(this.env, {
       kind: 'voice_end',
       subject: 'voice',
