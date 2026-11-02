@@ -52,6 +52,9 @@ async function getClient(key: string) {
   return client;
 }
 
+/** OpenAI's codes for an account (or project) out of credit or budget. */
+const NO_CREDIT = new Set(['insufficient_quota', 'billing_hard_limit_reached']);
+
 const dataUrl = (f: UserInput['files'][number]) =>
   `data:${f.mediaType};base64,${f.data}`;
 
@@ -421,7 +424,7 @@ export async function runTurn(
     )
       return 'model';
     if (err instanceof OpenAISdk.RateLimitError)
-      return err.code === 'insufficient_quota' ? outOfCredit : 'rate';
+      return NO_CREDIT.has(String(err.code)) ? outOfCredit : 'rate';
     if (err instanceof OpenAISdk.InternalServerError) return 'overloaded';
     // OpenAI's error responses carry no CORS header, so the browser hides
     // them: a rejected key looks like a dropped connection. Only call it a
@@ -432,8 +435,8 @@ export async function runTurn(
     // an account with no credit fails this way.
     if (err instanceof OpenAISdk.APIError) {
       if (
-        err.code === 'insufficient_quota' ||
-        /credit|quota/i.test(err.message)
+        NO_CREDIT.has(String(err.code)) ||
+        /credit|quota|billing/i.test(err.message)
       )
         return outOfCredit;
       if (err.code === 'rate_limit_exceeded') return 'rate';

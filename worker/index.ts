@@ -132,7 +132,11 @@ async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
     }
     // OpenAI's budget for the key is spent: to the visitor, the day's calls
     // are over.
-    if (/insufficient_quota|exceeded your current quota/.test(String(err)))
+    if (
+      /insufficient_quota|billing_hard_limit|exceeded your current quota/.test(
+        String(err),
+      )
+    )
       return json({ error: 'limit_day' }, 429);
     return json({ error: 'unavailable' }, 502);
   }
