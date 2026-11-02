@@ -43,7 +43,7 @@
     "VOICE_NAME": "coral",
     "VOICE_REASONING": "",
     "MAX_PER_IP": "1",
-    "MAX_PER_DAY": "20",
+    "MAX_PER_DAY": "40",
     "SESSION_S": "300",
     // A voice call hangs up once it has cost this much (USD).
     "VOICE_CALL_USD": "0.30",
@@ -51,7 +51,7 @@
     // per day for the whole site.
     "CHAT_MSGS_PER_IP": "60",
     "CHAT_USD_PER_IP": "0.40",
-    "CHAT_USD_PER_DAY": "3",
+    "CHAT_USD_PER_DAY": "10",
     // Daily insights over the visitors' messages: a cheap model labels each
     // message (validated in code), a stronger one writes the report (either
     // empty: off).
