@@ -1,10 +1,13 @@
 // Juan Diego's CV as data, transcribed from the private JuanDLCH/cv repo
-// (versions/base.en.html, the source of src/assets/cv/*.pdf). The profile
+// (versions/base.en.html, the source of the PDFs at /cv/*.pdf). The profile
 // tools search it, and the chat's CV viewer renders it with the cited items
 // highlighted, so every item has a stable id. Keep it in sync with the PDF.
-import cvPdf from '../../assets/cv/Juan-Londono_AI-Engineer.pdf?url';
-
-export { cvPdf };
+// The CV downloads: the Worker serves them from the CV repo (worker/cv.ts),
+// so a new CV reaches the site without a deploy.
+export const CV_PDF_EN = '/cv/Juan-Londono_AI-Engineer.pdf';
+export const CV_PDF_ES = '/cv/Juan-Londono_AI-Engineer_ES.pdf';
+/** The PDF the chat cites. */
+export const cvPdf = CV_PDF_EN;
 
 export interface CvItem {
   id: string;

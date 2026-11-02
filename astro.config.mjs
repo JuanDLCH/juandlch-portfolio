@@ -25,6 +25,7 @@ export default defineConfig({
       proxy: {
         '/api': 'http://localhost:8787',
         '/admin/api': 'http://localhost:8787',
+        '/cv': 'http://localhost:8787',
       },
     },
   },

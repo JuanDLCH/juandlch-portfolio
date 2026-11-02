@@ -2,8 +2,7 @@
 import { attrs, pick, type Content } from '../i18n';
 import T from './T.astro';
 import ThemeToggle from './ThemeToggle';
-import cvEn from '../assets/cv/Juan-Londono_AI-Engineer.pdf?url';
-import cvEs from '../assets/cv/Juan-Londono_AI-Engineer_ES.pdf?url';
+import { CV_PDF_EN as cvEn, CV_PDF_ES as cvEs } from '../lab/chat/cv';
 
 interface Props {
   x: Content['x'];

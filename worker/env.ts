@@ -49,6 +49,10 @@ export interface Env {
   CF_ACCOUNT_ID: string;
   CF_SITE_TAG: string;
   CF_ANALYTICS_TOKEN?: string;
+  /** The CV downloads (worker/cv.ts): the repo (var) and a read-only GitHub
+   * token for it (secret; without it, the copies built with the site). */
+  CV_REPO: string;
+  CV_GITHUB_TOKEN?: string;
   /** "1" (dev only, on localhost): the dashboard API without Access. */
   ADMIN_DEV?: string;
   /** "1": fake OpenAI (no calls, no cost), to test limits and cutoffs. */

@@ -6,6 +6,7 @@
 // quota. Every call is cut by its VoiceCall alarm after SESSION_S seconds.
 import type { Env } from './env';
 import { admin } from './admin';
+import { cv } from './cv';
 import { hit } from './hits';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, turnstileOk } from './http';
@@ -156,6 +157,8 @@ export default {
     const url = new URL(req.url);
     // The insights dashboard's API, behind Cloudflare Access (worker/admin.ts).
     if (url.pathname.startsWith('/admin/api/')) return admin(req, env);
+    // The CV PDFs, from the CV repo (worker/cv.ts).
+    if (url.pathname.startsWith('/cv/')) return cv(req, env, ctx);
     const api = url.pathname.startsWith('/api/');
     if (!api)
       return (
