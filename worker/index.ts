@@ -10,7 +10,7 @@ import { cv, liveCv } from './cv';
 import { profileText } from '../src/lab/chat/profile';
 import { hit } from './hits';
 import { responses, startChat, transcription } from './chat';
-import { ipHash, json, origins, turnstileOk } from './http';
+import { ipHash, json, origins, refuse, turnstileOk } from './http';
 import { runInsights } from './insights';
 import { countryOf, prune, track } from './metrics';
 import { createCall, hangup, sessionConfig } from './openai';
@@ -163,6 +163,12 @@ export default {
     // Same-origin only: the site's own pages.
     if (!origins(env).includes(req.headers.get('Origin') ?? ''))
       return json({ error: 'origin' }, 403);
+    // Scripts hammering the API (the quotas cap spending, not requests).
+    if (
+      env.API_LIMIT &&
+      !(await env.API_LIMIT.limit({ key: await ipHash(env, req) })).success
+    )
+      return refuse('rate', 429);
     switch (url.pathname) {
       case '/api/hit':
         return hit(req, env, ctx);
