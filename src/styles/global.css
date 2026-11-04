@@ -26,6 +26,11 @@
   --user-bar: #a7b4c7;
   --warn: #a86a12;
   --ok: #2e7d57;
+  /* Maps: land with no data, and the heat ramp from its first step to its
+     last (more = darker on light, lighter on dark), in the accent's hue. */
+  --land: #dde5ef;
+  --heat-lo: #a9c0e2;
+  --heat-hi: #163a70;
   --scrim: rgba(11, 20, 36, 0.45);
 }
 
@@ -47,6 +52,9 @@
   --user-bar: #5b6b86;
   --warn: #d9a35b;
   --ok: #7fc4a0;
+  --land: #1b263b;
+  --heat-lo: #2f4d7c;
+  --heat-hi: #d6e5fb;
   --scrim: rgba(4, 8, 15, 0.72);
 }
 
@@ -59,6 +67,7 @@
   --color-muted: var(--muted);
   --color-body: var(--body);
   --color-chip: var(--chip);
+  --color-land: var(--land);
   --color-dim: var(--dim);
   --color-mid: var(--mid);
   --color-accent: var(--accent);

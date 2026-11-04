@@ -497,13 +497,11 @@ function ActivityChart({
 /** The map's scale: the accent from a light tint to a deep shade, the same
  * in both themes, so darker always means more and nothing depends on
  * telling hues apart. */
-const SHADES = [
-  'color-mix(in oklab, var(--accent) 30%, white)',
-  'color-mix(in oklab, var(--accent) 60%, white)',
-  'var(--accent)',
-  'color-mix(in oklab, var(--accent) 65%, black)',
-  'color-mix(in oklab, var(--accent) 40%, black)',
-];
+// Map heat ramp in the accent's hue, more visits = more contrast with the
+// land (lighter on dark, darker on light): luminance reads as quantity.
+const SHADES = [0, 25, 50, 75, 100].map(
+  (p) => `color-mix(in oklab, var(--heat-hi) ${p}%, var(--heat-lo))`,
+);
 
 /** Closes a popover on a click outside `ref` or Escape. */
 function useDismiss(
@@ -787,8 +785,15 @@ function CountryMap({
   const box = useRef<HTMLDivElement>(null);
   const by = new Map(values.filter((v) => v.k).map((v) => [v.k, v.n]));
   const max = Math.max(0, ...by.values());
+  // Log scale, so 1 or 2 don't share the palest step with everything small
+  // when one country has many.
   const shade = (n: number) =>
-    SHADES[Math.min(SHADES.length - 1, Math.floor((n / max) * SHADES.length))];
+    SHADES[
+      Math.min(
+        SHADES.length - 1,
+        Math.floor((Math.log(n) / Math.log(max + 1)) * SHADES.length),
+      )
+    ];
   const move = (id: string, e: { clientX: number; clientY: number }) => {
     const r = box.current?.getBoundingClientRect();
     if (r)
@@ -812,11 +817,27 @@ function CountryMap({
               key={c.id}
               d={c.d}
               onMouseMove={(e) => move(c.id, e)}
-              className={`${n ? '' : 'fill-chip'} ${hover?.id === c.id ? 'stroke-ink' : 'stroke-panel'}`}
+              className={`${n ? '' : 'fill-land'} ${hover?.id === c.id ? 'stroke-ink' : 'stroke-panel'}`}
               style={{
                 ...(n ? { fill: shade(n) } : {}),
                 strokeWidth: hover?.id === c.id ? 1.4 : 0.6,
               }}
+            />
+          );
+        })}
+        {/* Small countries: a dot over where they are, when they count. */}
+        {map.dots.map((c) => {
+          const n = by.get(c.id) ?? 0;
+          if (!n) return null;
+          return (
+            <circle
+              key={`dot-${c.id}`}
+              cx={c.x}
+              cy={c.y}
+              r={hover?.id === c.id ? 6.5 : 5}
+              onMouseMove={(e) => move(c.id, e)}
+              className={hover?.id === c.id ? 'stroke-ink' : 'stroke-panel'}
+              style={{ fill: shade(n), strokeWidth: 1.4 }}
             />
           );
         })}
@@ -960,7 +981,9 @@ function TrafficView({
       />
       <div className="mt-block">
         <span className={label}>{x.visitorCountries}</span>
-        <div className="mt-3">
+        {/* The map shows where; the list makes 1 or 2 visits from a small
+            country readable. */}
+        <div className="gap-gutter mt-3 grid items-start lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <CountryMap
             map={map}
             values={v.countries.map((c) => ({
@@ -969,6 +992,17 @@ function TrafficView({
             }))}
             unit={x.visits.toLowerCase()}
             countryName={countryName}
+          />
+          <Bars
+            rows={v.countries
+              .filter((c) => c.k && num(c.visits))
+              .map((c) => ({
+                key: String(c.k),
+                label: countryName(c.k),
+                n: num(c.visits),
+              }))
+              .sort((a, b) => b.n - a.n)}
+            x={x}
           />
         </div>
       </div>
