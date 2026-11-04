@@ -4,6 +4,7 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 
 import tailwindcss from '@tailwindcss/vite';
+import { adminProxy } from './scripts/admin-proxy.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -24,7 +25,7 @@ export default defineConfig({
     server: {
       proxy: {
         '/api': 'http://localhost:8787',
-        '/admin/api': 'http://localhost:8787',
+        '/admin/api': adminProxy,
         '/cv': 'http://localhost:8787',
       },
     },
