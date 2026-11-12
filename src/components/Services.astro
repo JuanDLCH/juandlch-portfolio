@@ -92,6 +92,19 @@ const booking = CONTACT.booking ?? '#contact';
       );
     })}
   </ul>
+  {/* Not only AI: a short mention of full-stack web work, with this site
+      as the example. */}
+  <p class="border-line2 text-body mt-stack mb-0 flex flex-wrap items-baseline gap-x-3 gap-y-1 border border-dashed px-4 py-3 text-sm leading-[1.55]">
+    <span class="mono text-accent text-[11px] tracking-[0.08em] uppercase">
+      <T v={x.fullTag} />
+    </span>
+    <span class="min-w-0 flex-[1_1_320px]">
+      <T v={x.fullBody} />{' '}
+      <a href="/lab/chat?case=meet" class="text-accent">
+        <T v={x.fullLink} /> →
+      </a>
+    </span>
+  </p>
   <p class="text-muted mt-stack mb-0 text-sm leading-[1.55]">
     <T v={x.servicesNote} />{' '}
     <a

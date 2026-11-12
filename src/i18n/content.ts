@@ -192,6 +192,10 @@ const EN = {
     'Remote and project based. Every project comes with integration with your systems, the infrastructure it runs on and a cost estimate — not just a prompt.',
   servicesNote:
     'Not sure what you need? Tell me about the problem and we’ll find the right fit in a short call.',
+  fullTag: 'Also full stack',
+  fullBody:
+    'Websites, web apps, APIs and integrations, from front end to back end. This portfolio is one: Astro, React and Cloudflare, built and deployed by me.',
+  fullLink: 'Ask my AI how it’s built',
   serviceTry: 'Try the demo',
   serviceTalk: 'Book a call',
   cvLink: 'My CV',
@@ -376,6 +380,10 @@ const ES: typeof EN = {
     'Remoto y por proyecto. Cada proyecto incluye la conexión con tus sistemas, la infraestructura en la que corre y un estimado de costos — no solo un prompt.',
   servicesNote:
     '¿No sabes bien qué necesitas? Cuéntame el problema y en una llamada corta encontramos la mejor opción.',
+  fullTag: 'También full stack',
+  fullBody:
+    'Sitios web, apps web, APIs e integraciones, del frontend al backend. Este portafolio es un ejemplo: Astro, React y Cloudflare, construido y desplegado por mí.',
+  fullLink: 'Pregúntale a mi IA cómo está hecho',
   serviceTry: 'Prueba la demo',
   serviceTalk: 'Agenda una llamada',
   cvLink: 'Mi CV',
