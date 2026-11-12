@@ -13,9 +13,19 @@ import {
   type Crops,
 } from '../src/lab/media';
 
-const KEY = (name: string) => `media:${name}`;
-const SOURCE = 'media:source.jpg';
-const CROPS = 'media:crops';
+// Each upload is stored under its own version; `media:current` points to the
+// live one and is written last, so a failed upload leaves the previous photo
+// served. The one before stays too (isolates may still name it for a minute);
+// older ones are deleted.
+const KEY = (v: string, name: string) => `media:${v}:${name}`;
+const SOURCE = 'source.jpg';
+const CURRENT = 'media:current';
+interface Current {
+  v: string;
+  crops: Crops;
+  /** The version before, kept until the next upload. */
+  prev?: string;
+}
 /** Browsers and crawlers recheck after 5 minutes (with the ETag). */
 const CACHE = 'public, max-age=300, stale-while-revalidate=86400';
 
@@ -53,12 +63,15 @@ export async function media(req: Request, env: Env) {
   const type = MEDIA[name];
   if (!type) return new Response('Not found', { status: 404 });
 
-  const stored = await env.MEDIA?.getWithMetadata<Meta>(KEY(name), {
-    type: 'arrayBuffer',
-  }).catch((err: unknown) => {
-    console.error(`media ${name}: ${String(err)}`);
-    return null;
-  });
+  const v = await currentVersion(env);
+  const stored = v
+    ? await env.MEDIA?.getWithMetadata<Meta>(KEY(v, name), {
+        type: 'arrayBuffer',
+      }).catch((err: unknown) => {
+        console.error(`media ${name}: ${String(err)}`);
+        return null;
+      })
+    : null;
   if (stored?.value) {
     const etag = `"${stored.metadata?.v ?? 'kv'}"`;
     if (req.headers.get('If-None-Match') === etag)
@@ -83,7 +96,7 @@ export async function media(req: Request, env: Env) {
 let version: { v: string | null; at: number } | null = null;
 async function currentVersion(env: Env) {
   if (version && Date.now() - version.at < 60_000) return version.v;
-  const saved = await env.MEDIA?.get<{ v: string }>(CROPS, 'json').catch(
+  const saved = await env.MEDIA?.get<Current>(CURRENT, 'json').catch(
     () => null,
   );
   version = { v: saved?.v ?? null, at: Date.now() };
@@ -112,7 +125,7 @@ export async function versioned(res: Response, env: Env) {
 /** GET /admin/api/photo: the stored crops and version (null: none yet). */
 export async function photoState(env: Env) {
   if (!env.MEDIA) return json({ enabled: false });
-  const saved = await env.MEDIA.get<{ v: string; crops: Crops }>(CROPS, 'json');
+  const saved = await env.MEDIA.get<Current>(CURRENT, 'json');
   return json({
     enabled: true,
     v: saved?.v ?? null,
@@ -122,7 +135,10 @@ export async function photoState(env: Env) {
 
 /** GET /admin/api/photo/source: the original, to crop it again. */
 export async function photoSource(env: Env) {
-  const value = await env.MEDIA?.get(SOURCE, 'arrayBuffer');
+  const saved = await env.MEDIA?.get<Current>(CURRENT, 'json');
+  const value = saved
+    ? await env.MEDIA?.get(KEY(saved.v, SOURCE), 'arrayBuffer')
+    : null;
   if (!value) return json({ error: 'not_found' }, 404);
   return new Response(value, {
     headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' },
@@ -138,8 +154,8 @@ const isJpeg = (b: Uint8Array) =>
   b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
 
 /** PUT /admin/api/photo (multipart): every file of MEDIA by name, `source`
- * (the original as a JPEG) and `crops` (JSON). All or nothing: each part is
- * checked before anything is written. */
+ * (the original as a JPEG) and `crops` (JSON). All or nothing: every part is
+ * checked, then stored under a new version, then published. */
 export async function savePhoto(req: Request, env: Env) {
   if (!env.MEDIA) return json({ error: 'no_storage' }, 503);
   const form = await req.formData().catch(() => null);
@@ -175,12 +191,22 @@ export async function savePhoto(req: Request, env: Env) {
   }
 
   const v = Date.now().toString(36);
-  for (const [name, b, type] of parts)
-    await env.MEDIA.put(name === 'source' ? SOURCE : KEY(name), b, {
+  const names = parts.map(([name]) => (name === 'source' ? SOURCE : name));
+  for (const [i, [, b, type]] of parts.entries())
+    await env.MEDIA.put(KEY(v, names[i]), b, {
       metadata: { type, v } satisfies Meta,
     });
-  // Last, so a failed upload leaves the previous crops with their images.
-  await env.MEDIA.put(CROPS, JSON.stringify({ v, crops }));
+  // Published last: until here the live photo is still the previous one.
+  const before = await env.MEDIA.get<Current>(CURRENT, 'json');
+  await env.MEDIA.put(
+    CURRENT,
+    JSON.stringify({ v, crops, prev: before?.v } satisfies Current),
+  );
   version = { v, at: Date.now() };
+  // Two versions back is no longer named anywhere (best effort).
+  if (before?.prev)
+    await Promise.allSettled(
+      names.map((n) => env.MEDIA!.delete(KEY(before.prev!, n))),
+    );
   return json({ v, crops });
 }

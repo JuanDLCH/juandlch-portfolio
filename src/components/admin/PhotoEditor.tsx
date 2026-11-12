@@ -499,12 +499,9 @@ export default function PhotoEditor({
                   type="button"
                   className={btn}
                   onClick={() =>
-                    tab === 'og'
-                      ? setCrops((cs) => ({
-                          ...cs,
-                          og: ogFrom(src.img, cs.hero),
-                        }))
-                      : update(centered())
+                    update(
+                      tab === 'og' ? ogFrom(src.img, crops.hero) : centered(),
+                    )
                   }
                 >
                   {tab === 'og' ? x.fromHero : x.reset}
