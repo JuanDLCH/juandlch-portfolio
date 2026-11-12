@@ -69,6 +69,7 @@ No test suite.
 - **Runtime vars live in `wrangler.jsonc`** (`vars`). Each deploy replaces the dashboard's plain-text Variables with them, so a value set only in the dashboard is wiped (that's how an empty `SITE_ORIGIN` refused every session with 403 `origin`). Change them in `wrangler.jsonc` through a PR. `SITE_ORIGIN` lists the allowed origins comma-separated (only `https://juandlch.dev` now).
 - **Secrets** (`OPENAI_API_KEY`, `TURNSTILE_SECRET`, `IP_SALT`) go in the Worker's **Settings → Variables and Secrets** (runtime) with type **Secret**: secrets survive deploys and apply without one. Not in **Settings → Build → Variables and secrets**: build variables only exist while building and the Worker never sees them (a missing `TURNSTILE_SECRET` shows as 403 `captcha`, "We couldn't check that you're not a bot").
 - **Build variables:** only `PUBLIC_TURNSTILE_SITEKEY` (Astro inlines it at build time); no secrets there. The Turnstile widget's hostnames must include the production host.
+- Builds come from Cloudflare's GitHub App, not from GitHub Actions. Reconnecting the repo in **Settings → Build** doesn't start one: only a new push to `main` does. A merged commit with no `Workers Builds` check run never deployed (`gh api repos/:owner/:repo/commits/<sha>/check-runs`); production then keeps serving the previous build's hashed assets.
 - To check a deploy from here: `curl -X POST <site>/api/voice/session -H 'Origin: <site>' -d '{}'` answers 400 `bad_request` when the origin is accepted (403 `origin` if not).
 
 ## Images
