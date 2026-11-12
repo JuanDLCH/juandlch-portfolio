@@ -12,6 +12,9 @@ export interface Env {
   /** The profile photo uploaded from the dashboard (worker/media.ts).
    * Optional: without it /media/ serves the copies built with the site. */
   MEDIA?: KVNamespace;
+  /** The site's mode and job-offer status set from the dashboard
+   * (worker/settings.ts). Optional: without it, the defaults. */
+  SETTINGS?: KVNamespace;
   // Secrets (wrangler secret put / .dev.vars).
   OPENAI_API_KEY: string;
   TURNSTILE_SECRET: string;

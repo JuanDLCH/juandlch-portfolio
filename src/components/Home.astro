@@ -13,12 +13,24 @@ import Lab from './Lab.astro';
 import Leading from './Leading.astro';
 import Principles from './Principles.astro';
 import Rag from './Rag.astro';
+import Services from './Services.astro';
 import Stack from './Stack.astro';
 import Work from './Work.astro';
 
+import type { SiteMode } from '../lab/site';
+
+interface Props {
+  /** The landing's mode (src/lab/site.ts): index.astro renders `hire`,
+   * services.astro `services`; the Worker serves the active one at /. */
+  mode?: SiteMode;
+}
+const { mode = 'hire' } = Astro.props;
+const services = mode === 'services';
 const {
-  x,
+  x: base,
   cycle,
+  cycleServices,
+  services: offers,
   cases,
   ragFlow,
   ragIdeas,
@@ -27,16 +39,25 @@ const {
   stackGroups,
   principles,
 } = getContent();
+// Services mode: its copy overrides the keys of the same name.
+const x = services ? { ...base, ...base.sv } : base;
 ---
 
 <Layout
   title={{ en: pick(x.shareTitle, 'en'), es: pick(x.shareTitle, 'es') }}
   description={pick(x.shareDesc, 'en')}
+  path="/"
   schema={{
     '@context': 'https://schema.org',
     '@type': 'Person',
     name: 'Juan Diego Londoño',
     jobTitle: 'AI Engineer',
+    ...(services && {
+      makesOffer: offers.map((o) => ({
+        '@type': 'Offer',
+        itemOffered: { '@type': 'Service', name: pick(o.title, 'en') },
+      })),
+    }),
     url: 'https://juandlch.dev',
     email: `mailto:${CONTACT.email}`,
     address: {
@@ -47,24 +68,47 @@ const {
     sameAs: [CONTACT.linkedin, CONTACT.github],
   }}
 >
-  <Header x={x} />
+  <Header x={x} mode={mode} />
   <div class="mx-auto max-w-[1200px] px-[clamp(16px,4vw,48px)]">
-    <Hero x={x} />
-    <Work x={x} cases={cases} />
-    <Lab x={x} />
-    <Rag x={x} flow={ragFlow} ideas={ragIdeas} />
-    <Stack
-      x={x}
-      awsIcons={awsIcons}
-      domains={domains}
-      stackGroups={stackGroups}
-    />
-    <About x={x}>
-      <Leading x={x} cycle={cycle} />
-    </About>
-    <Principles x={x} principles={principles} />
-    <Certifications x={x} />
-    <Footer x={x} />
+    <Hero x={x} mode={mode} />
+    {services ? (
+      <>
+        <Services x={x} services={offers} n="01">
+          <Leading x={x} cycle={cycleServices} />
+        </Services>
+        <Lab x={x} n="02" />
+        <Work x={x} cases={cases} n="03" />
+        <Rag x={x} flow={ragFlow} ideas={ragIdeas} n="04" />
+        <Stack
+          x={x}
+          awsIcons={awsIcons}
+          domains={domains}
+          stackGroups={stackGroups}
+          n="05"
+        />
+        <About x={x} n="06" />
+        <Principles x={x} principles={principles} n="07" />
+        <Certifications x={x} n="08" />
+      </>
+    ) : (
+      <>
+        <Work x={x} cases={cases} />
+        <Lab x={x} />
+        <Rag x={x} flow={ragFlow} ideas={ragIdeas} />
+        <Stack
+          x={x}
+          awsIcons={awsIcons}
+          domains={domains}
+          stackGroups={stackGroups}
+        />
+        <About x={x}>
+          <Leading x={x} cycle={cycle} />
+        </About>
+        <Principles x={x} principles={principles} />
+        <Certifications x={x} />
+      </>
+    )}
+    <Footer x={x} mode={mode} />
   </div>
   <SophieDock x={x} />
   <BackToTop x={x} />

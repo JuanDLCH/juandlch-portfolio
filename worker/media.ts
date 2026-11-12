@@ -3,6 +3,7 @@
 // (MEDIA), so a new photo needs no deploy. Until one is uploaded (or without
 // KV) it serves the copies built with the site, listed by the static
 // /media-fallback.json (src/pages/media-fallback.json.ts).
+import type { SiteSettings } from '../src/lab/site';
 import type { Env } from './env';
 import { json } from './http';
 import {
@@ -111,22 +112,35 @@ async function currentVersion(env: Env) {
 }
 
 /** A page with its link preview's URL versioned (`?v=`): crawlers cache
- * images by URL, so a new photo gets a new one without a deploy. Pages run
- * through here by `run_worker_first` in wrangler.jsonc. */
-export async function versioned(res: Response, env: Env) {
+ * images by URL, so a new photo gets a new one without a deploy. Also writes
+ * the site's mode on <html> (`data-mode`, `data-job-offers`, read by
+ * pageSettings in src/lab/site.ts). Pages run through here by
+ * `run_worker_first` in wrangler.jsonc. */
+export async function versioned(
+  res: Response,
+  env: Env,
+  settings: SiteSettings,
+) {
   if (!res.headers.get('Content-Type')?.startsWith('text/html')) return res;
   const v = await currentVersion(env);
-  if (!v) return res;
   const add = {
     element(el: Element) {
       const url = el.getAttribute('content');
       if (url?.includes('/media/')) el.setAttribute('content', `${url}?v=${v}`);
     },
   };
-  return new HTMLRewriter()
-    .on('meta[property="og:image"]', add)
-    .on('meta[name="twitter:image"]', add)
-    .transform(res);
+  const rw = new HTMLRewriter().on('html', {
+    element(el) {
+      el.setAttribute('data-mode', settings.mode);
+      el.setAttribute('data-job-offers', settings.jobOffers);
+    },
+  });
+  if (v)
+    rw.on('meta[property="og:image"]', add).on(
+      'meta[name="twitter:image"]',
+      add,
+    );
+  return rw.transform(res);
 }
 
 /** GET /admin/api/photo: the stored crops and version (null: none yet). */

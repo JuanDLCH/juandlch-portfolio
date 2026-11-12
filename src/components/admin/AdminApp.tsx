@@ -12,6 +12,7 @@ import { OWNER } from '../../scripts/hit';
 import { setLang, setTheme } from '../../scripts/prefs';
 import { I, Icon, iconBtn, label, mono, useHtml } from '../lab/ui';
 import PhotoEditor, { type OgCard } from './PhotoEditor';
+import type { SiteSettings } from '../../lab/site';
 
 type Row = Record<string, string | number | null>;
 interface Overview {
@@ -1403,6 +1404,100 @@ function DayView({
   );
 }
 
+/** The site's mode and job-offer status (src/lab/site.ts), live within a
+ * minute (worker/settings.ts). Job offers only apply in services mode:
+ * looking for a job means open to offers. */
+function SiteCard({ x }: { x: AdminCopy['site'] }) {
+  const [state, setState] = useState<{
+    enabled: boolean;
+    settings: SiteSettings;
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    get<{ enabled: boolean; settings: SiteSettings }>('/admin/api/settings')
+      .then(setState)
+      .catch(() => setMsg(x.error));
+  }, [x.error]);
+  const save = async (next: SiteSettings) => {
+    setSaving(true);
+    setMsg('');
+    try {
+      setState(
+        await get('/admin/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(next),
+        }),
+      );
+      setMsg(x.saved);
+    } catch {
+      setMsg(x.error);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const s = state?.settings;
+  const off = !state?.enabled || saving;
+  const seg = (on: boolean) =>
+    `${btn} ${on ? 'border-accent text-accent' : ''}`;
+  return (
+    <section className={`${card} mt-block`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className={h2}>{x.title}</h2>
+        <a
+          href="/"
+          target="_blank"
+          rel="noopener"
+          className="text-accent text-[12px] underline-offset-4 hover:underline"
+        >
+          {x.view} ↗
+        </a>
+      </div>
+      <p className={note}>{x.sub}</p>
+      {state && !state.enabled && <p className={note}>{x.noStorage}</p>}
+      <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
+        <div role="group" aria-label={x.mode}>
+          <p className={`${note} mb-1.5`}>{x.mode}</p>
+          <div className="flex gap-1.5">
+            {(['hire', 'services'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                disabled={off || !s}
+                aria-pressed={s?.mode === m}
+                onClick={() => s && void save({ ...s, mode: m })}
+                className={seg(s?.mode === m)}
+              >
+                {x.modes[m]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div role="group" aria-label={x.offers}>
+          <p className={`${note} mb-1.5`}>{x.offers}</p>
+          <div className="flex gap-1.5">
+            {(['open', 'closed'] as const).map((o) => (
+              <button
+                key={o}
+                type="button"
+                disabled={off || !s || s.mode === 'hire'}
+                aria-pressed={s?.jobOffers === o}
+                onClick={() => s && void save({ ...s, jobOffers: o })}
+                className={seg(s?.jobOffers === o)}
+              >
+                {x.offerStates[o]}
+              </button>
+            ))}
+          </div>
+          {s?.mode === 'hire' && <p className={note}>{x.offersLocked}</p>}
+        </div>
+      </div>
+      {msg && <p className={note}>{msg}</p>}
+    </section>
+  );
+}
+
 export default function AdminApp({
   map,
   ogCard,
@@ -1644,6 +1739,8 @@ export default function AdminApp({
           </button>
         </div>
       </header>
+
+      <SiteCard x={x.site} />
 
       {/* Range: presets, a month, or any two days (a single day too). */}
       <div

@@ -6,9 +6,11 @@ import SectionHeading from './SectionHeading.astro';
 import Waveform from './Waveform.astro';
 
 interface Props {
+  /** Section number (the services landing orders them differently). */
+  n?: string;
   x: Content['x'];
 }
-const { x } = Astro.props;
+const { x, n = '02' } = Astro.props;
 const mic =
   '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/>';
 const preview =
@@ -17,7 +19,7 @@ const preview =
 
 <section id="lab" class="border-line border-t py-section">
   <div>
-    <SectionHeading n="02">
+    <SectionHeading n={n}>
       <T v={x.labTitle} />
     </SectionHeading>
     <p class="mt-4 mb-0 text-h2 leading-none font-medium tracking-[-0.045em]">

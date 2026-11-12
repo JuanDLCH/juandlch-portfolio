@@ -5,12 +5,14 @@ import CornerMarks from './CornerMarks.astro';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
+  /** Section number (the services landing orders them differently). */
+  n?: string;
   x: Content['x'];
   awsIcons: Content['awsIcons'];
   domains: Content['domains'];
   stackGroups: Content['stackGroups'];
 }
-const { x, awsIcons, domains, stackGroups } = Astro.props;
+const { x, awsIcons, domains, stackGroups, n = '04' } = Astro.props;
 
 // Hashed, cacheable URLs for every SVG in src/assets/aws.
 const iconUrls = import.meta.glob<string>('../assets/aws/*.svg', {
@@ -22,7 +24,7 @@ const iconUrl = (name: string) => iconUrls[`../assets/aws/${name}.svg`];
 ---
 
 <section id="stack" class="border-line border-t py-section">
-  <SectionHeading n="04">
+  <SectionHeading n={n}>
     <T v={x.stackTitle} />
   </SectionHeading>
 

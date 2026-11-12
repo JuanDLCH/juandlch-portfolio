@@ -4,14 +4,16 @@ import T from './T.astro';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
+  /** Section number (the services landing orders them differently). */
+  n?: string;
   x: Content['x'];
   principles: Content['principles'];
 }
-const { x, principles } = Astro.props;
+const { x, principles, n = '06' } = Astro.props;
 ---
 
 <section id="principles" class="border-line border-t py-section">
-  <SectionHeading n="06">
+  <SectionHeading n={n}>
     <T v={x.prTitle} />
   </SectionHeading>
   <ol class="m-0 mt-head grid list-none grid-cols-[repeat(auto-fit,minmax(min(440px,100%),1fr))] gap-x-gutter p-0">

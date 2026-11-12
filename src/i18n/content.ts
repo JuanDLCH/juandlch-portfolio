@@ -49,6 +49,7 @@ const EN = {
   cvMenu: 'Download my CV',
   talkCv: 'Speak to my CV',
   bookCall: 'Book a call with me',
+  bookCallShort: 'Book a call',
   langGroup: 'Language',
   photoAlt: 'Photo of Juan Diego Londoño',
   role: 'AI Engineer · Solutions Architect',
@@ -160,6 +161,40 @@ const EN = {
   // Lines Sophie types out in her bubble, one at a time ("|" separates them).
   sophieLines:
     'Ask me anything about Juan Diego. Out loud.|Hiring an AI engineer? I can tell you if he fits.|Psst… I know his whole CV by heart.|Which clouds does he use? Just ask me.|Curious what he builds? I’ll tell you in 5 minutes.',
+  // Services mode (src/lab/site.ts, switched from /admin): the landing sells
+  // freelance projects instead of looking for a job. `sv` overrides the keys
+  // above with the same name on services.astro; the rest is new copy.
+  sv: {
+    shareTitle: 'Juan Diego Londoño — AI for your business',
+    shareDesc:
+      'Chatbots, voice agents and AI that automates your processes, built by an AI engineer who ships to production. Try the live demos and book a call.',
+    role: 'AI Engineer · Freelance projects',
+    talkCv: 'Talk to my voice agent',
+    heroA: 'AI for your business that ',
+    heroB: 'answers, schedules and gets work done',
+    heroC: ' — inside the tools you already use.',
+    heroSub:
+      'I design and build chatbots, voice agents and automations for companies, from the first call to the infrastructure they run on. Remote, project by project.',
+    ctaWork: 'See what I can build',
+    leadTitle: 'How I work with you',
+    leadIntro:
+      'From your first question to a system in production: I stay with the project end to end, and you know upfront what it will cost to build and to run.',
+    footA: 'Have an idea or a process\nthat should ',
+    footB: 'run itself?',
+    sophieLines:
+      'Have an idea for your business? Tell me.|Want a chatbot that takes orders? Ask me how.|I can tell you what Juan Diego has built.|Curious how AI could save you time? Ask me.|Want to talk with him? I’ll help you book a call.',
+  },
+  navServices: 'Services',
+  servicesTitle: 'Services',
+  servicesA: 'What I can build ',
+  servicesB: 'for your business.',
+  servicesSub:
+    'Remote and project based. Every project comes with integration with your systems, the infrastructure it runs on and a cost estimate — not just a prompt.',
+  servicesNote:
+    'Not sure what you need? Tell me about the problem and we’ll find the right fit in a short call.',
+  serviceTry: 'Try the demo',
+  serviceTalk: 'Book a call',
+  cvLink: 'My CV',
 };
 
 const ES: typeof EN = {
@@ -201,6 +236,7 @@ const ES: typeof EN = {
   cvMenu: 'Descarga mi CV',
   talkCv: 'Habla con mi CV',
   bookCall: 'Agenda una llamada conmigo',
+  bookCallShort: 'Agenda una llamada',
   langGroup: 'Idioma',
   photoAlt: 'Foto de Juan Diego Londoño',
   role: 'Ingeniero de IA · Arquitecto de Soluciones',
@@ -312,6 +348,37 @@ const ES: typeof EN = {
   sophieCta: 'Habla con ella',
   sophieLines:
     'Pregúntame lo que quieras sobre Juan Diego. En voz alta.|¿Buscas un AI engineer? Te digo si encaja.|Psst… me sé su CV de memoria.|¿Qué nubes usa? Solo pregúntame.|¿Qué construye? Te lo cuento en 5 minutos.',
+  sv: {
+    shareTitle: 'Juan Diego Londoño — IA para tu negocio',
+    shareDesc:
+      'Chatbots, agentes de voz e IA que automatiza tus procesos, hechos por un ingeniero de IA que lleva sistemas a producción. Prueba las demos en vivo y agenda una llamada.',
+    role: 'AI Engineer · Proyectos freelance',
+    talkCv: 'Habla con mi agente de voz',
+    heroA: 'IA para tu negocio que ',
+    heroB: 'responde, agenda y resuelve',
+    heroC: ' — dentro de las herramientas que ya usas.',
+    heroSub:
+      'Diseño y construyo chatbots, agentes de voz y automatizaciones para empresas, desde la primera llamada hasta la infraestructura en la que corren. Remoto, por proyecto.',
+    ctaWork: 'Mira lo que puedo construir',
+    leadTitle: 'Cómo trabajo contigo',
+    leadIntro:
+      'Desde tu primera pregunta hasta un sistema en producción: acompaño el proyecto de principio a fin, y sabes desde el inicio cuánto costará construirlo y operarlo.',
+    footA: '¿Tienes una idea o un proceso\nque debería ',
+    footB: 'andar solo?',
+    sophieLines:
+      '¿Tienes una idea para tu negocio? Cuéntame.|¿Quieres un chatbot que tome pedidos? Pregúntame cómo.|Te cuento lo que Juan Diego ha construido.|¿Cómo te podría ahorrar tiempo la IA? Pregúntame.|¿Quieres hablar con él? Te ayudo a agendar.',
+  },
+  navServices: 'Servicios',
+  servicesTitle: 'Servicios',
+  servicesA: 'Lo que puedo construir ',
+  servicesB: 'para tu negocio.',
+  servicesSub:
+    'Remoto y por proyecto. Cada proyecto incluye la conexión con tus sistemas, la infraestructura en la que corre y un estimado de costos — no solo un prompt.',
+  servicesNote:
+    '¿No sabes bien qué necesitas? Cuéntame el problema y en una llamada corta encontramos la mejor opción.',
+  serviceTry: 'Prueba la demo',
+  serviceTalk: 'Agenda una llamada',
+  cvLink: 'Mi CV',
 };
 
 function build(isEs: boolean) {
@@ -799,9 +866,135 @@ function build(isEs: boolean) {
       chips: (p[2] ?? []) as string[],
     };
   });
+
+  // Services mode: what he offers (each with its live demo, or the call) and
+  // the delivery cycle as he works with a client.
+  const services = isEs
+    ? [
+        {
+          tag: 'Chatbots',
+          title: 'Un chatbot para tu negocio',
+          body: 'En WhatsApp o en tu web: atiende a tus clientes, toma pedidos y agenda citas, conectado a tu menú, tu catálogo o tu calendario.',
+          href: '/lab/chat?case=order',
+        },
+        {
+          tag: 'Automatización',
+          title: 'Automatiza un proceso',
+          body: 'Reclamos, formularios, facturas o correos: IA que lee los documentos, revisa las reglas y deja el resultado en tus sistemas.',
+          href: '/lab/chat?case=insurance',
+        },
+        {
+          tag: 'Voz',
+          title: 'Agentes de voz',
+          body: 'Un agente que contesta llamadas, toma pedidos o agenda citas por voz, en tiempo real y en el idioma de tus clientes.',
+          href: '/lab/voice',
+        },
+        {
+          tag: 'Documentos',
+          title: 'IA sobre tus documentos',
+          body: 'Un asistente que responde desde tus contratos, manuales o políticas y cita la página exacta de donde sacó la respuesta.',
+          href: '/lab/chat?case=documents',
+        },
+        {
+          tag: 'Consultoría',
+          title: 'Consultoría y arquitectura',
+          body: '¿Tienes una idea con IA? La revisamos juntos y te propongo la arquitectura, los modelos adecuados y cuánto costará construirla y operarla.',
+          href: '',
+        },
+      ]
+    : [
+        {
+          tag: 'Chatbots',
+          title: 'A chatbot for your business',
+          body: 'On WhatsApp or your website: it answers your customers, takes orders and books appointments, connected to your menu, catalog or calendar.',
+          href: '/lab/chat?case=order',
+        },
+        {
+          tag: 'Automation',
+          title: 'Automate a process',
+          body: 'Claims, forms, invoices or emails: AI that reads the documents, checks the rules and files the result in your systems.',
+          href: '/lab/chat?case=insurance',
+        },
+        {
+          tag: 'Voice',
+          title: 'Voice agents',
+          body: 'An agent that answers calls, takes orders or books appointments by voice, in real time and in your customers’ language.',
+          href: '/lab/voice',
+        },
+        {
+          tag: 'Documents',
+          title: 'AI over your documents',
+          body: 'An assistant that answers from your contracts, manuals or policies and cites the exact page it took the answer from.',
+          href: '/lab/chat?case=documents',
+        },
+        {
+          tag: 'Consulting',
+          title: 'Consulting & architecture',
+          body: 'Have an AI idea? We review it together and I propose the architecture, the right models and what it will cost to build and run.',
+          href: '',
+        },
+      ];
+  const cycleServices = isEs
+    ? [
+        {
+          tag: '01 · Entender',
+          title: 'Entender tu necesidad',
+          body: 'Hablamos de tu flujo de trabajo real y separamos lo que necesita IA de lo que no.',
+        },
+        {
+          tag: '02 · Recomendar',
+          title: 'Recomendar el enfoque',
+          body: 'Elijo modelos y arquitectura para el problema — pesando calidad, latencia y costo — y diagramo la solución de punta a punta.',
+        },
+        {
+          tag: '03 · Estimar',
+          title: 'Estimar costo y tiempo',
+          body: 'Sabes desde el inicio cuánto tomará construirlo y cuánto costará operarlo cada mes.',
+        },
+        {
+          tag: '04 · Construir',
+          title: 'Construir e integrar',
+          body: 'Lo construyo, lo conecto con los sistemas que ya usas y lo pruebo con casos reales antes de lanzarlo.',
+        },
+        {
+          tag: '05 · Acompañar',
+          title: 'Acompañar el lanzamiento',
+          body: 'Sigo contigo en la salida a producción, mido cómo funciona y lo ajusto con datos de uso real.',
+        },
+      ]
+    : [
+        {
+          tag: '01 · Understand',
+          title: 'Understand your need',
+          body: 'We talk through your real workflow and separate what needs AI from what doesn’t.',
+        },
+        {
+          tag: '02 · Recommend',
+          title: 'Recommend the approach',
+          body: 'I choose models and architecture for the job — weighing quality, latency and cost — and diagram the solution end to end.',
+        },
+        {
+          tag: '03 · Estimate',
+          title: 'Estimate cost and time',
+          body: 'You know upfront what it will take to build and what it will cost to run each month.',
+        },
+        {
+          tag: '04 · Build',
+          title: 'Build and integrate',
+          body: 'I build it, connect it to the systems you already use and test it with real cases before launch.',
+        },
+        {
+          tag: '05 · Support',
+          title: 'Support the launch',
+          body: 'I stay with you through going live, measure how it performs and tune it with real usage data.',
+        },
+      ];
+
   return {
     x,
     cycle,
+    cycleServices,
+    services,
     cases,
     ragFlow,
     ragIdeas,

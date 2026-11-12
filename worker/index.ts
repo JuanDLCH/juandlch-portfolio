@@ -4,6 +4,7 @@
 // it posts its WebRTC offer here and the call is created server side, with
 // the session fixed on the server, after a Turnstile check and the daily
 // quota. Every call is cut by its VoiceCall alarm after SESSION_S seconds.
+import type { SiteSettings } from '../src/lab/site';
 import type { Env } from './env';
 import { admin } from './admin';
 import { cv, liveCv } from './cv';
@@ -13,6 +14,7 @@ import { media, versioned } from './media';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, refuse, turnstileOk } from './http';
 import { runInsights } from './insights';
+import { siteSettings } from './settings';
 import { countryOf, prune, track } from './metrics';
 import { createCall, hangup, sessionConfig } from './openai';
 
@@ -27,9 +29,9 @@ const CALL_ID = /^rtc_[\w-]{1,100}$/;
 const MIN_RESUME_S = 10;
 
 // Sophie's profile: the live CV (from the CV repo, worker/cv.ts) plus the
-// portfolio copy, stories and notes, as text.
-async function loadProfile(env: Env) {
-  return profileText((await liveCv(env)).cv);
+// portfolio copy, stories and notes (by the site's mode), as text.
+async function loadProfile(env: Env, settings: SiteSettings) {
+  return profileText((await liveCv(env)).cv, settings);
 }
 
 async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
@@ -88,7 +90,13 @@ async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
 
   let call: { sdp: string; callId: string } | null = null;
   try {
-    const session = sessionConfig(env, await loadProfile(env), lang);
+    const settings = await siteSettings(env);
+    const session = sessionConfig(
+      env,
+      await loadProfile(env, settings),
+      lang,
+      settings,
+    );
     call = await createCall(env, sdp, session);
     // A few seconds of grace for the connection to come up.
     const endsAt = Date.now() + (seconds + 5) * 1000;
@@ -167,11 +175,26 @@ export default {
     if (url.pathname.startsWith('/media/')) return media(req, env);
     const api = url.pathname.startsWith('/api/');
     if (!api) {
-      const page = await env.ASSETS?.fetch(req);
-      // The shareable pages (run_worker_first): versioned link preview.
-      return page
-        ? versioned(page, env)
-        : new Response('Not found', { status: 404 });
+      const settings = await siteSettings(env);
+      // The landing follows the site's mode (src/lab/site.ts): in services
+      // mode / serves the services page, at the same URL.
+      const page =
+        url.pathname === '/' && settings.mode === 'services'
+          ? await env.ASSETS?.fetch(
+              new Request(new URL(`/services${url.search}`, url), req),
+            )
+          : await env.ASSETS?.fetch(req);
+      if (!page) return new Response('Not found', { status: 404 });
+      // The shareable pages (run_worker_first): versioned link preview and
+      // the mode on <html>.
+      const res = await versioned(page, env, settings);
+      // /services itself is only a preview (the public URL is /).
+      if (url.pathname === '/services') {
+        const out = new Response(res.body, res);
+        out.headers.set('X-Robots-Tag', 'noindex');
+        return out;
+      }
+      return res;
     }
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     // Same-origin only: the site's own pages.

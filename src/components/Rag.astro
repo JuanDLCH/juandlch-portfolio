@@ -6,16 +6,18 @@ import FlowDiagram from './FlowDiagram.astro';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
+  /** Section number (the services landing orders them differently). */
+  n?: string;
   x: Content['x'];
   flow: Content['ragFlow'];
   ideas: Content['ragIdeas'];
 }
-const { x, flow, ideas } = Astro.props;
+const { x, flow, ideas, n = '03' } = Astro.props;
 ---
 
 <section id="rag" class="border-line border-t py-section">
   <div>
-    <SectionHeading n="03">
+    <SectionHeading n={n}>
       <T v={x.ragTitle} />
     </SectionHeading>
     <p class="mt-4 mb-0 text-h2 leading-[1.05] font-medium tracking-[-0.045em]">
