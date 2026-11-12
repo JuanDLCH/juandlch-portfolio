@@ -7,15 +7,37 @@ interface Props {
   x: Content['x'];
 }
 const { x } = Astro.props;
+// One step per role, start year only. The big title says what he was
+// building; the role and company sit on a small line under it.
 const steps = [
-  { year: '2022', title: 'Full Stack', text: x.tl1, tone: 'dim' },
-  { year: '2023', title: 'Cloud & Backend', text: x.tl2, tone: 'dim' },
-  { year: '2024', title: 'AI Engineering', text: x.tl3, tone: 'mid' },
   {
-    year: '2024 — 2026',
-    title: 'Lead AI Engineer',
+    year: '2022',
+    title: x.tl1t,
+    role: 'Full Stack · Stellion Tech',
+    text: x.tl1,
+    tone: 'dim',
+  },
+  {
+    year: '2023',
+    title: x.tl2t,
+    role: 'Full Stack · Trade EC',
+    text: x.tl2,
+    tone: 'dim',
+  },
+  {
+    year: '2024',
+    title: x.tl3t,
+    role: 'Lead AI Engineer · Trade EC',
+    text: x.tl3,
+    tone: 'mid',
+  },
+  {
+    year: '2026',
+    title: x.tl4t,
+    role: 'AI Engineer',
     text: x.tl4,
     tone: 'accent',
+    now: true,
   },
 ] as const;
 const border = {
@@ -61,9 +83,17 @@ const fill = { dim: 'bg-dim', mid: 'bg-mid', accent: 'bg-accent' };
           ]}
         >
           <T v={s.year} />
+          {'now' in s && (
+            <span class="border-accent text-accent ml-2 border px-1.5 py-px text-[10px] tracking-[0.12em] uppercase">
+              <T v={x.tlNow} />
+            </span>
+          )}
         </div>
         <div class="mt-2.5 text-h3 font-medium tracking-[-0.02em]">
           <T v={s.title} />
+        </div>
+        <div class="mono text-muted mt-1.5 text-[11px] tracking-[0.08em] uppercase">
+          {s.role}
         </div>
         <div class="text-muted mt-1.5 text-[15px] leading-normal">
           <T v={s.text} />
