@@ -4,6 +4,7 @@
 // change reaches every visitor within about a minute.
 import {
   DEFAULT_SETTINGS,
+  devSettings,
   parseSettings,
   type SiteSettings,
 } from '../src/lab/site';
@@ -21,6 +22,17 @@ export async function siteSettings(env: Env): Promise<SiteSettings> {
   const s = parseSettings(raw) ?? DEFAULT_SETTINGS;
   cached = { s, at: Date.now() };
   return s;
+}
+
+/** The settings for a request: in local dev (localhost only), the
+ * site-mode cookie of the dev switch (DevSiteSwitch.astro) wins, so the
+ * local agents follow it; production never reads it. */
+export async function siteSettingsFor(req: Request, env: Env) {
+  if (new URL(req.url).hostname === 'localhost') {
+    const dev = devSettings(req.headers.get('Cookie'));
+    if (dev) return dev;
+  }
+  return siteSettings(env);
 }
 
 /** GET /admin/api/settings. */
