@@ -1,0 +1,61 @@
+---
+// Dev only (rendered by Layout under `astro dev`): plays the dashboard's
+// site-mode switch locally with a cookie (src/lab/site.ts, DEV_COOKIE), so
+// both landings and both agents can be tried without touching production.
+// Layout's dev-only inline script applies it (<html data-mode>, / ↔
+// /services) and the local Worker (`pnpm dev:api`, which runs the agents)
+// reads it from the request; production never does.
+---
+
+<div
+  data-dev-site
+  class="mono border-line2 bg-bg/90 text-muted fixed bottom-3 left-3 z-[60] flex flex-wrap items-center gap-1.5 border p-1.5 text-[10px] tracking-[0.06em] uppercase shadow-lg backdrop-blur"
+>
+  <span class="px-1">dev</span>
+  <button type="button" data-set="hire.open">
+    Job search
+  </button>
+  <button type="button" data-set="services.open">
+    Services · offers open
+  </button>
+  <button type="button" data-set="services.closed">
+    Services · offers closed
+  </button>
+</div>
+
+<style>
+  [data-dev-site] button {
+    cursor: pointer;
+    border: 1px solid var(--line2);
+    background: transparent;
+    color: var(--ink);
+    padding: 4px 8px;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+  }
+  [data-dev-site] button[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+</style>
+
+<script>
+  import { DEV_COOKIE } from '../lab/site';
+  import { pageSettings } from '../lab/site-page';
+
+  document.addEventListener('astro:page-load', () => {
+    const now = pageSettings();
+    const current = `${now.mode}.${now.jobOffers}`;
+    for (const b of document.querySelectorAll<HTMLButtonElement>(
+      '[data-dev-site] [data-set]',
+    )) {
+      b.setAttribute('aria-pressed', String(b.dataset.set === current));
+      b.onclick = () => {
+        document.cookie = `${DEV_COOKIE}=${b.dataset.set}; path=/; SameSite=Lax`;
+        location.reload();
+      };
+    }
+  });
+</script>

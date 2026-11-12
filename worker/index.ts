@@ -14,7 +14,7 @@ import { media, versioned } from './media';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, refuse, turnstileOk } from './http';
 import { runInsights } from './insights';
-import { siteSettings } from './settings';
+import { siteSettingsFor } from './settings';
 import { countryOf, prune, track } from './metrics';
 import { createCall, hangup, sessionConfig } from './openai';
 
@@ -90,7 +90,7 @@ async function startSession(req: Request, env: Env, ctx: ExecutionContext) {
 
   let call: { sdp: string; callId: string } | null = null;
   try {
-    const settings = await siteSettings(env);
+    const settings = await siteSettingsFor(req, env);
     const session = sessionConfig(
       env,
       await loadProfile(env, settings),
@@ -175,7 +175,7 @@ export default {
     if (url.pathname.startsWith('/media/')) return media(req, env);
     const api = url.pathname.startsWith('/api/');
     if (!api) {
-      const settings = await siteSettings(env);
+      const settings = await siteSettingsFor(req, env);
       // The landing follows the site's mode (src/lab/site.ts): in services
       // mode / serves the services page, at the same URL.
       const page =

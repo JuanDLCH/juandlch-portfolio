@@ -14,7 +14,7 @@ import { functionTool } from '../src/lab/chat/tool-defs';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
 import { countryOf, saveMessage, track } from './metrics';
-import { siteSettings } from './settings';
+import { siteSettingsFor } from './settings';
 import { chatUsd, chatWorstUsd, noteUsd, type TextUsage } from './prices';
 
 const OPENAI = 'https://api.openai.com/v1';
@@ -261,7 +261,7 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   const model = c.models.openai;
   const pinned = JSON.stringify({
     model,
-    instructions: caseSystem(c, await siteSettings(env)),
+    instructions: caseSystem(c, await siteSettingsFor(req, env)),
     input: body.input,
     ...(tools.length ? { tools } : {}),
     reasoning: { effort },

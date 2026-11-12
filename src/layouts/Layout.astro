@@ -2,6 +2,7 @@
 import { ClientRouter } from 'astro:transitions';
 import '../styles/global.css';
 import { OG_H, OG_NAME, OG_W } from '../lab/media';
+import DevSiteSwitch from '../components/DevSiteSwitch.astro';
 
 interface Props {
   title: string | { en: string; es: string };
@@ -34,6 +35,25 @@ const imageAlt =
 // Cloudflare Web Analytics (cookieless page views). Set only in production
 // builds, so dev and previews don't count.
 const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
+// Dev only: the local site-mode switch (DevSiteSwitch.astro), applied before
+// paint. In production the Worker writes these attributes and serves the
+// services landing at / (worker/index.ts, worker/media.ts).
+const devScript = import.meta.env.DEV
+  ? `(() => {
+  const apply = () => {
+    const m = document.cookie.match(/(?:^|;\\s*)jd-dev-site=(hire|services)\\.(open|closed)/);
+    if (!m) return;
+    const html = document.documentElement;
+    html.dataset.mode = m[1];
+    html.dataset.jobOffers = m[1] === 'hire' ? 'open' : m[2];
+    const rest = location.search + location.hash;
+    if (m[1] === 'services' && location.pathname === '/') location.replace('/services' + rest);
+    if (m[1] === 'hire' && location.pathname === '/services') location.replace('/' + rest);
+  };
+  apply();
+  document.addEventListener('astro:after-swap', apply);
+})();`
+  : '';
 ---
 
 <html lang="en" data-lang="en">
@@ -69,6 +89,7 @@ const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    {devScript && <script is:inline set:html={devScript} />}
     <title data-title={JSON.stringify(titles)}>{titles.en}</title>
     {schema && (
       <script
@@ -139,6 +160,7 @@ const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
   </head>
   <body>
     <slot />
+    {import.meta.env.DEV && <DevSiteSwitch />}
     <script>
       import '../scripts/prefs';
       import '../scripts/hit';

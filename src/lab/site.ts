@@ -33,3 +33,15 @@ export function parseSettings(raw: unknown): SiteSettings | null {
   if (r.jobOffers !== 'open' && r.jobOffers !== 'closed') return null;
   return effective({ mode: r.mode, jobOffers: r.jobOffers });
 }
+
+/** Dev only (on localhost): a cookie that plays the dashboard's switch
+ * without touching production. Set by DevSiteSwitch.astro; read by
+ * Layout.astro's dev-only script and the local Worker (worker/settings.ts,
+ * siteSettingsFor). Value: `<mode>.<jobOffers>`. */
+export const DEV_COOKIE = 'jd-dev-site';
+export function devSettings(cookie: string | null | undefined) {
+  const m = cookie?.match(
+    /(?:^|;\s*)jd-dev-site=(hire|services)\.(open|closed)(?:;|$)/,
+  );
+  return m ? parseSettings({ mode: m[1], jobOffers: m[2] }) : null;
+}
