@@ -191,6 +191,10 @@ const notes = (title: string, text: string): Entry => ({
 });
 const NOTES: Entry[] = [
   notes(
+    'Current role',
+    'Since November 23, 2026 he is an AI Engineer at Factored. Before that he spent two years as Lead AI Engineer at Trade EC (Sep 2024 – Oct 2026), where he went straight from full stack to leading the AI team. His project at Factored is not public yet, so say only that he builds AI there; internal levels are never part of his title.',
+  ),
+  notes(
     'Roles he is looking for',
     'AI Engineer, Lead AI Engineer or AI Solutions Architect roles where he designs and ships production AI (agents, RAG, voice, document AI) end to end.',
   ),

@@ -123,6 +123,17 @@ export const CV: CvSection[] = [
     bullets: true,
     blocks: [
       {
+        heading: 'AI Engineer | Factored',
+        meta: 'Nov 2026 – Present',
+        items: [
+          {
+            id: 'factored',
+            cite: 'AI Engineer, Factored',
+            text: 'Joined Factored as an AI Engineer in November 2026, building AI for companies around the world.',
+          },
+        ],
+      },
+      {
         heading: 'Lead AI Engineer | Trade EC',
         meta: 'Quito, Ecuador (Remote) · Sep 2024 – Oct 2026',
         items: [
