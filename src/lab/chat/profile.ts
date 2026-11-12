@@ -233,7 +233,7 @@ const notesFor = (s: SiteSettings, cv: CvData): Entry[] => {
     ),
     notes(
       'Freelance projects and availability',
-      "Based in Medellín, Colombia (UTC−5). Alongside his job he takes on freelance projects and is happy to talk with anyone about an idea or a project they want help building: chatbots and assistants for a business (WhatsApp or web: orders, customer questions, appointments), AI that automates a process (forms, claims, invoices, emails), voice agents, assistants that answer from a company's documents, and consulting (reviewing an AI idea and proposing an architecture with a cost estimate). Remote and project based: he does not take long-term contracts, full-time engagements or work tied to fixed hours. The way to start is a short call.",
+      "Based in Medellín, Colombia (UTC−5). Alongside his job he takes on freelance projects and is happy to talk with anyone about an idea or a project they want help building: chatbots and assistants for a business (WhatsApp or web: orders, customer questions, appointments), AI that automates a process (forms, claims, invoices, emails), voice agents, assistants that answer from a company's documents, and consulting (reviewing an AI idea and proposing an architecture with a cost estimate). AI is the focus, but he also takes on full-stack web work (websites, web apps, backends, APIs and integrations): this portfolio is an example. Remote and project based: he does not take long-term contracts, full-time engagements or work tied to fixed hours. The way to start is a short call.",
     ),
     s.jobOffers === 'closed'
       ? notes(
