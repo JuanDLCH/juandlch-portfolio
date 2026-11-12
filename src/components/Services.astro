@@ -1,6 +1,7 @@
 ---
 // Services mode only (src/lab/site.ts): what he builds for a business, each
-// card with its live demo in the lab (or the booking page, for consulting),
+// card with its live demo in the lab (or the booking page, for consulting;
+// the CV chat, for full stack),
 // then how he works with a client (Leading, in the slot).
 import type { Content } from '../i18n';
 import { CONTACT } from '../lab/chat/contact';
@@ -20,7 +21,11 @@ const icons = [
   '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>',
   '<path d="M6 3h9l4 4v14H6z"/><circle cx="11.5" cy="13" r="3"/><path d="M14 15.5l2.5 2.5"/>',
   '<rect x="3" y="3" width="6" height="6"/><rect x="15" y="15" width="6" height="6"/><rect x="15" y="3" width="6" height="6"/><path d="M9 6h6M18 9v6"/>',
+  '<path d="M8 7 3 12l5 5M16 7l5 5-5 5M14 4l-4 16"/>',
 ];
+// Full stack (the last card) links to the CV chat, which knows how this site
+// is built, instead of a demo.
+const FULL_STACK = '/lab/chat?case=meet';
 const booking = CONTACT.booking ?? '#contact';
 ---
 
@@ -83,7 +88,15 @@ const booking = CONTACT.booking ?? '#contact';
               : { target: '_blank', rel: 'noopener noreferrer' })}
             class="mono text-accent mt-4 inline-flex items-center gap-2 self-start text-xs tracking-[0.06em] uppercase no-underline"
           >
-            <T v={demo ? x.serviceTry : x.serviceTalk} />
+            <T
+              v={
+                s.href === FULL_STACK
+                  ? x.fullLink
+                  : demo
+                    ? x.serviceTry
+                    : x.serviceTalk
+              }
+            />
             <span class="jd-arrow" aria-hidden="true">
               →
             </span>
@@ -92,19 +105,6 @@ const booking = CONTACT.booking ?? '#contact';
       );
     })}
   </ul>
-  {/* Not only AI: a short mention of full-stack web work, with this site
-      as the example. */}
-  <p class="border-line2 text-body mt-stack mb-0 flex flex-wrap items-baseline gap-x-3 gap-y-1 border border-dashed px-4 py-3 text-sm leading-[1.55]">
-    <span class="mono text-accent text-[11px] tracking-[0.08em] uppercase">
-      <T v={x.fullTag} />
-    </span>
-    <span class="min-w-0 flex-[1_1_320px]">
-      <T v={x.fullBody} />{' '}
-      <a href="/lab/chat?case=meet" class="text-accent">
-        <T v={x.fullLink} /> →
-      </a>
-    </span>
-  </p>
   <p class="text-muted mt-stack mb-0 text-sm leading-[1.55]">
     <T v={x.servicesNote} />{' '}
     <a
