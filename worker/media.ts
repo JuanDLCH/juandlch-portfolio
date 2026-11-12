@@ -20,6 +20,7 @@ import {
 const KEY = (v: string, name: string) => `media:${v}:${name}`;
 const SOURCE = 'source.jpg';
 const CURRENT = 'media:current';
+const VERSION = /^[0-9a-z]{1,16}$/;
 interface Current {
   v: string;
   crops: Crops;
@@ -63,15 +64,21 @@ export async function media(req: Request, env: Env) {
   const type = MEDIA[name];
   if (!type) return new Response('Not found', { status: 404 });
 
-  const v = await currentVersion(env);
-  const stored = v
-    ? await env.MEDIA?.getWithMetadata<Meta>(KEY(v, name), {
-        type: 'arrayBuffer',
-      }).catch((err: unknown) => {
-        console.error(`media ${name}: ${String(err)}`);
-        return null;
-      })
-    : null;
+  // A versioned URL (the link preview's `?v=`) gets that version, whatever
+  // this isolate thinks is current; otherwise the current one.
+  const read = (v: string) =>
+    env.MEDIA?.getWithMetadata<Meta>(KEY(v, name), {
+      type: 'arrayBuffer',
+    }).catch((err: unknown) => {
+      console.error(`media ${name}: ${String(err)}`);
+      return null;
+    }) ?? null;
+  const asked = new URL(req.url).searchParams.get('v');
+  let stored = asked && VERSION.test(asked) ? await read(asked) : null;
+  if (!stored?.value) {
+    const v = await currentVersion(env);
+    stored = v ? await read(v) : null;
+  }
   if (stored?.value) {
     const etag = `"${stored.metadata?.v ?? 'kv'}"`;
     if (req.headers.get('If-None-Match') === etag)

@@ -235,7 +235,7 @@ export default function PhotoEditor({
   }, []);
 
   const pick = async (file: File | undefined) => {
-    if (!file) return;
+    if (!file || state === 'saving') return;
     setErr('');
     if (!TYPES.includes(file.type) || file.size > MAX_BYTES)
       return setErr(x.badFile.replace('{mb}', String(MAX_MB)));
@@ -262,8 +262,9 @@ export default function PhotoEditor({
     tab === 'hero' ? 280 : 340,
     typeof window === 'undefined' ? 340 : window.innerWidth - 80,
   );
+  // Frozen while saving: the upload is of the crops it started with.
   const update = (c: Crop) => {
-    if (!src) return;
+    if (!src || state === 'saving') return;
     const { naturalWidth: w, naturalHeight: h } = src.img;
     setCrops((cs) => ({ ...cs, [tab]: clampCrop(w, h, aspect, c) }));
     if (state === 'saved') setState('ready');
@@ -485,6 +486,7 @@ export default function PhotoEditor({
                   max={MAX_ZOOM}
                   step={0.01}
                   value={crop.zoom}
+                  disabled={state === 'saving'}
                   onChange={(e) =>
                     update({ ...crop, zoom: Number(e.target.value) })
                   }
@@ -498,6 +500,7 @@ export default function PhotoEditor({
                 <button
                   type="button"
                   className={btn}
+                  disabled={state === 'saving'}
                   onClick={() =>
                     update(
                       tab === 'og' ? ogFrom(src.img, crops.hero) : centered(),
@@ -509,6 +512,7 @@ export default function PhotoEditor({
                 <button
                   type="button"
                   className={btn}
+                  disabled={state === 'saving'}
                   onClick={() => fileInput.current?.click()}
                 >
                   {x.replace}
