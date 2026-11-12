@@ -1439,8 +1439,12 @@ function SiteCard({ x }: { x: AdminCopy['site'] }) {
   };
   const s = state?.settings;
   const off = !state?.enabled || saving;
+  // The active option is filled (btn's own border and text colors would win
+  // over an accent outline, so they're not combined).
   const seg = (on: boolean) =>
-    `${btn} ${on ? 'border-accent text-accent' : ''}`;
+    on
+      ? 'border-accent bg-accent text-on-accent inline-flex h-8 cursor-default items-center border px-3 text-[12px] font-semibold disabled:opacity-60'
+      : btn;
   return (
     <section className={`${card} mt-block`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
