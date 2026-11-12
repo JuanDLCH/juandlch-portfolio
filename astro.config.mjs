@@ -27,7 +27,10 @@ export default defineConfig({
         '/api': 'http://localhost:8787',
         '/admin/api': adminProxy,
         '/cv': 'http://localhost:8787',
-        '/media': 'http://localhost:8787',
+        // The profile photo is public and read-only: show production's, so
+        // dev matches the site without the Worker (to try uploads, open the
+        // Worker itself: localhost:8787/admin).
+        '/media': { target: 'https://juandlch.dev', changeOrigin: true },
       },
     },
   },
