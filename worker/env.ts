@@ -9,6 +9,9 @@ export interface Env {
   /** Lab metrics and visitor messages (worker/metrics.ts). Optional: without it
    * nothing is recorded. */
   LAB_DB?: D1Database;
+  /** The profile photo uploaded from the dashboard (worker/media.ts).
+   * Optional: without it /media/ serves the copies built with the site. */
+  MEDIA?: KVNamespace;
   // Secrets (wrangler secret put / .dev.vars).
   OPENAI_API_KEY: string;
   TURNSTILE_SECRET: string;

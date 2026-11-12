@@ -132,6 +132,33 @@ const EN = {
   conversation: 'Conversation',
   noReport: 'The report isn’t ready yet.',
   errorLabel: 'Last error',
+  photo: {
+    open: 'Profile photo',
+    title: 'Profile photo',
+    sub: 'Shown in the hero and in link previews. Live in a few minutes, no deploy.',
+    choose: 'Choose a photo',
+    replace: 'Another photo',
+    current: 'On the site now',
+    none: 'No photo uploaded yet: the site shows the one built with it.',
+    hero: 'Profile 4:5',
+    og: 'Preview 1:1',
+    drag: 'Drag to move it; scroll, pinch or use the slider to zoom.',
+    zoom: 'Zoom',
+    reset: 'Reset',
+    fromHero: 'Match the profile',
+    heroPreview: 'In the hero',
+    ogPreview: 'Link preview (LinkedIn, WhatsApp…)',
+    save: 'Save',
+    saving: 'Saving…',
+    saved:
+      'Saved. The site shows it within 5 minutes; run the link through LinkedIn’s Post Inspector to refresh its preview there.',
+    close: 'Close',
+    loading: 'Loading…',
+    noStorage: 'Photo storage isn’t set up (the MEDIA KV binding).',
+    error: 'Couldn’t save the photo ({e}).',
+    badFile: 'Pick a PNG, JPEG or WebP image of up to {mb} MB.',
+    noWebp: 'this browser can’t make WebP images: use Chrome or Firefox',
+  },
 };
 export type AdminCopy = typeof EN;
 
@@ -269,6 +296,34 @@ const ES: AdminCopy = {
   conversation: 'Conversación',
   noReport: 'El reporte aún no está listo.',
   errorLabel: 'Último error',
+  photo: {
+    open: 'Foto de perfil',
+    title: 'Foto de perfil',
+    sub: 'Sale en el hero y en las previews de los enlaces. Se ve en unos minutos, sin deploy.',
+    choose: 'Elegir una foto',
+    replace: 'Otra foto',
+    current: 'En el sitio ahora',
+    none: 'Aún no has subido una foto: el sitio muestra la que viene con el build.',
+    hero: 'Perfil 4:5',
+    og: 'Preview 1:1',
+    drag: 'Arrástrala para moverla; usa la rueda, pellizca o el control para el zoom.',
+    zoom: 'Zoom',
+    reset: 'Restablecer',
+    fromHero: 'Igual que el perfil',
+    heroPreview: 'En el hero',
+    ogPreview: 'Preview del enlace (LinkedIn, WhatsApp…)',
+    save: 'Guardar',
+    saving: 'Guardando…',
+    saved:
+      'Listo. El sitio la muestra en máximo 5 minutos; pasa el enlace por el Post Inspector de LinkedIn para que actualice su preview.',
+    close: 'Cerrar',
+    loading: 'Cargando…',
+    noStorage:
+      'El almacenamiento de la foto no está configurado (el binding KV MEDIA).',
+    error: 'No se pudo guardar la foto ({e}).',
+    badFile: 'Elige una imagen PNG, JPEG o WebP de hasta {mb} MB.',
+    noWebp: 'este navegador no genera imágenes WebP: usa Chrome o Firefox',
+  },
 };
 
 export const ADMIN = { en: EN, es: ES };

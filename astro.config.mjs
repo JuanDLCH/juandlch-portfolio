@@ -27,6 +27,7 @@ export default defineConfig({
         '/api': 'http://localhost:8787',
         '/admin/api': adminProxy,
         '/cv': 'http://localhost:8787',
+        '/media': 'http://localhost:8787',
       },
     },
   },

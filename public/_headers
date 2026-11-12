@@ -1,5 +1,5 @@
 # Security headers for the static site (Workers Static Assets). The Worker's
-# own responses (/api, /admin/api, /cv) don't get them.
+# own responses (/api, /admin/api, /cv, /media) don't get them.
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
