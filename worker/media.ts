@@ -10,6 +10,8 @@ import {
   MAX_PART,
   MAX_SOURCE,
   MEDIA,
+  OG_DEFAULT,
+  ogName,
   parseCrops,
   type Crops,
 } from '../src/lab/media';
@@ -20,6 +22,7 @@ import {
 // older ones are deleted.
 const KEY = (v: string, name: string) => `media:${v}:${name}`;
 const SOURCE = 'source.jpg';
+const LEGACY_OG = 'og.jpg';
 const CURRENT = 'media:current';
 const VERSION = /^[0-9a-z]{1,16}$/;
 interface Current {
@@ -61,21 +64,28 @@ const headers = (type: string, source: string, etag?: string) => ({
 export async function media(req: Request, env: Env) {
   if (req.method !== 'GET' && req.method !== 'HEAD')
     return new Response(null, { status: 405 });
-  const name = new URL(req.url).pathname.slice('/media/'.length);
+  const path = new URL(req.url).pathname.slice('/media/'.length);
+  // The single preview from before there were four: links shared then keep
+  // naming it, so it serves that upload's own copy (stored under its
+  // version) or else the default card.
+  const legacy = path === LEGACY_OG;
+  const name = legacy ? OG_DEFAULT : path;
   const type = MEDIA[name];
   if (!type) return new Response('Not found', { status: 404 });
 
   // A versioned URL (the link preview's `?v=`) gets that version, whatever
   // this isolate thinks is current; otherwise the current one.
-  const read = (v: string) =>
-    env.MEDIA?.getWithMetadata<Meta>(KEY(v, name), {
+  const read = (v: string, key = name) =>
+    env.MEDIA?.getWithMetadata<Meta>(KEY(v, key), {
       type: 'arrayBuffer',
     }).catch((err: unknown) => {
-      console.error(`media ${name}: ${String(err)}`);
+      console.error(`media ${key}: ${String(err)}`);
       return null;
     }) ?? null;
   const asked = new URL(req.url).searchParams.get('v');
-  let stored = asked && VERSION.test(asked) ? await read(asked) : null;
+  const wanted = asked && VERSION.test(asked) ? asked : null;
+  let stored = wanted && legacy ? await read(wanted, LEGACY_OG) : null;
+  if (!stored?.value && wanted) stored = await read(wanted);
   if (!stored?.value) {
     const v = await currentVersion(env);
     stored = v ? await read(v) : null;
@@ -92,8 +102,8 @@ export async function media(req: Request, env: Env) {
     });
   }
 
-  const path = (await bundled(req, env))?.[name];
-  const res = path ? await env.ASSETS?.fetch(new URL(path, req.url)) : null;
+  const copy = (await bundled(req, env))?.[name];
+  const res = copy ? await env.ASSETS?.fetch(new URL(copy, req.url)) : null;
   if (!res?.ok) return new Response('Not found', { status: 404 });
   return new Response(req.method === 'HEAD' ? null : res.body, {
     headers: headers(res.headers.get('Content-Type') ?? type, 'bundled'),
@@ -111,36 +121,58 @@ async function currentVersion(env: Env) {
   return version.v;
 }
 
-/** A page with its link preview's URL versioned (`?v=`): crawlers cache
- * images by URL, so a new photo gets a new one without a deploy. Also writes
- * the site's mode on <html> (`data-mode`, `data-job-offers`, read by
- * pageSettings in src/lab/site.ts). Pages run through here by
- * `run_worker_first` in wrangler.jsonc. */
+/** A page with its link preview fitted to the site and the shared link:
+ * - the card of the site's mode and the link's language (`lang`: `/es` and
+ *   `?lang=es` ask for Spanish), its URL versioned (`?v=`): crawlers cache
+ *   images by URL, so a new photo gets a new one without a deploy;
+ * - in Spanish, the tags' `data-es` text (Layout.astro) and an `og:url` with
+ *   `?lang=es`, since Facebook and LinkedIn fetch og:url for the preview;
+ * - the site's mode on <html> (`data-mode`, `data-job-offers`, read by
+ *   pageSettings in src/lab/site-page.ts).
+ * Pages run through here by `run_worker_first` in wrangler.jsonc. */
 export async function versioned(
   res: Response,
   env: Env,
   settings: SiteSettings,
+  lang: 'en' | 'es',
 ) {
   if (!res.headers.get('Content-Type')?.startsWith('text/html')) return res;
   const v = await currentVersion(env);
-  const add = {
+  const card = ogName(`${settings.mode}-${lang}`);
+  const image = {
     element(el: Element) {
       const url = el.getAttribute('content');
-      if (url?.includes('/media/')) el.setAttribute('content', `${url}?v=${v}`);
+      if (!url?.includes(`/media/${OG_DEFAULT}`)) return;
+      const out = url.replace(OG_DEFAULT, card);
+      el.setAttribute('content', v ? `${out}?v=${v}` : out);
     },
   };
-  const rw = new HTMLRewriter().on('html', {
-    element(el) {
-      el.setAttribute('data-mode', settings.mode);
-      el.setAttribute('data-job-offers', settings.jobOffers);
-    },
-  });
-  if (v)
-    rw.on('meta[property="og:image"]', add).on(
-      'meta[name="twitter:image"]',
-      add,
-    );
-  return rw.transform(res);
+  return new HTMLRewriter()
+    .on('html', {
+      element(el) {
+        el.setAttribute('data-mode', settings.mode);
+        el.setAttribute('data-job-offers', settings.jobOffers);
+      },
+    })
+    .on('meta[property="og:image"]', image)
+    .on('meta[name="twitter:image"]', image)
+    .on('meta[data-es]', {
+      element(el) {
+        const es = el.getAttribute('data-es');
+        if (lang === 'es' && es) el.setAttribute('content', es);
+        el.removeAttribute('data-es');
+      },
+    })
+    .on('meta[property="og:url"]', {
+      element(el) {
+        const url = el.getAttribute('content');
+        if (lang !== 'es' || !url) return;
+        const u = new URL(url);
+        u.searchParams.set('lang', 'es');
+        el.setAttribute('content', u.href);
+      },
+    })
+    .transform(res);
 }
 
 /** GET /admin/api/photo: the stored crops and version (null: none yet). */

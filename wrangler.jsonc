@@ -28,6 +28,8 @@
       "/media/*",
       "/",
       "/services",
+      "/es",
+      "/en",
       "/lab/*",
       "/privacy",
     ],

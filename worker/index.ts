@@ -173,6 +173,13 @@ export default {
     if (url.pathname.startsWith('/cv/')) return cv(req, env, ctx);
     // The profile photo and link preview, uploaded from the dashboard.
     if (url.pathname.startsWith('/media/')) return media(req, env);
+    // Short links per language (`juandlch.dev/es` for a Spanish preview): a
+    // real redirect, which crawlers follow (a static one is a meta refresh).
+    if (url.pathname === '/es' || url.pathname === '/en')
+      return Response.redirect(
+        new URL(`/?lang=${url.pathname.slice(1)}`, url).href,
+        301,
+      );
     const api = url.pathname.startsWith('/api/');
     if (!api) {
       const settings = await siteSettingsFor(req, env);
@@ -187,7 +194,8 @@ export default {
       if (!page) return new Response('Not found', { status: 404 });
       // The shareable pages (run_worker_first): versioned link preview and
       // the mode on <html>.
-      const res = await versioned(page, env, settings);
+      const lang = url.searchParams.get('lang') === 'es' ? 'es' : 'en';
+      const res = await versioned(page, env, settings, lang);
       // /services itself is only a preview (the public URL is /).
       if (url.pathname === '/services') {
         const out = new Response(res.body, res);

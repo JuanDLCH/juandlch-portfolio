@@ -2,15 +2,29 @@
 // Insights dashboard. Cloudflare Access guards /admin on juandlch.dev and the
 // Worker checks its JWT on every /admin/api request (worker/admin.ts); this
 // page itself holds no data. The world map is drawn here, at build time.
+import type { ImageMetadata } from 'astro';
 import AdminApp from '../components/admin/AdminApp';
 import Layout from '../layouts/Layout.astro';
 import { worldMap } from '../lab/insights/world';
-import ogBase from '../assets/og-base.png';
+import { OG_VARIANTS, type OgVariant } from '../lab/media';
 import slot from '../assets/og-slot.json';
 
 const map = worldMap();
-// The link preview without the photo, for the photo editor (PhotoEditor.tsx).
-const card = { base: ogBase.src, slot };
+// The link previews without the photo, for the photo editor (PhotoEditor.tsx).
+const bases = import.meta.glob<{ default: ImageMetadata }>(
+  '../assets/og/base-*.png',
+  { eager: true },
+);
+const card = {
+  bases: Object.fromEntries(
+    OG_VARIANTS.map((v) => {
+      const img = bases[`../assets/og/base-${v}.png`]?.default;
+      if (!img) throw new Error(`missing src/assets/og/base-${v}.png`);
+      return [v, img.src];
+    }),
+  ) as Record<OgVariant, string>,
+  slot,
+};
 ---
 
 <Layout

@@ -162,6 +162,13 @@ const EN = {
     fromHero: 'Match the profile',
     heroPreview: 'In the hero',
     ogPreview: 'Link preview (LinkedIn, WhatsApp…)',
+    // One card per site mode and link language (/ or /es); all are saved.
+    ogVariants: {
+      'hire-en': 'Job search · EN',
+      'hire-es': 'Job search · ES',
+      'services-en': 'Services · EN',
+      'services-es': 'Services · ES',
+    },
     save: 'Save',
     saving: 'Saving…',
     saved:
@@ -341,6 +348,12 @@ const ES: AdminCopy = {
     fromHero: 'Igual que el perfil',
     heroPreview: 'En el hero',
     ogPreview: 'Preview del enlace (LinkedIn, WhatsApp…)',
+    ogVariants: {
+      'hire-en': 'Busco trabajo · EN',
+      'hire-es': 'Busco trabajo · ES',
+      'services-en': 'Servicios · EN',
+      'services-es': 'Servicios · ES',
+    },
     save: 'Guardar',
     saving: 'Guardando…',
     saved:
