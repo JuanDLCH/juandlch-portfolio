@@ -582,14 +582,18 @@ export { PROFILE_SECTIONS, type ProfileSection };
 // model cites.
 // Built from the live CV (cv-live.ts), so a CV change needs no deploy.
 const loadProfile = async () => {
-  const [{ buildProfile }, { loadCv }] = await Promise.all([
+  const [{ buildProfile }, { loadCv }, { pageSettings }] = await Promise.all([
     import('./profile'),
     import('./cv-live'),
+    import('../site-page'),
   ]);
-  return buildProfile(location.origin, await loadCv()).map((e) => ({
-    ...e,
-    group: e.group ?? e.source.label,
-  }));
+  // The notes follow the site's mode, as the Worker marked it on the page.
+  return buildProfile(location.origin, await loadCv(), pageSettings()).map(
+    (e) => ({
+      ...e,
+      group: e.group ?? e.source.label,
+    }),
+  );
 };
 
 // Lowercase, accents removed, split into words.

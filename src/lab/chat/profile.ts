@@ -7,6 +7,7 @@
 import { content } from '../../i18n/content';
 import { BUNDLED_CV, cvLink, type CvData } from './cv';
 import type { ProfileSection as Section } from './profile-sections';
+import { DEFAULT_SETTINGS, type SiteSettings } from '../site';
 
 export interface Entry {
   section: Section;
@@ -22,10 +23,12 @@ export interface Entry {
 const en = content.en;
 
 /** Every entry, with source links on `origin`, from `cv` (the live CV from
- * the CV repo, or the bundled copy). */
+ * the CV repo, or the bundled copy); the notes follow the site's mode
+ * (src/lab/site.ts). */
 export const buildProfile = (
   origin: string,
   cv: CvData = BUNDLED_CV,
+  settings: SiteSettings = DEFAULT_SETTINGS,
 ): Entry[] => {
   const { head: CV_HEAD, sections: CV } = cv;
   const site = (section: string, anchor: string) => ({
@@ -109,7 +112,13 @@ export const buildProfile = (
     },
   ];
 
-  return [...CV_ENTRIES, ...PORTFOLIO, ...BUILD, ...STORIES, ...NOTES];
+  return [
+    ...CV_ENTRIES,
+    ...PORTFOLIO,
+    ...BUILD,
+    ...STORIES,
+    ...notesFor(settings, cv),
+  ];
 };
 
 // How this portfolio is built, for "how did he build this site?". Keep it in
@@ -132,6 +141,10 @@ const BUILD: Entry[] = [
   build(
     'Sophie, the voice agent',
     "Sophie is a real-time voice agent built on the OpenAI Realtime API over WebRTC. The browser never gets a key: it sends its connection offer to the Worker, which creates the call on the server with fixed instructions, and a Durable Object hangs up at the time limit or if a call costs too much. A five-minute budget can be paused and resumed, the greeting is recorded with Sophie's own voice, and her animated face reacts to who is speaking, smiles and winks.",
+  ),
+  build(
+    'Two modes, one switch',
+    'The site has two faces that he switches from his private dashboard, live and without a deploy: one for when he is looking for a job, speaking to recruiters, and one for selling his services as a freelancer, with the services first and contact up front. The Worker serves the landing page of the active mode at the same address, and both AI agents (this chat and Sophie) adapt what they say about his availability to it.',
   ),
   build(
     'His CV, always up to date',
@@ -189,15 +202,52 @@ const notes = (title: string, text: string): Entry => ({
   text,
   source: { label: 'Juan Diego · notes' },
 });
-const NOTES: Entry[] = [
-  notes(
-    'Roles he is looking for',
-    'AI Engineer, Lead AI Engineer or AI Solutions Architect roles where he designs and ships production AI (agents, RAG, voice, document AI) end to end.',
-  ),
-  notes(
-    'Availability and location',
-    'Based in Medellín, Colombia (UTC−5). Open to job offers and freelance projects: on-site or hybrid in Medellín, or remote for companies abroad. Available to travel for work when needed, but not to relocate.',
-  ),
+/** Where he works now, from the CV: the experience block running to the
+ * present, else none. */
+const currentJob = (cv: CvData) => {
+  const exp = cv.sections.find((s) => s.id === 'experience');
+  const b = exp?.blocks.find((b) => /present|actualidad/i.test(b.meta ?? ''));
+  if (!b?.heading) return null;
+  const [role, company] = b.heading.split('|').map((s) => s.trim());
+  return company ? `${role} at ${company}` : role;
+};
+
+/** Notes by the site's mode: looking for a job, or employed and taking on
+ * freelance projects (with job offers open or closed). */
+const notesFor = (s: SiteSettings, cv: CvData): Entry[] => {
+  const job = currentJob(cv);
+  const hire = [
+    notes(
+      'Roles he is looking for',
+      'AI Engineer, Lead AI Engineer or AI Solutions Architect roles where he designs and ships production AI (agents, RAG, voice, document AI) end to end.',
+    ),
+    notes(
+      'Availability and location',
+      'Based in Medellín, Colombia (UTC−5). Open to job offers and freelance projects: on-site or hybrid in Medellín, or remote for companies abroad. Available to travel for work when needed, but not to relocate.',
+    ),
+  ];
+  const services = [
+    notes(
+      'Current role',
+      `He currently works full time${job ? ` as ${job}` : ''}, so he is not looking for a job. Internal levels or grades are never part of his title.`,
+    ),
+    notes(
+      'Freelance projects and availability',
+      "Based in Medellín, Colombia (UTC−5). Alongside his job he takes on freelance projects and is happy to talk with anyone about an idea or a project they want help building: chatbots and assistants for a business (WhatsApp or web: orders, customer questions, appointments), AI that automates a process (forms, claims, invoices, emails), voice agents, assistants that answer from a company's documents, and consulting (reviewing an AI idea and proposing an architecture with a cost estimate). Remote and project based: he does not take long-term contracts, full-time engagements or work tied to fixed hours. The way to start is a short call.",
+    ),
+    s.jobOffers === 'closed'
+      ? notes(
+          'Job offers',
+          'He is not open to new job offers right now. If someone brings one, say so kindly and offer to talk about a freelance project or idea instead.',
+        )
+      : notes(
+          'Job offers',
+          'He is not actively looking, but he is open to hearing about a role that is a strong fit; the way to start is a short call.',
+        ),
+  ];
+  return [...(s.mode === 'services' ? services : hire), ...SHARED_NOTES];
+};
+const SHARED_NOTES: Entry[] = [
   notes(
     'Hobbies and fun facts',
     'He plays soccer three to four times a week, as a goalkeeper. He also enjoys going to the gym and is a big fan of video games.',
@@ -218,10 +268,13 @@ const NOTES: Entry[] = [
 
 /** The whole profile as compact text, one line per entry under its group,
  * for prompts that take it inline (no links: the voice agent can't cite). */
-export const profileText = (cv: CvData = BUNDLED_CV) => {
+export const profileText = (
+  cv: CvData = BUNDLED_CV,
+  settings: SiteSettings = DEFAULT_SETTINGS,
+) => {
   const lines: string[] = [];
   let group = '';
-  for (const e of buildProfile('https://example.invalid', cv)) {
+  for (const e of buildProfile('https://example.invalid', cv, settings)) {
     const g = e.group ?? e.source.label;
     if (g !== group) lines.push('', `## ${(group = g)}`);
     lines.push(`- ${e.title}: ${e.text}`);

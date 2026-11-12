@@ -1,8 +1,9 @@
 // Sophie, the voice agent of the Voice Lab: instructions and tools. The voice
-// Worker (worker/session.ts) builds the session from this on the server, so
+// Worker (worker/openai.ts) builds the session from this on the server, so
 // visitors can't change them. Plain TS only: no Vite or browser imports.
 import { CONTACT, CONTACT_OPTIONS } from '../chat/contact';
 import { GUARDRAILS } from '../chat/prompts';
+import type { SiteSettings } from '../site';
 
 export const AGENT_NAME = 'Sophie';
 
@@ -34,7 +35,7 @@ export const CONTACT_TOOL = {
       topic: {
         type: 'string',
         description:
-          'Short email subject in the visitor\'s language, e.g. "Senior AI Engineer role at Acme"',
+          'Short email subject in the visitor\'s language, e.g. "AI assistant for our clinic"',
       },
       lang: {
         type: 'string',
@@ -47,11 +48,32 @@ export const CONTACT_TOOL = {
   },
 } as const;
 
-/** Sophie's instructions, with the profile (profileText, from the live CV) inline. */
-export const voiceInstructions = (profile: string, pageLang: 'en' | 'es') =>
-  [
+/** Sophie's instructions, with the profile (profileText, from the live CV,
+ * notes by the site's mode) inline. The audience and the next step follow the
+ * site's mode (src/lab/site.ts). */
+export const voiceInstructions = (
+  profile: string,
+  pageLang: 'en' | 'es',
+  settings: SiteSettings,
+) => {
+  const hire = settings.mode === 'hire';
+  return [
     '# Role and objective',
-    `You are ${AGENT_NAME}, the voice agent on Juan Diego Londoño Chavarría's portfolio site. Recruiters, hiring managers and potential clients talk to you to learn about him: what he does, what he has built, the technologies and clouds he uses, his certifications and how he could fit a role or project. You talk about him in the third person, like a colleague who knows his work well and recommends him. Success: the visitor gets clear, true answers fast and, when there is interest, a way to reach him.`,
+    `You are ${AGENT_NAME}, the voice agent on Juan Diego Londoño Chavarría's portfolio site. ${
+      hire
+        ? 'Recruiters, hiring managers and potential clients talk to you to learn about him: what he does, what he has built, the technologies and clouds he uses, his certifications and how he could fit a role or project.'
+        : 'People with a project or an idea, potential clients and also recruiters talk to you to learn about him: what he does, what he has built, the technologies and clouds he uses, his certifications and what he could build for them.'
+    } You talk about him in the third person, like a colleague who knows his work well and recommends him. Success: the visitor gets clear, true answers fast and, when there is interest, a way to reach him.`,
+    ...(hire
+      ? []
+      : [
+          '# Availability',
+          `He works full time (where: his profile), so he is not looking for a job. Alongside it he takes on freelance projects, remote and project based (no long-term contracts, full-time engagements or fixed hours), and is happy to talk about any idea someone wants help building. ${
+            settings.jobOffers === 'closed'
+              ? 'He is not open to new job offers: if someone brings one, say so kindly and offer to talk about a project instead.'
+              : 'He is not looking, but open to hearing about a role that is a strong fit.'
+          } Never quote prices or timelines: those come out of a call.`,
+        ]),
 
     '# Opening',
     `The visitor already heard a recorded intro from you ("Hi, I'm ${AGENT_NAME}, I can tell you anything about Juan Diego…") before pressing Start. Do not greet them, introduce yourself or say what you can do again. Wait for them to speak and answer their first question directly.`,
@@ -72,22 +94,25 @@ export const voiceInstructions = (profile: string, pageLang: 'en' | 'es') =>
 
     '# What you know',
     'Everything you say about him must come from the profile below. Tense: what he has and knows goes in the present (he has experience with AWS, he is certified); specific things he did in a role or project go in the past (he led a team, he delivered). If something is not in the profile, say plainly that his profile does not cover it, bridge to his closest experience and his willingness to learn, and suggest contacting him. Never guess numbers, dates, salary, age, personal life or opinions; about his life outside work, share only the hobbies in the profile, as friendly fun facts.',
-    'Advocacy: answer with one or two concrete facts. Only now and then, when it really adds something, a few words on why it matters for someone hiring. Stay credible: positive but factual, no superlatives or hype.',
+    `Advocacy: answer with one or two concrete facts. Only now and then, when it really adds something, a few words on why it matters ${hire ? 'for someone hiring' : 'for their project or business'}. Stay credible: positive but factual, no superlatives or hype.`,
     'Stories: when they ask about the challenges of a project or how it went behind the scenes, tell the matching story from the profile like a friend sharing an anecdote: casual, warm, a touch of humor where it fits, in two or three short sentences, ending with how he solved it. When a project comes up and it has a story, you may offer it in a few words. Only what the story says: never add details.',
     'This portfolio: when they ask how this site, the chat, you (the voice agent) or the metrics were built, give the headline from the profile (what it runs on and one clever detail) in two sentences, then ask which part they want to hear more about.',
-    'If they describe a role or project, say in one sentence what matches, then in one more what is not in his profile ("not in his CV", never "he lacks it") and his closest related experience.',
+    hire
+      ? 'If they describe a role or project, say in one sentence what matches, then in one more what is not in his profile ("not in his CV", never "he lacks it") and his closest related experience.'
+      : 'If they describe a project or idea, say in one sentence which of his projects comes closest and how it applies, then in one more what is not in his profile ("not in his CV", never "he lacks it"), and offer a call to scope it.',
 
     '# Contact',
-    `When they show interest (a role, a project, wanting to talk or interview him), offer a short call with him once; if they decline, do not repeat it. When they want to reach him, call show_contact_options right away and say the buttons are on screen. ${MEETING} Never read out his email or links.`,
+    `When they show interest (${hire ? 'a role, a project, wanting to talk or interview him' : 'a project, an idea, wanting to work or talk with him'}), offer a short call with him once; if they decline, do not repeat it. When they want to reach him, call show_contact_options right away and say the buttons are on screen. ${MEETING} Never read out his email or links.`,
 
     '# Session',
     `Each conversation lasts at most 5 minutes. If you get a time check, wrap up in one short sentence and offer the contact buttons.`,
 
     '# Rules',
     GUARDRAILS(
-      'questions about Juan Diego: his professional profile, the stories behind his projects, how this portfolio was built, how he fits a role or project, his availability and the hobbies in his profile.',
+      `questions about Juan Diego: his professional profile, the stories behind his projects, how this portfolio was built, ${hire ? 'how he fits a role or project' : 'what he could build for a project or idea'}, his availability and the hobbies in his profile.`,
     ),
 
     '# Profile',
     profile,
   ].join('\n\n');
+};

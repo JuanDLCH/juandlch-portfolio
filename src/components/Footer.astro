@@ -2,11 +2,20 @@
 import { CONTACT } from '../lab/chat/contact';
 import type { Content } from '../i18n';
 import T from './T.astro';
+import { CV_PDF_EN, CV_PDF_ES } from '../lab/chat/cv';
+import type { SiteMode } from '../lab/site';
 
 interface Props {
   x: Content['x'];
+  mode?: SiteMode;
 }
-const { x } = Astro.props;
+const { x, mode = 'hire' } = Astro.props;
+// Services mode: the CV leaves the header and lands here, in the page's
+// language (CSS shows the link whose lang matches).
+const cvs = [
+  { lang: 'en', href: CV_PDF_EN, file: 'Juan-Londono_AI-Engineer.pdf' },
+  { lang: 'es', href: CV_PDF_ES, file: 'Juan-Londono_AI-Engineer_ES.pdf' },
+];
 const ghost =
   'jd-card border-line2 inline-flex min-h-10 items-center gap-3 border px-6 no-underline mob:flex-[1_1_100%] mob:justify-center';
 const icon = {
@@ -77,6 +86,16 @@ const icon = {
       </svg>
       GitHub
     </a>
+    {mode === 'services' &&
+      cvs.map((cv) => (
+        <a href={cv.href} download={cv.file} lang={cv.lang} class={ghost}>
+          <svg {...icon} stroke-linecap="round">
+            <path d="M6 3h9l4 4v14H6z" />
+            <path d="M12 10v7M9 14l3 3 3-3" />
+          </svg>
+          <T v={x.cvLink} />
+        </a>
+      ))}
   </div>
   <div class="mono border-line text-muted mt-block flex flex-wrap justify-between gap-3 border-t pt-[18px] text-[11px] tracking-[0.08em] uppercase">
     <span>JuanDLCH · Medellín, Colombia · 6.24°N 75.58°W</span>

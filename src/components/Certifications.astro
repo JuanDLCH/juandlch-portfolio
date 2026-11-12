@@ -8,9 +8,11 @@ import claudeCca from '../assets/certs/claude-certified-architect.png';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
+  /** Section number (the services landing orders them differently). */
+  n?: string;
   x: Content['x'];
 }
-const { x } = Astro.props;
+const { x, n = '07' } = Astro.props;
 const locales = { en: 'en-US', es: 'es-CO' } as const;
 const expiry = (d: Date) =>
   both(
@@ -43,7 +45,7 @@ const certs = [
 
 <section id="certifications" class="border-line border-t py-section">
   <div class="flex flex-wrap items-baseline justify-between gap-3">
-    <SectionHeading n="07">
+    <SectionHeading n={n}>
       <T v={x.certTitle} />
     </SectionHeading>
     <span class="mono text-muted text-xs">

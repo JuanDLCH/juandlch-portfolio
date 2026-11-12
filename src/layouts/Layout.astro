@@ -12,11 +12,21 @@ interface Props {
   noindex?: boolean;
   /** Structured data for search engines (JSON-LD), e.g. the landing's Person. */
   schema?: Record<string, unknown>;
+  /** Public path, when the page is served at another URL (the services
+   * landing, served at / by the Worker). */
+  path?: string;
 }
-const { title, description, shareTitle, noindex = false, schema } = Astro.props;
+const {
+  title,
+  description,
+  shareTitle,
+  noindex = false,
+  schema,
+  path,
+} = Astro.props;
 const titles = typeof title === 'string' ? { en: title, es: title } : title;
 // Link previews (Open Graph, Twitter card) need absolute URLs.
-const url = new URL(Astro.url.pathname, Astro.site);
+const url = new URL(path ?? Astro.url.pathname, Astro.site);
 // The preview is live too (uploaded from /admin, served by worker/media.ts).
 const image = new URL(`/media/${OG_NAME}`, Astro.site);
 const imageAlt =
