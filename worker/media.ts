@@ -10,6 +10,8 @@ import {
   MAX_PART,
   MAX_SOURCE,
   MEDIA,
+  OG_DEFAULT,
+  ogName,
   parseCrops,
   type Crops,
 } from '../src/lab/media';
@@ -111,36 +113,58 @@ async function currentVersion(env: Env) {
   return version.v;
 }
 
-/** A page with its link preview's URL versioned (`?v=`): crawlers cache
- * images by URL, so a new photo gets a new one without a deploy. Also writes
- * the site's mode on <html> (`data-mode`, `data-job-offers`, read by
- * pageSettings in src/lab/site.ts). Pages run through here by
- * `run_worker_first` in wrangler.jsonc. */
+/** A page with its link preview fitted to the site and the shared link:
+ * - the card of the site's mode and the link's language (`lang`: `/es` and
+ *   `?lang=es` ask for Spanish), its URL versioned (`?v=`): crawlers cache
+ *   images by URL, so a new photo gets a new one without a deploy;
+ * - in Spanish, the tags' `data-es` text (Layout.astro) and an `og:url` with
+ *   `?lang=es`, since Facebook and LinkedIn fetch og:url for the preview;
+ * - the site's mode on <html> (`data-mode`, `data-job-offers`, read by
+ *   pageSettings in src/lab/site-page.ts).
+ * Pages run through here by `run_worker_first` in wrangler.jsonc. */
 export async function versioned(
   res: Response,
   env: Env,
   settings: SiteSettings,
+  lang: 'en' | 'es',
 ) {
   if (!res.headers.get('Content-Type')?.startsWith('text/html')) return res;
   const v = await currentVersion(env);
-  const add = {
+  const card = ogName(`${settings.mode}-${lang}`);
+  const image = {
     element(el: Element) {
       const url = el.getAttribute('content');
-      if (url?.includes('/media/')) el.setAttribute('content', `${url}?v=${v}`);
+      if (!url?.includes(`/media/${OG_DEFAULT}`)) return;
+      const out = url.replace(OG_DEFAULT, card);
+      el.setAttribute('content', v ? `${out}?v=${v}` : out);
     },
   };
-  const rw = new HTMLRewriter().on('html', {
-    element(el) {
-      el.setAttribute('data-mode', settings.mode);
-      el.setAttribute('data-job-offers', settings.jobOffers);
-    },
-  });
-  if (v)
-    rw.on('meta[property="og:image"]', add).on(
-      'meta[name="twitter:image"]',
-      add,
-    );
-  return rw.transform(res);
+  return new HTMLRewriter()
+    .on('html', {
+      element(el) {
+        el.setAttribute('data-mode', settings.mode);
+        el.setAttribute('data-job-offers', settings.jobOffers);
+      },
+    })
+    .on('meta[property="og:image"]', image)
+    .on('meta[name="twitter:image"]', image)
+    .on('meta[data-es]', {
+      element(el) {
+        const es = el.getAttribute('data-es');
+        if (lang === 'es' && es) el.setAttribute('content', es);
+        el.removeAttribute('data-es');
+      },
+    })
+    .on('meta[property="og:url"]', {
+      element(el) {
+        const url = el.getAttribute('content');
+        if (lang !== 'es' || !url) return;
+        const u = new URL(url);
+        u.searchParams.set('lang', 'es');
+        el.setAttribute('content', u.href);
+      },
+    })
+    .transform(res);
 }
 
 /** GET /admin/api/photo: the stored crops and version (null: none yet). */

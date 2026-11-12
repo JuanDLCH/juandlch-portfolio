@@ -11,11 +11,23 @@ export const OG_W = 1200;
 export const OG_H = 630;
 
 export const heroName = (w: number) => `photo-${w}.webp`;
-export const OG_NAME = 'og.jpg';
+/** One link preview per site mode and language (scripts/og-image.mjs draws
+ * their cards; the Worker picks one per page, see versioned in
+ * worker/media.ts). */
+export const OG_VARIANTS = [
+  'hire-en',
+  'hire-es',
+  'services-en',
+  'services-es',
+] as const;
+export type OgVariant = (typeof OG_VARIANTS)[number];
+export const ogName = (variant: OgVariant) => `og-${variant}.jpg`;
+/** The one pages name statically; the Worker swaps it. */
+export const OG_DEFAULT = ogName('hire-en');
 /** What /media/ serves, with its content type. */
 export const MEDIA: Record<string, string> = {
   ...Object.fromEntries(HERO_WIDTHS.map((w) => [heroName(w), 'image/webp'])),
-  [OG_NAME]: 'image/jpeg',
+  ...Object.fromEntries(OG_VARIANTS.map((v) => [ogName(v), 'image/jpeg'])),
 };
 /** Longest side of the stored original (to crop it again later). */
 export const SOURCE_SIDE = 2000;

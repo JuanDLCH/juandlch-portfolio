@@ -46,6 +46,10 @@ const x = services ? { ...base, ...base.sv } : base;
 <Layout
   title={{ en: pick(x.shareTitle, 'en'), es: pick(x.shareTitle, 'es') }}
   description={pick(x.shareDesc, 'en')}
+  shareEs={{
+    title: pick(x.shareTitle, 'es'),
+    description: pick(x.shareDesc, 'es'),
+  }}
   path="/"
   schema={{
     '@context': 'https://schema.org',
