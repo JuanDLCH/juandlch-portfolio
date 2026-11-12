@@ -1,6 +1,12 @@
-// Renders the link preview image (Open Graph / Twitter card, 1200×630) to
-// src/assets/og.png with headless Chrome, from the HTML below. Regenerate
-// after changing the headline, the role or the photo:
+// Renders the link preview image (Open Graph / Twitter card, 1200×630) with
+// headless Chrome, from the HTML below, to:
+// - src/assets/og.png: with src/assets/photo.png (the fallback /media/og.jpg
+//   serves until a photo is uploaded from /admin);
+// - src/assets/og-base.png: the same card with the photo slot empty, and
+//   src/assets/og-slot.json: where the photo goes. The dashboard's photo
+//   editor draws the uploaded photo into that slot (PhotoEditor.tsx).
+// Regenerate after changing the headline, the role or the layout (a new
+// photo needs no regeneration: upload it from /admin):
 //   node scripts/og-image.mjs
 // Needs Chrome/Chromium (set CHROME=... if it isn't found) and network access
 // for the Geist font.
@@ -41,7 +47,7 @@ const bars = Array.from({ length: 34 }, (_, i) => {
   return `<i style="height:${h}px"></i>`;
 }).join('');
 
-const html = `<!doctype html><html><head><meta charset="utf-8">
+const html = (img) => `<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=block" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -87,36 +93,58 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
     <div class="chips mono"><span>Agents</span><span>Realtime voice</span><span>Document AI</span><span>AWS</span></div>
   </div>
   <div class="right">
-    <div class="photo"><img src="data:image/png;base64,${photo}"></div>
+    <div class="photo">${img}</div>
     <div class="wave">${bars}</div>
     <div class="live mono"><span class="dot"></span>Talk to my AI · live demos</div>
   </div>
 </body></html>`;
 
+const full = html(`<img src="data:image/png;base64,${photo}">`);
+// The slot keeps its size with a hidden image, and reports where it is.
+const base =
+  html(`<img style="visibility:hidden" src="data:image/png;base64,${photo}">
+<script>
+  addEventListener('load', () => {
+    const r = document.querySelector('.photo img').getBoundingClientRect();
+    document.body.dataset.slot = [r.x, r.y, r.width, r.height].join(',');
+  });
+</script>`);
+
 const dir = mkdtempSync(join(tmpdir(), 'og-'));
-try {
-  const page = join(dir, 'og.html');
-  const shot = join(dir, 'og.png');
-  writeFileSync(page, html);
-  execFileSync(
-    chrome,
-    [
-      '--headless',
-      '--no-sandbox',
-      '--disable-gpu',
-      '--hide-scrollbars',
-      `--user-data-dir=${join(dir, 'profile')}`,
-      '--force-device-scale-factor=1',
-      '--window-size=1200,630',
-      '--virtual-time-budget=5000',
-      `--screenshot=${shot}`,
-      `file://${page}`,
-    ],
-    { stdio: 'ignore' },
-  );
-  const out = join(root, 'src/assets/og.png');
+const flags = [
+  '--headless',
+  '--no-sandbox',
+  '--disable-gpu',
+  '--hide-scrollbars',
+  `--user-data-dir=${join(dir, 'profile')}`,
+  '--force-device-scale-factor=1',
+  '--window-size=1200,630',
+  '--virtual-time-budget=5000',
+];
+const shoot = (name, page) => {
+  const file = join(dir, `${name}.html`);
+  const shot = join(dir, `${name}.png`);
+  writeFileSync(file, page);
+  execFileSync(chrome, [...flags, `--screenshot=${shot}`, `file://${file}`], {
+    stdio: 'ignore',
+  });
+  const out = join(root, `src/assets/${name}.png`);
   copyFileSync(shot, out);
   console.log(`✓ ${out}`);
+  return file;
+};
+try {
+  shoot('og', full);
+  const page = shoot('og-base', base);
+  const dom = execFileSync(chrome, [...flags, '--dump-dom', `file://${page}`], {
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).toString();
+  const m = /data-slot="([\d.,]+)"/.exec(dom);
+  if (!m) throw new Error('photo slot not found in the rendered page');
+  const [x, y, w, h] = m[1].split(',').map((n) => Math.round(Number(n)));
+  const out = join(root, 'src/assets/og-slot.json');
+  writeFileSync(out, `${JSON.stringify({ x, y, w, h })}\n`);
+  console.log(`✓ ${out} (${x}, ${y}, ${w}×${h})`);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

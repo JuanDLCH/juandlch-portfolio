@@ -9,6 +9,7 @@ import type { Env } from './env';
 import { json, origins } from './http';
 import { bogotaDay, runInsights, windowOf } from './insights';
 import { labDb } from './metrics';
+import { photoSource, photoState, savePhoto } from './media';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
@@ -426,11 +427,30 @@ async function dayDetail(db: D1Database, day: string) {
   };
 }
 
+/** A state change: only from the dashboard's own pages. */
+const sameOrigin = (req: Request, env: Env, url: URL) => {
+  const origin = req.headers.get('Origin') ?? '';
+  return (
+    (origin === url.origin && origins(env).includes(origin)) ||
+    (env.ADMIN_DEV === '1' && url.hostname === 'localhost')
+  );
+};
+
 export async function admin(req: Request, env: Env) {
   if (!(await allowed(req, env))) return json({ error: 'forbidden' }, 403);
+  const url = new URL(req.url);
+  // The profile photo (worker/media.ts): KV, no database.
+  switch (`${req.method} ${url.pathname}`) {
+    case 'GET /admin/api/photo':
+      return photoState(env);
+    case 'GET /admin/api/photo/source':
+      return photoSource(env);
+    case 'PUT /admin/api/photo':
+      if (!sameOrigin(req, env, url)) return json({ error: 'origin' }, 403);
+      return savePhoto(req, env);
+  }
   const db = await labDb(env);
   if (!db) return json({ error: 'no_db' }, 503);
-  const url = new URL(req.url);
   const day = url.searchParams.get('day') ?? '';
   switch (`${req.method} ${url.pathname}`) {
     case 'GET /admin/api/overview': {
@@ -452,11 +472,7 @@ export async function admin(req: Request, env: Env) {
       if (!DAY.test(day)) return json({ error: 'bad_request' }, 400);
       return json(await dayDetail(db, day));
     case 'POST /admin/api/rerun': {
-      // A state change: only from the dashboard's own pages.
-      const origin = req.headers.get('Origin') ?? '';
-      if (origin !== url.origin || !origins(env).includes(origin))
-        if (!(env.ADMIN_DEV === '1' && url.hostname === 'localhost'))
-          return json({ error: 'origin' }, 403);
+      if (!sameOrigin(req, env, url)) return json({ error: 'origin' }, 403);
       if (!DAY.test(day) || day >= bogotaDay(Date.now()))
         return json({ error: 'bad_request' }, 400);
       await runInsights(env, day);

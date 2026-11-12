@@ -11,6 +11,7 @@ import type { WorldMap } from '../../lab/insights/world';
 import { OWNER } from '../../scripts/hit';
 import { setLang, setTheme } from '../../scripts/prefs';
 import { I, Icon, iconBtn, label, mono, useHtml } from '../lab/ui';
+import PhotoEditor, { type OgCard } from './PhotoEditor';
 
 type Row = Record<string, string | number | null>;
 interface Overview {
@@ -1402,7 +1403,14 @@ function DayView({
   );
 }
 
-export default function AdminApp({ map }: { map: WorldMap }) {
+export default function AdminApp({
+  map,
+  ogCard,
+}: {
+  map: WorldMap;
+  /** The link preview's base, for the photo editor. */
+  ogCard: OgCard;
+}) {
   const { es, dark } = useHtml();
   const lang: Lang = es ? 'es' : 'en';
   const x = ADMIN[lang];
@@ -1431,6 +1439,7 @@ export default function AdminApp({ map }: { map: WorldMap }) {
   const [err, setErr] = useState('');
   const [day, setDay] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [photo, setPhoto] = useState(false);
   // Each answer keeps the range it's for: only the current range's shows.
   const [trafficOf, setTrafficOf] = useState<{
     q: string;
@@ -1611,6 +1620,9 @@ export default function AdminApp({ map }: { map: WorldMap }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={btn} onClick={() => setPhoto(true)}>
+            {x.photo.open}
+          </button>
           {(['en', 'es'] as const).map((l) => (
             <button
               key={l}
@@ -1910,6 +1922,13 @@ export default function AdminApp({ map }: { map: WorldMap }) {
             />
           )}
         </>
+      )}
+      {photo && (
+        <PhotoEditor
+          x={x.photo}
+          card={ogCard}
+          onClose={() => setPhoto(false)}
+        />
       )}
     </main>
   );

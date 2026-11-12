@@ -9,6 +9,7 @@ import { admin } from './admin';
 import { cv, liveCv } from './cv';
 import { profileText } from '../src/lab/chat/profile';
 import { hit } from './hits';
+import { media, versioned } from './media';
 import { responses, startChat, transcription } from './chat';
 import { ipHash, json, origins, refuse, turnstileOk } from './http';
 import { runInsights } from './insights';
@@ -162,11 +163,16 @@ export default {
     if (url.pathname.startsWith('/admin/api/')) return admin(req, env);
     // The CV PDFs, from the CV repo (worker/cv.ts).
     if (url.pathname.startsWith('/cv/')) return cv(req, env, ctx);
+    // The profile photo and link preview, uploaded from the dashboard.
+    if (url.pathname.startsWith('/media/')) return media(req, env);
     const api = url.pathname.startsWith('/api/');
-    if (!api)
-      return (
-        env.ASSETS?.fetch(req) ?? new Response('Not found', { status: 404 })
-      );
+    if (!api) {
+      const page = await env.ASSETS?.fetch(req);
+      // The shareable pages (run_worker_first): versioned link preview.
+      return page
+        ? versioned(page, env)
+        : new Response('Not found', { status: 404 });
+    }
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     // Same-origin only: the site's own pages.
     if (!origins(env).includes(req.headers.get('Origin') ?? ''))

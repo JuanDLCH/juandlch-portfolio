@@ -1,9 +1,8 @@
 ---
 import { CONTACT } from '../lab/chat/contact';
-import { Image } from 'astro:assets';
 import T from './T.astro';
 import { attrs, type Content } from '../i18n';
-import photo from '../assets/photo.png';
+import { HERO_WIDTHS, heroName } from '../lab/media';
 import CornerMarks from './CornerMarks.astro';
 import Waveform from './Waveform.astro';
 
@@ -11,6 +10,7 @@ interface Props {
   x: Content['x'];
 }
 const { x } = Astro.props;
+const photoAlt = attrs({ alt: x.photoAlt });
 const stages = [
   [x.stUser, x.stSpeech],
   ['STT', x.stStt],
@@ -22,16 +22,19 @@ const stages = [
 <section id="top" class="pt-block pb-section">
   <div class="flex flex-wrap items-end gap-x-gutter gap-y-6 narrow:items-start mob:grid mob:grid-cols-[auto_minmax(0,1fr)] mob:items-end mob:gap-x-4 mob:gap-y-3.5">
     <div class="jd-rise relative aspect-[4/5] w-photo flex-none mob:col-start-1 mob:row-span-2 mob:row-start-1 mob:w-[clamp(72px,24vw,112px)]">
-      <Image
-        src={photo}
-        {...attrs({ alt: x.photoAlt })}
-        width={340}
-        height={425}
-        widths={[170, 255, 340]}
+      {/* Live from the dashboard (worker/media.ts): no deploy to change it. */}
+      <img
+        src={`/media/${heroName(340)}`}
+        srcset={HERO_WIDTHS.map((w) => `/media/${heroName(w)} ${w}w`).join(
+          ', ',
+        )}
         sizes="170px"
-        format="webp"
-        quality={82}
+        alt={photoAlt.alt}
+        data-i18n-attrs={photoAlt['data-i18n-attrs']}
+        width="340"
+        height="425"
         loading="eager"
+        decoding="async"
         fetchpriority="high"
         class="border-line2 size-full border object-cover"
       />
