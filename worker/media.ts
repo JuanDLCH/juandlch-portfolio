@@ -22,6 +22,7 @@ import {
 // older ones are deleted.
 const KEY = (v: string, name: string) => `media:${v}:${name}`;
 const SOURCE = 'source.jpg';
+const LEGACY_OG = 'og.jpg';
 const CURRENT = 'media:current';
 const VERSION = /^[0-9a-z]{1,16}$/;
 interface Current {
@@ -63,21 +64,28 @@ const headers = (type: string, source: string, etag?: string) => ({
 export async function media(req: Request, env: Env) {
   if (req.method !== 'GET' && req.method !== 'HEAD')
     return new Response(null, { status: 405 });
-  const name = new URL(req.url).pathname.slice('/media/'.length);
+  const path = new URL(req.url).pathname.slice('/media/'.length);
+  // The single preview from before there were four: links shared then keep
+  // naming it, so it serves that upload's own copy (stored under its
+  // version) or else the default card.
+  const legacy = path === LEGACY_OG;
+  const name = legacy ? OG_DEFAULT : path;
   const type = MEDIA[name];
   if (!type) return new Response('Not found', { status: 404 });
 
   // A versioned URL (the link preview's `?v=`) gets that version, whatever
   // this isolate thinks is current; otherwise the current one.
-  const read = (v: string) =>
-    env.MEDIA?.getWithMetadata<Meta>(KEY(v, name), {
+  const read = (v: string, key = name) =>
+    env.MEDIA?.getWithMetadata<Meta>(KEY(v, key), {
       type: 'arrayBuffer',
     }).catch((err: unknown) => {
-      console.error(`media ${name}: ${String(err)}`);
+      console.error(`media ${key}: ${String(err)}`);
       return null;
     }) ?? null;
   const asked = new URL(req.url).searchParams.get('v');
-  let stored = asked && VERSION.test(asked) ? await read(asked) : null;
+  const wanted = asked && VERSION.test(asked) ? asked : null;
+  let stored = wanted && legacy ? await read(wanted, LEGACY_OG) : null;
+  if (!stored?.value && wanted) stored = await read(wanted);
   if (!stored?.value) {
     const v = await currentVersion(env);
     stored = v ? await read(v) : null;
@@ -94,8 +102,8 @@ export async function media(req: Request, env: Env) {
     });
   }
 
-  const path = (await bundled(req, env))?.[name];
-  const res = path ? await env.ASSETS?.fetch(new URL(path, req.url)) : null;
+  const copy = (await bundled(req, env))?.[name];
+  const res = copy ? await env.ASSETS?.fetch(new URL(copy, req.url)) : null;
   if (!res?.ok) return new Response('Not found', { status: 404 });
   return new Response(req.method === 'HEAD' ? null : res.body, {
     headers: headers(res.headers.get('Content-Type') ?? type, 'bundled'),
