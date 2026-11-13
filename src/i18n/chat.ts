@@ -154,6 +154,8 @@ const EN = {
   },
   meetingHint:
     'In the booking form, tell me briefly what it’s about (a freelance project, a job offer, technical consulting…). Optional, but it makes it more likely I accept.',
+  meetingHintServices:
+    'In the booking form, tell me briefly what it’s about (your project, an idea, technical consulting…). Optional, but it makes it more likely I accept.',
   noKeyBanner: 'Add your {p} API key to run the chat. Nothing is stored.',
   addKeys: 'Add keys',
   conversation: 'Conversation',
@@ -186,6 +188,7 @@ const EN = {
   toolsWord: 'tools',
   suggestions: 'Suggested messages',
   attachSuggestion: 'Attach a job post',
+  attachProject: 'Attach your project idea',
   toolUsed: 'tool used',
   toolsUsed: 'tools used',
   usage: 'Session usage',
@@ -441,6 +444,8 @@ const ES: typeof EN = {
   },
   meetingHint:
     'En el formulario de reserva cuéntame brevemente de qué se trata (un proyecto freelance, una oferta laboral, una asesoría técnica…). Es opcional, pero aumenta la probabilidad de que acepte.',
+  meetingHintServices:
+    'En el formulario de reserva cuéntame brevemente de qué se trata (tu proyecto, una idea, una asesoría técnica…). Es opcional, pero aumenta la probabilidad de que acepte.',
   noKeyBanner: 'Agrega tu API key de {p} para usar el chat. No se guarda nada.',
   addKeys: 'Agregar llaves',
   conversation: 'Conversación',
@@ -474,6 +479,7 @@ const ES: typeof EN = {
   toolsWord: 'herramientas',
   suggestions: 'Mensajes sugeridos',
   attachSuggestion: 'Adjunta una oferta',
+  attachProject: 'Adjunta la idea de tu proyecto',
   toolUsed: 'herramienta usada',
   toolsUsed: 'herramientas usadas',
   usage: 'Uso de la sesión',

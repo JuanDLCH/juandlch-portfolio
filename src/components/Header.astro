@@ -3,23 +3,39 @@ import { attrs, pick, type Content } from '../i18n';
 import T from './T.astro';
 import ThemeToggle from './ThemeToggle';
 import { CV_PDF_EN as cvEn, CV_PDF_ES as cvEs } from '../lab/chat/cv';
+import { CONTACT } from '../lab/chat/contact';
+import type { SiteMode } from '../lab/site';
 
 interface Props {
   x: Content['x'];
+  mode?: SiteMode;
 }
-const { x } = Astro.props;
-// Each link stays active across the sections it groups.
-const links = [
-  { href: '#work', label: x.navWork, sections: 'work' },
-  { href: '#lab', label: x.navLab, sections: 'lab' },
-  { href: '#rag', label: x.navExpertise, sections: 'rag stack' },
-  {
-    href: '#about',
-    label: x.navAbout,
-    sections: 'about principles certifications',
-  },
-  { href: '#contact', label: x.navContact, sections: 'contact' },
-];
+const { x, mode = 'hire' } = Astro.props;
+// Each link stays active across the sections it groups. Services mode leads
+// with the services and puts contact first (the CV moves to the menu and
+// the footer).
+const about = {
+  href: '#about',
+  label: x.navAbout,
+  sections: 'about principles certifications',
+};
+const contact = { href: '#contact', label: x.navContact, sections: 'contact' };
+const links =
+  mode === 'services'
+    ? [
+        { href: '#services', label: x.navServices, sections: 'services' },
+        { href: '#lab', label: x.navLab, sections: 'lab' },
+        { href: '#work', label: x.navWork, sections: 'work rag stack' },
+        about,
+        contact,
+      ]
+    : [
+        { href: '#work', label: x.navWork, sections: 'work' },
+        { href: '#lab', label: x.navLab, sections: 'lab' },
+        { href: '#rag', label: x.navExpertise, sections: 'rag stack' },
+        about,
+        contact,
+      ];
 // Active state comes from <html data-lang>, so it is right before any JS runs.
 // The CV in each language; the page's language is listed first.
 const cvs = [
@@ -77,31 +93,42 @@ const langBtn =
       ))}
     </nav>
     <div class="mono ml-2 flex items-center gap-2 text-[13px] tracking-[0.06em] uppercase narrow:ml-1 narrow:gap-1.5 narrow:text-xs mob:ml-auto">
-      <details data-cv class="group relative mob:hidden">
-        <summary
-          {...attrs({ 'aria-label': x.cvMenu })}
-          class="border-line2 block cursor-pointer list-none border px-3.5 py-2 whitespace-nowrap narrow:px-2.5 [&::-webkit-details-marker]:hidden group-open:border-accent group-open:text-accent"
+      {mode === 'services' ? (
+        <a
+          href={CONTACT.booking ?? '#contact'}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="jd-fill bg-accent !text-on-accent block px-3.5 py-2 whitespace-nowrap no-underline narrow:px-2.5 mob:hidden"
         >
-          <T v={x.navCv} />
-        </summary>
-        <div class="border-line2 bg-bg absolute top-full right-0 z-10 mt-1.5 flex min-w-44 flex-col border p-1 shadow-lg">
-          {cvs.map((cv) => (
-            <a
-              href={cv.href}
-              download={cv.file}
-              hreflang={cv.lang}
-              data-cv-link
-              class:list={[
-                'hover:bg-panel focus-visible:bg-panel flex items-center justify-between gap-4 px-3 py-2.5 no-underline',
-                cv.lang === 'es' && cvFirst,
-              ]}
-            >
-              <span>{cv.label}</span>
-              <span class="text-muted text-[11px]">PDF ↓</span>
-            </a>
-          ))}
-        </div>
-      </details>
+          <T v={x.bookCallShort} />
+        </a>
+      ) : (
+        <details data-cv class="group relative mob:hidden">
+          <summary
+            {...attrs({ 'aria-label': x.cvMenu })}
+            class="border-line2 block cursor-pointer list-none border px-3.5 py-2 whitespace-nowrap narrow:px-2.5 [&::-webkit-details-marker]:hidden group-open:border-accent group-open:text-accent"
+          >
+            <T v={x.navCv} />
+          </summary>
+          <div class="border-line2 bg-bg absolute top-full right-0 z-10 mt-1.5 flex min-w-44 flex-col border p-1 shadow-lg">
+            {cvs.map((cv) => (
+              <a
+                href={cv.href}
+                download={cv.file}
+                hreflang={cv.lang}
+                data-cv-link
+                class:list={[
+                  'hover:bg-panel focus-visible:bg-panel flex items-center justify-between gap-4 px-3 py-2.5 no-underline',
+                  cv.lang === 'es' && cvFirst,
+                ]}
+              >
+                <span>{cv.label}</span>
+                <span class="text-muted text-[11px]">PDF ↓</span>
+              </a>
+            ))}
+          </div>
+        </details>
+      )}
       <div
         role="group"
         {...attrs({ 'aria-label': x.langGroup })}

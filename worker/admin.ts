@@ -10,6 +10,7 @@ import { json, origins } from './http';
 import { bogotaDay, runInsights, windowOf } from './insights';
 import { labDb } from './metrics';
 import { photoSource, photoState, savePhoto } from './media';
+import { saveSettings, settingsState } from './settings';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86_400_000;
@@ -439,8 +440,14 @@ const sameOrigin = (req: Request, env: Env, url: URL) => {
 export async function admin(req: Request, env: Env) {
   if (!(await allowed(req, env))) return json({ error: 'forbidden' }, 403);
   const url = new URL(req.url);
-  // The profile photo (worker/media.ts): KV, no database.
+  // The profile photo (worker/media.ts) and the site's mode
+  // (worker/settings.ts): KV, no database.
   switch (`${req.method} ${url.pathname}`) {
+    case 'GET /admin/api/settings':
+      return settingsState(env);
+    case 'PUT /admin/api/settings':
+      if (!sameOrigin(req, env, url)) return json({ error: 'origin' }, 403);
+      return saveSettings(req, env);
     case 'GET /admin/api/photo':
       return photoState(env);
     case 'GET /admin/api/photo/source':

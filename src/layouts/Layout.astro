@@ -1,29 +1,68 @@
 ---
 import { ClientRouter } from 'astro:transitions';
 import '../styles/global.css';
-import { OG_H, OG_NAME, OG_W } from '../lab/media';
+import { OG_DEFAULT, OG_H, OG_W } from '../lab/media';
+import DevSiteSwitch from '../components/DevSiteSwitch.astro';
 
 interface Props {
   title: string | { en: string; es: string };
   description: string;
   /** Title of link previews; defaults to the English tab title. */
   shareTitle?: string;
+  /** The preview's title and description in Spanish: the Worker swaps them
+   * in (`data-es`) when the shared link asks for Spanish (`/es`,
+   * `?lang=es`). */
+  shareEs?: { title: string; description: string };
   /** Private pages (the dashboard): not indexed and not counted. */
   noindex?: boolean;
   /** Structured data for search engines (JSON-LD), e.g. the landing's Person. */
   schema?: Record<string, unknown>;
+  /** Public path, when the page is served at another URL (the services
+   * landing, served at / by the Worker). */
+  path?: string;
 }
-const { title, description, shareTitle, noindex = false, schema } = Astro.props;
+const {
+  title,
+  description,
+  shareTitle,
+  shareEs,
+  noindex = false,
+  schema,
+  path,
+} = Astro.props;
 const titles = typeof title === 'string' ? { en: title, es: title } : title;
 // Link previews (Open Graph, Twitter card) need absolute URLs.
-const url = new URL(Astro.url.pathname, Astro.site);
+const url = new URL(path ?? Astro.url.pathname, Astro.site);
 // The preview is live too (uploaded from /admin, served by worker/media.ts).
-const image = new URL(`/media/${OG_NAME}`, Astro.site);
-const imageAlt =
-  'Juan Diego Londoño, AI Engineer: “I build AI that listens, reasons and acts — inside real software.”';
+// The Worker swaps this card for the one of the site's mode and the link's
+// language (versioned in worker/media.ts).
+const image = new URL(`/media/${OG_DEFAULT}`, Astro.site);
+const imageAlt = {
+  en: 'Juan Diego Londoño, AI Engineer in Medellín, Colombia',
+  es: 'Juan Diego Londoño, ingeniero de IA en Medellín, Colombia',
+};
 // Cloudflare Web Analytics (cookieless page views). Set only in production
 // builds, so dev and previews don't count.
 const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
+// Dev only: the local site-mode switch (DevSiteSwitch.astro), applied before
+// paint. In production the Worker writes these attributes and serves the
+// services landing at / (worker/index.ts, worker/media.ts).
+const devScript = import.meta.env.DEV
+  ? `(() => {
+  const apply = () => {
+    const m = document.cookie.match(/(?:^|;\\s*)jd-dev-site=(hire|services)\\.(open|closed)/);
+    if (!m) return;
+    const html = document.documentElement;
+    html.dataset.mode = m[1];
+    html.dataset.jobOffers = m[1] === 'hire' ? 'open' : m[2];
+    const rest = location.search + location.hash;
+    if (m[1] === 'services' && location.pathname === '/') location.replace('/services' + rest);
+    if (m[1] === 'hire' && location.pathname === '/services') location.replace('/' + rest);
+  };
+  apply();
+  document.addEventListener('astro:after-swap', apply);
+})();`
+  : '';
 ---
 
 <html lang="en" data-lang="en">
@@ -37,20 +76,40 @@ const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="JuanDLCH" />
     <meta property="og:url" content={url} />
-    <meta property="og:title" content={shareTitle ?? titles.en} />
-    <meta property="og:description" content={description} />
+    <meta
+      property="og:title"
+      content={shareTitle ?? titles.en}
+      data-es={shareEs?.title}
+    />
+    <meta
+      property="og:description"
+      content={description}
+      data-es={shareEs?.description}
+    />
     <meta property="og:image" content={image} />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content={String(OG_W)} />
     <meta property="og:image:height" content={String(OG_H)} />
-    <meta property="og:image:alt" content={imageAlt} />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:image:alt" content={imageAlt.en} data-es={imageAlt.es} />
+    <meta property="og:locale" content="en_US" data-es="es_CO" />
+    <meta property="og:locale:alternate" content="es_CO" data-es="en_US" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={shareTitle ?? titles.en} />
-    <meta name="twitter:description" content={description} />
+    <meta
+      name="twitter:title"
+      content={shareTitle ?? titles.en}
+      data-es={shareEs?.title}
+    />
+    <meta
+      name="twitter:description"
+      content={description}
+      data-es={shareEs?.description}
+    />
     <meta name="twitter:image" content={image} />
-    <meta name="twitter:image:alt" content={imageAlt} />
+    <meta
+      name="twitter:image:alt"
+      content={imageAlt.en}
+      data-es={imageAlt.es}
+    />
     <meta name="author" content="Juan Diego Londoño" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" data-icon />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -59,6 +118,7 @@ const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
       href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    {devScript && <script is:inline set:html={devScript} />}
     <title data-title={JSON.stringify(titles)}>{titles.en}</title>
     {schema && (
       <script
@@ -129,6 +189,7 @@ const beacon = noindex ? undefined : import.meta.env.PUBLIC_CF_BEACON_TOKEN;
   </head>
   <body>
     <slot />
+    {import.meta.env.DEV && <DevSiteSwitch />}
     <script>
       import '../scripts/prefs';
       import '../scripts/hit';

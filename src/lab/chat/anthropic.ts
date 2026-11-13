@@ -2,7 +2,8 @@
 // Loaded through turn.ts on the first message.
 import type Anthropic from '@anthropic-ai/sdk';
 import type { ChatItem, ChatSession, UserInput } from '../store';
-import { MODELS, caseEffort, type ChatCase } from './cases';
+import { MODELS, caseEffort, caseSystem, type ChatCase } from './cases';
+import { pageSettings } from '../site-page';
 import { CLIENT_TOOLS } from './tools';
 import {
   PAGES_DROPPED,
@@ -133,7 +134,7 @@ export async function runTurn(
         {
           model: modelId,
           max_tokens: c.maxTokens,
-          system: c.system,
+          system: caseSystem(c, pageSettings()),
           messages: api,
           ...(tools.length ? { tools } : {}),
           output_config: { effort },

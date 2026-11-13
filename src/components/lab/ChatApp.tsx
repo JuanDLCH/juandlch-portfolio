@@ -22,6 +22,7 @@ import {
   BYOK,
   caseEffort,
   caseModel,
+  caseSuggestions,
   caseTools,
   type ChatCase,
   type Provider,
@@ -92,6 +93,8 @@ import {
   usePhone,
 } from './ui';
 import { CONTACT } from '../../lab/chat/contact';
+import { DEFAULT_SETTINGS } from '../../lab/site';
+import { pageSettings } from '../../lab/site-page';
 import {
   $chatLeft,
   CHAT_MSGS_PER_DAY,
@@ -188,6 +191,19 @@ export default function ChatApp({
   const busy = live(useStore($busy), false);
   const c = CASES.find((k) => k.id === (only ?? caseId)) ?? CASES[0];
   const session = sessions[c.id] ?? emptySession();
+  // A link to one demo (the services landing's "Try the demo": ?case=order)
+  // opens it; the parameter is dropped from the URL right away.
+  useEffect(() => {
+    const url = new URL(location.href);
+    const want = url.searchParams.get('case');
+    if (!want) return;
+    if (!only && CASES.some((k) => k.id === want)) $caseId.set(want);
+    url.searchParams.delete('case');
+    history.replaceState(history.state, '', url);
+  }, [only]);
+  // The site's mode (Worker-marked on <html>) picks the case's suggestions.
+  const settings = live(pageSettings(), DEFAULT_SETTINGS);
+  const suggestions = caseSuggestions(c, settings);
   const draft = drafts[c.id] ?? '';
   const files = attachments[c.id] ?? [];
   const hasInput = draft.trim().length > 0 || files.length > 0;
@@ -1173,13 +1189,13 @@ export default function ChatApp({
                 className="hidden"
                 onChange={(e) => void onFiles(e.target.files)}
               />
-              {session.items.length === 0 && c.suggestions.length > 0 && (
+              {session.items.length === 0 && suggestions.length > 0 && (
                 <div
                   role="group"
                   aria-label={x.suggestions}
                   className="mob:flex-nowrap mob:overflow-x-auto mob:-mx-2.5 mob:px-2.5 mb-2 flex flex-wrap gap-1.5"
                 >
-                  {c.suggestions.map((sg) => {
+                  {suggestions.map((sg) => {
                     const text = pick(sg.text, es);
                     return (
                       <button
@@ -1194,7 +1210,11 @@ export default function ChatApp({
                         className="border-line2 bg-panel text-body hover:border-accent hover:text-ink mob:h-9 inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 border px-2.5 text-[12px] whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {sg.attach && <Icon d={I.clip} size={13} />}
-                        {sg.attach ? x.attachSuggestion : text}
+                        {sg.attach
+                          ? settings.mode === 'services'
+                            ? x.attachProject
+                            : x.attachSuggestion
+                          : text}
                       </button>
                     );
                   })}

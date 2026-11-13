@@ -9,11 +9,12 @@
 //   forwarded, and settled to its real cost when its usage streams by.
 // - POST /api/chat/v1/audio/transcriptions: voice notes (the transcript counts
 //   as a message once sent).
-import { CASES } from '../src/lab/chat/cases';
+import { CASES, caseSystem } from '../src/lab/chat/cases';
 import { functionTool } from '../src/lab/chat/tool-defs';
 import type { ChatError, Env } from './env';
 import { ipHash, json, refuse, turnstileOk } from './http';
 import { countryOf, saveMessage, track } from './metrics';
+import { siteSettingsFor } from './settings';
 import { chatUsd, chatWorstUsd, noteUsd, type TextUsage } from './prices';
 
 const OPENAI = 'https://api.openai.com/v1';
@@ -260,7 +261,7 @@ export async function responses(req: Request, env: Env, ctx: ExecutionContext) {
   const model = c.models.openai;
   const pinned = JSON.stringify({
     model,
-    instructions: c.system,
+    instructions: caseSystem(c, await siteSettingsFor(req, env)),
     input: body.input,
     ...(tools.length ? { tools } : {}),
     reasoning: { effort },

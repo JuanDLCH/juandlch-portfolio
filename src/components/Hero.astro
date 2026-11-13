@@ -6,12 +6,20 @@ import { getImage } from 'astro:assets';
 import { HERO_ASPECT, HERO_WIDTHS, heroName } from '../lab/media';
 import photo from '../assets/photo.png';
 import CornerMarks from './CornerMarks.astro';
+import type { SiteMode } from '../lab/site';
 import Waveform from './Waveform.astro';
 
 interface Props {
   x: Content['x'];
+  mode?: SiteMode;
 }
-const { x } = Astro.props;
+const { x, mode = 'hire' } = Astro.props;
+// Services mode: booking a call leads, and the first CTA goes to the services.
+const services = mode === 'services';
+const primaryBtn =
+  'jd-cvbtn jd-fill bg-accent !text-on-accent inline-flex min-h-10 items-center justify-center gap-2 px-4 text-sm font-semibold mob:min-h-12 mob:text-[15px] whitespace-nowrap no-underline';
+const secondaryBtn =
+  'jd-card border-accent text-accent inline-flex min-h-9 items-center justify-center gap-2 border px-4 text-[13px] font-medium mob:min-h-11 mob:text-sm whitespace-nowrap no-underline';
 const photoAlt = attrs({ alt: x.photoAlt });
 // The photo built with the site, in case /media/ can't be reached.
 const fallback = await getImage({
@@ -87,10 +95,7 @@ const stages = [
           </div>
         </div>
         <div class="flex flex-none flex-col gap-2 narrow:order-last narrow:flex-row narrow:flex-wrap mob:order-10 mob:flex-col mob:col-span-full mob:mt-1">
-          <a
-            href="/lab/voice"
-            class="jd-cvbtn jd-fill bg-accent !text-on-accent inline-flex min-h-10 items-center justify-center gap-2 px-4 text-sm font-semibold mob:min-h-12 mob:text-[15px] whitespace-nowrap no-underline"
-          >
+          <a href="/lab/voice" class={services ? secondaryBtn : primaryBtn}>
             <svg
               aria-hidden="true"
               width="16"
@@ -115,7 +120,10 @@ const stages = [
             href={CONTACT.booking ?? '#contact'}
             target="_blank"
             rel="noopener noreferrer"
-            class="jd-card border-accent text-accent inline-flex min-h-9 items-center justify-center gap-2 border px-4 text-[13px] font-medium mob:min-h-11 mob:text-sm whitespace-nowrap no-underline"
+            class:list={[
+              services ? primaryBtn : secondaryBtn,
+              services && 'order-first',
+            ]}
           >
             <svg
               aria-hidden="true"
@@ -202,7 +210,7 @@ const stages = [
       </p>
       <div class="mt-block flex flex-wrap gap-3">
         <a
-          href="#work"
+          href={services ? '#services' : '#work'}
           class="jd-fill bg-accent !text-on-accent inline-flex min-h-[44px] items-center gap-2.5 px-6 text-[15px] font-semibold no-underline mob:flex-[1_1_100%] mob:justify-center"
         >
           <T v={x.ctaWork} />{' '}

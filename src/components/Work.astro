@@ -6,15 +6,17 @@ import FlowDiagram from './FlowDiagram.astro';
 import SectionHeading from './SectionHeading.astro';
 
 interface Props {
+  /** Section number (the services landing orders them differently). */
+  n?: string;
   x: Content['x'];
   cases: Content['cases'];
 }
-const { x, cases } = Astro.props;
+const { x, cases, n = '01' } = Astro.props;
 ---
 
 <section id="work" class="border-line border-t py-section">
   <div class="flex flex-wrap items-baseline justify-between gap-3">
-    <SectionHeading n="01">
+    <SectionHeading n={n}>
       <T v={x.workTitle} />
     </SectionHeading>
     <span class="mono text-muted text-xs">

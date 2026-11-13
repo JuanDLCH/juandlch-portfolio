@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { CHAT, type ChatCopy } from '../../i18n/chat';
 import { CONTACT, contactInput } from '../../lab/chat/contact';
+import { pageSettings } from '../../lab/site-page';
 
 // Language and theme live on <html> (shared with the landing via prefs.ts).
 const subscribe = (cb: () => void) => {
@@ -173,7 +174,9 @@ export function ContactActions({
       </div>
       {CONTACT.booking && options.includes('meeting') && (
         <p className="text-muted m-0 text-[11px] leading-normal">
-          {x.meetingHint}
+          {pageSettings().mode === 'services'
+            ? x.meetingHintServices
+            : x.meetingHint}
         </p>
       )}
     </div>

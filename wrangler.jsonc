@@ -18,14 +18,18 @@
     // Unknown paths get the site's 404 page (src/pages/404.astro).
     "not_found_handling": "404-page",
     // The API is the Worker's; everything else is the static build.
-    // The shareable pages too, to version their link preview's URL
-    // (worker/media.ts, versioned).
+    // The shareable pages too, to version their link preview's URL and mark
+    // the site's mode (worker/media.ts, versioned); / serves the landing of
+    // the mode (index or services, worker/index.ts).
     "run_worker_first": [
       "/api/*",
       "/admin/api/*",
       "/cv/*",
       "/media/*",
       "/",
+      "/services",
+      "/es",
+      "/en",
       "/lab/*",
       "/privacy",
     ],
@@ -48,9 +52,10 @@
   // 00:10 Bogotá: metrics retention and the day's insights batch; hourly: the
   // insights moved along (worker/insights.ts). Keep the first in sync with
   // DAILY in worker/index.ts.
-  // The profile photo uploaded from /admin (worker/media.ts). No id: wrangler
-  // creates the namespace on the first deploy.
-  "kv_namespaces": [{ "binding": "MEDIA" }],
+  // The profile photo uploaded from /admin (worker/media.ts) and the site's
+  // mode (worker/settings.ts). No ids: wrangler creates the namespaces on
+  // the first deploy.
+  "kv_namespaces": [{ "binding": "MEDIA" }, { "binding": "SETTINGS" }],
   "triggers": { "crons": ["10 5 * * *", "40 * * * *"] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Quota", "VoiceCall"] }],
   "vars": {

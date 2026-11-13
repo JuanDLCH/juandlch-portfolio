@@ -7,7 +7,8 @@
 // every request, reasoning included (encrypted).
 import type OpenAI from 'openai';
 import type { ChatItem, ChatSession, UserInput } from '../store';
-import { BYOK, MODELS, caseEffort, type ChatCase } from './cases';
+import { BYOK, MODELS, caseEffort, caseSystem, type ChatCase } from './cases';
+import { pageSettings } from '../site-page';
 import {
   CaptchaError,
   LAB_API,
@@ -195,7 +196,7 @@ export async function runTurn(
       const stream = client.responses.stream(
         {
           model: modelId,
-          instructions: c.system,
+          instructions: caseSystem(c, pageSettings()),
           input: api,
           ...(tools.length ? { tools } : {}),
           reasoning: { effort },

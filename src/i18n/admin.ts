@@ -132,6 +132,20 @@ const EN = {
   conversation: 'Conversation',
   noReport: 'The report isn’t ready yet.',
   errorLabel: 'Last error',
+  site: {
+    title: 'Site mode',
+    sub: 'What the landing and both agents (the CV chat and Sophie) say about your availability. Live within a minute, no deploy.',
+    view: 'View the site',
+    mode: 'Mode',
+    modes: { hire: 'Job search', services: 'Services' },
+    offers: 'Job offers',
+    offerStates: { open: 'Open', closed: 'Not open' },
+    offersLocked:
+      'Looking for a job means open to offers: switch to Services to close them.',
+    saved: 'Saved. Every visitor sees it within a minute.',
+    error: 'Couldn’t save the setting.',
+    noStorage: 'No storage (SETTINGS KV): the site uses the defaults.',
+  },
   photo: {
     open: 'Profile photo',
     title: 'Profile photo',
@@ -148,6 +162,13 @@ const EN = {
     fromHero: 'Match the profile',
     heroPreview: 'In the hero',
     ogPreview: 'Link preview (LinkedIn, WhatsApp…)',
+    // One card per site mode and link language (/ or /es); all are saved.
+    ogVariants: {
+      'hire-en': 'Job search · EN',
+      'hire-es': 'Job search · ES',
+      'services-en': 'Services · EN',
+      'services-es': 'Services · ES',
+    },
     save: 'Save',
     saving: 'Saving…',
     saved:
@@ -296,6 +317,21 @@ const ES: AdminCopy = {
   conversation: 'Conversación',
   noReport: 'El reporte aún no está listo.',
   errorLabel: 'Último error',
+  site: {
+    title: 'Modo del sitio',
+    sub: 'Lo que la landing y los dos agentes (el chat del CV y Sophie) dicen de tu disponibilidad. Se aplica en menos de un minuto, sin deploy.',
+    view: 'Ver el sitio',
+    mode: 'Modo',
+    modes: { hire: 'Busco trabajo', services: 'Servicios' },
+    offers: 'Ofertas laborales',
+    offerStates: { open: 'Abierto', closed: 'No abierto' },
+    offersLocked:
+      'Buscar trabajo implica estar abierto a ofertas: cambia a Servicios para cerrarlas.',
+    saved: 'Guardado. Todos los visitantes lo ven en menos de un minuto.',
+    error: 'No se pudo guardar el ajuste.',
+    noStorage:
+      'Sin almacenamiento (KV SETTINGS): el sitio usa los valores por defecto.',
+  },
   photo: {
     open: 'Foto de perfil',
     title: 'Foto de perfil',
@@ -312,6 +348,12 @@ const ES: AdminCopy = {
     fromHero: 'Igual que el perfil',
     heroPreview: 'En el hero',
     ogPreview: 'Preview del enlace (LinkedIn, WhatsApp…)',
+    ogVariants: {
+      'hire-en': 'Busco trabajo · EN',
+      'hire-es': 'Busco trabajo · ES',
+      'services-en': 'Servicios · EN',
+      'services-es': 'Servicios · ES',
+    },
     save: 'Guardar',
     saving: 'Guardando…',
     saved:

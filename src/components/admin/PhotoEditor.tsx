@@ -12,21 +12,24 @@ import {
   MAX_ZOOM,
   MEDIA,
   OG_H,
-  OG_NAME,
+  OG_VARIANTS,
   OG_W,
   SOURCE_SIDE,
   centered,
   clampCrop,
   cropRect,
   heroName,
+  ogName,
   type Crop,
   type Crops,
+  type OgVariant,
 } from '../../lab/media';
 import { iconBtn, label, mono } from '../lab/ui';
 
 export interface OgCard {
-  /** The preview card with the photo slot empty (scripts/og-image.mjs). */
-  base: string;
+  /** The preview cards with the photo slot empty, one per site mode and
+   * language (scripts/og-image.mjs). */
+  bases: Record<OgVariant, string>;
   slot: { x: number; y: number; w: number; h: number };
 }
 type Tab = keyof Crops;
@@ -131,11 +134,13 @@ function OgPreview({
   img,
   crop,
   card,
+  variant,
   width,
 }: {
   img: HTMLImageElement;
   crop: Crop;
   card: OgCard;
+  variant: OgVariant;
   width: number;
 }) {
   const q = width / OG_W;
@@ -144,7 +149,7 @@ function OgPreview({
       className="border-line2 relative border"
       style={{ width, height: OG_H * q }}
     >
-      <img src={card.base} alt="" className="block size-full" />
+      <img src={card.bases[variant]} alt="" className="block size-full" />
       <Framed
         img={img}
         aspect={1}
@@ -161,6 +166,37 @@ function OgPreview({
   );
 }
 
+/** Picks which link preview card (site mode × language) to look at. */
+function OgVariants({
+  x,
+  variant,
+  set,
+}: {
+  x: AdminCopy['photo'];
+  variant: OgVariant;
+  set: (v: OgVariant) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1" role="group" aria-label={x.ogPreview}>
+      {OG_VARIANTS.map((v) => (
+        <button
+          key={v}
+          type="button"
+          aria-pressed={v === variant}
+          onClick={() => set(v)}
+          className={`${mono} border px-2 py-1 text-[11px] ${
+            v === variant
+              ? 'border-accent bg-accent text-on-accent'
+              : 'border-line2 text-muted hover:text-ink'
+          }`}
+        >
+          {x.ogVariants[v]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function PhotoEditor({
   x,
   card,
@@ -171,6 +207,8 @@ export default function PhotoEditor({
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  // Which card the previews show (every one is saved).
+  const [variant, setVariant] = useState<OgVariant>('services-en');
   const fileInput = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<
     'loading' | 'off' | 'empty' | 'ready' | 'saving' | 'saved'
@@ -339,13 +377,17 @@ export default function PhotoEditor({
         if (b.type !== 'image/webp') throw new Error(x.noWebp);
         form.append(heroName(width), b, heroName(width));
       }
-      const { c, ctx } = canvasOf(OG_W, OG_H);
-      ctx.drawImage(await loadImg(card.base), 0, 0, OG_W, OG_H);
+      // The same crop on every card (one per site mode and language).
       const or = cropRect(w, h, 1, crops.og);
       const s = card.slot;
-      ctx.filter = 'saturate(0.9)';
-      ctx.drawImage(img, or.sx, or.sy, or.sw, or.sh, s.x, s.y, s.w, s.h);
-      form.append(OG_NAME, await toBlob(c, 'image/jpeg', 0.9), OG_NAME);
+      for (const v of OG_VARIANTS) {
+        const { c, ctx } = canvasOf(OG_W, OG_H);
+        ctx.drawImage(await loadImg(card.bases[v]), 0, 0, OG_W, OG_H);
+        ctx.filter = 'saturate(0.9)';
+        ctx.drawImage(img, or.sx, or.sy, or.sw, or.sh, s.x, s.y, s.w, s.h);
+        const name = ogName(v);
+        form.append(name, await toBlob(c, 'image/jpeg', 0.9), name);
+      }
       form.append('source', src.blob, 'source.jpg');
       form.append('crops', JSON.stringify(crops));
       const res = await fetch('/admin/api/photo', {
@@ -421,7 +463,7 @@ export default function PhotoEditor({
                   className="border-line2 border object-cover"
                 />
                 <img
-                  src={`/media/${OG_NAME}${bust}`}
+                  src={`/media/${ogName(variant)}${bust}`}
                   alt=""
                   width={324}
                   height={170}
@@ -533,10 +575,12 @@ export default function PhotoEditor({
               </div>
               <div className="flex flex-col gap-1.5">
                 <span className={label}>{x.ogPreview}</span>
+                <OgVariants x={x} variant={variant} set={setVariant} />
                 <OgPreview
                   img={src.img}
                   crop={crops.og}
                   card={card}
+                  variant={variant}
                   width={Math.min(
                     420,
                     typeof window === 'undefined'

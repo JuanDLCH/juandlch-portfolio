@@ -3,6 +3,7 @@
 // answer and never sees a key or a token.
 import type { RealtimeSessionCreateRequest } from 'openai/resources/realtime/realtime';
 import { CONTACT_TOOL, voiceInstructions } from '../src/lab/voice/prompt';
+import type { SiteSettings } from '../src/lab/site';
 import type { Env } from './env';
 
 const API = 'https://api.openai.com/v1/realtime';
@@ -11,10 +12,11 @@ export const sessionConfig = (
   env: Env,
   profile: string,
   lang: 'en' | 'es',
+  settings: SiteSettings,
 ): RealtimeSessionCreateRequest => ({
   type: 'realtime',
   model: env.VOICE_MODEL,
-  instructions: voiceInstructions(profile, lang),
+  instructions: voiceInstructions(profile, lang, settings),
   output_modalities: ['audio'],
   // Spoken answers are short; this caps a runaway one.
   max_output_tokens: 600,

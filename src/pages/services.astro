@@ -1,0 +1,8 @@
+---
+// The landing in services mode (src/lab/site.ts). Not linked anywhere: the
+// Worker serves it at / when the dashboard switches the site to services
+// (worker/index.ts); /services itself is a noindex preview.
+import Home from '../components/Home.astro';
+---
+
+<Home mode="services" />

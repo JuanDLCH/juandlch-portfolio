@@ -10,7 +10,8 @@ import { adminProxy } from './scripts/admin-proxy.mjs';
 export default defineConfig({
   // Production origin: absolute URLs for link previews (og:image, canonical).
   site: 'https://juandlch.dev',
-  // Old per-language URLs keep working and pick the language.
+  // Per-language URLs pick the language. In production the Worker answers
+  // them first with a real 301 (crawlers don't follow these meta refreshes).
   redirects: {
     '/en': '/?lang=en',
     '/es': '/?lang=es',
