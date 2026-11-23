@@ -7,6 +7,7 @@ import { DOC_KINDS, READ_PAGES, TOOL_DEFS } from './tool-defs';
 import { IMAGE_TYPES } from '../attachments';
 import type { ChatSession } from '../store';
 import { CONTACT, CONTACT_OPTIONS, type ContactOption } from './contact';
+import { pageSettings } from '../site-page';
 import {
   CATEGORIES,
   LANGS,
@@ -681,15 +682,29 @@ const showContactOptions: ClientTool = {
       return 'topic must be a string of at most 80 characters';
     return null;
   },
-  run: async (i) => ({
-    shown: i.options,
-    ...((i.options as string[]).includes('meeting') && {
-      meeting: CONTACT.booking
-        ? 'The meeting button opens his booking page. Its form has a field to say what the meeting is about (a freelance project, a job offer, technical consulting…): optional, but it makes it more likely he accepts.'
-        : 'Booking is not available yet: the button shows "coming soon". Do not offer to book; suggest email or LinkedIn to arrange a call.',
-    }),
-    note: 'The buttons appear under your answer. Do not repeat the email address or links in your text.',
-  }),
+  run: async (i) => {
+    // Services mode takes no open call invitations: ContactActions drops the
+    // meeting button, so tell the model it wasn't shown.
+    if (
+      pageSettings().mode === 'services' &&
+      (i.options as string[]).includes('meeting')
+    )
+      return {
+        shown: (i.options as string[]).filter((o) => o !== 'meeting'),
+        meeting:
+          'Not shown: he does not take call invitations right now. The way to start is an email telling him about the project or what they need advice on; he replies there.',
+        note: 'The buttons appear under your answer. Do not repeat the email address or links in your text.',
+      };
+    return {
+      shown: i.options,
+      ...((i.options as string[]).includes('meeting') && {
+        meeting: CONTACT.booking
+          ? 'The meeting button opens his booking page. Its form has a field to say what the meeting is about (a freelance project, a job offer, technical consulting…): optional, but it makes it more likely he accepts.'
+          : 'Booking is not available yet: the button shows "coming soon". Do not offer to book; suggest email or LinkedIn to arrange a call.',
+      }),
+      note: 'The buttons appear under your answer. Do not repeat the email address or links in your text.',
+    };
+  },
   summary: (r) => (r as { shown: string[] }).shown.join(' · '),
 };
 

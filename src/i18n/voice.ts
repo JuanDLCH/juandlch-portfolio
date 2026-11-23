@@ -2,6 +2,7 @@
 // board of the design canvas. ES is typed as EN, so add every string to both.
 // `greeting` is also the script of the recorded greeting
 // (scripts/voice-greeting.mjs): regenerate the audio if it changes.
+import type { SiteMode } from '../lab/site';
 const EN = {
   back: 'Lab',
   backLabel: 'Back to the Lab',
@@ -86,6 +87,16 @@ const EN = {
   textChat: 'Chat with my CV',
   bookCall: 'Book a call',
   reachOut: 'Want to keep talking? Reach Juan Diego directly:',
+  // Services mode (voiceCopy): no open call invitations, visitors write.
+  sv: {
+    bookCall: 'Write to Juan Diego',
+    errors: {
+      limit_ip:
+        'You’ve used today’s call. Come back tomorrow, keep asking in the text chat, or write to Juan Diego.',
+      limit_day:
+        'A lot of people have talked to Sophie today, and she has used up her budget for the day. Please come back tomorrow, ask in the text chat, or write to Juan Diego.',
+    },
+  },
 };
 
 const ES: typeof EN = {
@@ -169,7 +180,27 @@ const ES: typeof EN = {
   bookCall: 'Agendar llamada',
   reachOut:
     '¿Quieres seguir la conversación? Escríbele a Juan Diego directamente:',
+  sv: {
+    bookCall: 'Escríbele a Juan Diego',
+    errors: {
+      limit_ip:
+        'Ya usaste tu llamada de hoy. Vuelve mañana, sigue preguntando en el chat de texto o escríbele a Juan Diego.',
+      limit_day:
+        'Hoy muchas personas han hablado con Sophie y ya se agotó su presupuesto del día. Vuelve mañana, pregunta en el chat de texto o escríbele a Juan Diego.',
+    },
+  },
 };
 
 export const VOICE = { en: EN, es: ES };
 export type VoiceCopy = typeof EN;
+const withSv = (c: VoiceCopy): VoiceCopy => ({
+  ...c,
+  ...c.sv,
+  errors: { ...c.errors, ...c.sv.errors },
+});
+/** The voice lab's copy by site mode and language: services mode applies
+ * `sv`. */
+export const VOICE_BY_MODE: Record<SiteMode, typeof VOICE> = {
+  hire: VOICE,
+  services: { en: withSv(EN), es: withSv(ES) },
+};

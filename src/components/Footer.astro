@@ -38,22 +38,28 @@ const icon = {
     </span>
   </p>
   <div class="mt-block flex flex-wrap gap-3">
+    {/* No open call invitations in services mode: the email button leads. */}
+    {mode !== 'services' && (
+      <a
+        href={CONTACT.booking ?? '#contact'}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="jd-fill bg-accent !text-on-accent inline-flex min-h-10 items-center gap-3 px-6 font-semibold no-underline mob:flex-[1_1_100%] mob:justify-center"
+      >
+        <svg {...icon} width={17} height={17}>
+          <rect x="3" y="5" width="18" height="16"></rect>
+          <path d="M3 10h18M8 3v4M16 3v4"></path>
+          <path d="M8 14h3v3H8z"></path>
+        </svg>
+        <T v={x.bookCall} />
+      </a>
+    )}
     <a
-      href={CONTACT.booking ?? '#contact'}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="jd-fill bg-accent !text-on-accent inline-flex min-h-10 items-center gap-3 px-6 font-semibold no-underline mob:flex-[1_1_100%] mob:justify-center"
-    >
-      <svg {...icon} width={17} height={17}>
-        <rect x="3" y="5" width="18" height="16"></rect>
-        <path d="M3 10h18M8 3v4M16 3v4"></path>
-        <path d="M8 14h3v3H8z"></path>
-      </svg>
-      <T v={x.bookCall} />
-    </a>
-    <a
-      href="mailto:juandiego0329@gmail.com"
-      class="jd-fill bg-ink !text-bg inline-flex min-h-10 items-center gap-3 px-6 font-semibold no-underline mob:flex-[1_1_100%] mob:justify-center"
+      href={`mailto:${CONTACT.email}`}
+      class:list={[
+        'jd-fill inline-flex min-h-10 items-center gap-3 px-6 font-semibold no-underline mob:flex-[1_1_100%] mob:justify-center',
+        mode === 'services' ? 'bg-accent !text-on-accent' : 'bg-ink !text-bg',
+      ]}
     >
       <svg {...icon}>
         <rect x="2.5" y="4.5" width="19" height="15"></rect>

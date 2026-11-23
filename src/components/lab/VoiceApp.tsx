@@ -8,7 +8,8 @@
 // introduces Sophie; the live agent doesn't repeat it.
 import { useEffect, useRef, useState } from 'react';
 import { CHAT } from '../../i18n/chat';
-import { VOICE, type VoiceCopy } from '../../i18n/voice';
+import { VOICE_BY_MODE, type VoiceCopy } from '../../i18n/voice';
+import { pageSettings } from '../../lab/site-page';
 import { CONTACT, contactInput } from '../../lab/chat/contact';
 import { WRAP_UP_S } from '../../lab/voice/prompt';
 import {
@@ -193,7 +194,10 @@ export default function VoiceApp() {
       .then(() => setCopied(true))
       .catch(() => {});
   const lang = es ? 'es' : 'en';
-  const x = VOICE[lang];
+  // Services mode: no call invitations, so the copy says to write instead.
+  const siteMode = hydrated ? pageSettings().mode : 'hire';
+  const services = siteMode === 'services';
+  const x = VOICE_BY_MODE[siteMode][lang];
 
   const [phase, setPhase] = useState<Phase>({ at: 'idle' });
   const [activity, setActivity] = useState<Activity>('listening');
@@ -951,8 +955,10 @@ export default function VoiceApp() {
                 {(ended === 'limit_ip' || ended === 'limit_day') &&
                   CONTACT.booking && (
                     <a
-                      href={CONTACT.booking}
-                      target="_blank"
+                      href={
+                        services ? `mailto:${CONTACT.email}` : CONTACT.booking
+                      }
+                      target={services ? undefined : '_blank'}
                       rel="noopener noreferrer"
                       className={`${mono} text-accent text-[11px] tracking-[0.06em] uppercase`}
                     >

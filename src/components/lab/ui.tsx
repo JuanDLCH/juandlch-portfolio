@@ -115,7 +115,12 @@ export function ContactActions({
   /** Centered under the content (the voice lab). */
   center?: boolean;
 }) {
-  const { options, topic, lang } = contactInput(input);
+  const { options: asked, topic, lang } = contactInput(input);
+  // Services mode takes no open call invitations: no meeting button.
+  const options =
+    pageSettings().mode === 'services'
+      ? asked.filter((o) => o !== 'meeting')
+      : asked;
   const x = lang ? CHAT[lang] : page;
   if (!options.length) return null;
   const btn =
@@ -174,9 +179,7 @@ export function ContactActions({
       </div>
       {CONTACT.booking && options.includes('meeting') && (
         <p className="text-muted m-0 text-[11px] leading-normal">
-          {pageSettings().mode === 'services'
-            ? x.meetingHintServices
-            : x.meetingHint}
+          {x.meetingHint}
         </p>
       )}
     </div>

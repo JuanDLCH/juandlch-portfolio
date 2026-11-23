@@ -167,7 +167,7 @@ const EN = {
   sv: {
     shareTitle: 'Juan Diego Londoño — AI for your business',
     shareDesc:
-      'Chatbots, voice agents and AI that automates your processes, built by an AI engineer in Medellín, Colombia, who ships to production. Try the live demos and book a call.',
+      'Chatbots, voice agents and AI that automates your processes, built by an AI engineer in Medellín, Colombia, who ships to production. Try the live demos and get in touch.',
     talkCv: 'Talk to my voice agent',
     heroA: 'AI for your business that ',
     heroB: 'answers, schedules and gets work done',
@@ -181,7 +181,12 @@ const EN = {
     footA: 'Have an idea or a process\nthat should ',
     footB: 'run itself?',
     sophieLines:
-      'Have an idea for your business? Tell me.|Want a chatbot that takes orders? Ask me how.|I can tell you what Juan Diego has built.|Curious how AI could save you time? Ask me.|Want to talk with him? I’ll help you book a call.',
+      'Have an idea for your business? Tell me.|Want a chatbot that takes orders? Ask me how.|I can tell you what Juan Diego has built.|Curious how AI could save you time? Ask me.|Want to work with him? I’ll tell you how to reach him.',
+    bookCall: 'Contact me',
+    bookCallShort: 'Contact me',
+    serviceTalk: 'Write to me',
+    servicesNote:
+      'Not sure what you need? Tell me about the problem and we’ll find the right fit.',
   },
   navServices: 'Services',
   servicesTitle: 'Services',
@@ -351,7 +356,7 @@ const ES: typeof EN = {
   sv: {
     shareTitle: 'Juan Diego Londoño — IA para tu negocio',
     shareDesc:
-      'Chatbots, agentes de voz e IA que automatiza tus procesos, hechos por un ingeniero de IA en Medellín, Colombia, que lleva sistemas a producción. Prueba las demos en vivo y agenda una llamada.',
+      'Chatbots, agentes de voz e IA que automatiza tus procesos, hechos por un ingeniero de IA en Medellín, Colombia, que lleva sistemas a producción. Prueba las demos en vivo y escríbeme.',
     talkCv: 'Habla con mi agente de voz',
     heroA: 'IA para tu negocio que ',
     heroB: 'responde, agenda y resuelve',
@@ -365,7 +370,12 @@ const ES: typeof EN = {
     footA: '¿Tienes una idea o un proceso\nque debería ',
     footB: 'andar solo?',
     sophieLines:
-      '¿Tienes una idea para tu negocio? Cuéntame.|¿Quieres un chatbot que tome pedidos? Pregúntame cómo.|Te cuento lo que Juan Diego ha construido.|¿Cómo te podría ahorrar tiempo la IA? Pregúntame.|¿Quieres hablar con él? Te ayudo a agendar.',
+      '¿Tienes una idea para tu negocio? Cuéntame.|¿Quieres un chatbot que tome pedidos? Pregúntame cómo.|Te cuento lo que Juan Diego ha construido.|¿Cómo te podría ahorrar tiempo la IA? Pregúntame.|¿Quieres trabajar con él? Te digo cómo contactarlo.',
+    bookCall: 'Contáctame',
+    bookCallShort: 'Contáctame',
+    serviceTalk: 'Escríbeme',
+    servicesNote:
+      '¿No sabes bien qué necesitas? Cuéntame el problema y encontramos la mejor opción.',
   },
   navServices: 'Servicios',
   servicesTitle: 'Servicios',

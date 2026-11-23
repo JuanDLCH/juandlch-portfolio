@@ -6,7 +6,7 @@ import {
   useState,
   type KeyboardEvent,
 } from 'react';
-import { CHAT, type ChatCopy } from '../../i18n/chat';
+import { CHAT, chatCopy, type ChatCopy } from '../../i18n/chat';
 import {
   $attachments,
   IMAGE_TYPES,
@@ -180,9 +180,13 @@ export default function ChatApp({
 
   const { es, dark } = useHtml();
   const phone = usePhone();
-  const x = es ? CHAT.es : CHAT.en;
   const hydrated = useHydrated();
   const live = <T,>(value: T, initial: T) => (hydrated ? value : initial);
+  // The site's mode (Worker-marked on <html>) picks the copy and the case's
+  // suggestions.
+  const settings = live(pageSettings(), DEFAULT_SETTINGS);
+  const services = settings.mode === 'services';
+  const x = chatCopy(es ? 'es' : 'en', settings.mode);
   const keys = live(useStore($keys), { anthropic: '', openai: '' });
   const caseId = live(useStore($caseId), CASES[0].id);
   const sessions = live(useStore($sessions), {});
@@ -201,8 +205,6 @@ export default function ChatApp({
     url.searchParams.delete('case');
     history.replaceState(history.state, '', url);
   }, [only]);
-  // The site's mode (Worker-marked on <html>) picks the case's suggestions.
-  const settings = live(pageSettings(), DEFAULT_SETTINGS);
   const suggestions = caseSuggestions(c, settings);
   const draft = drafts[c.id] ?? '';
   const files = attachments[c.id] ?? [];
@@ -904,7 +906,7 @@ export default function ChatApp({
             >
               {x.bookBtn}
             </span>
-            <Icon d={I.calendar} size={14} />
+            <Icon d={services ? I.mail : I.calendar} size={14} />
           </button>
           {only && (
             <button
@@ -1211,7 +1213,7 @@ export default function ChatApp({
                       >
                         {sg.attach && <Icon d={I.clip} size={13} />}
                         {sg.attach
-                          ? settings.mode === 'services'
+                          ? services
                             ? x.attachProject
                             : x.attachSuggestion
                           : text}
@@ -1472,7 +1474,7 @@ export default function ChatApp({
                   onClick={() => openInfo('book')}
                   className="border-accent text-accent inline-flex h-11 cursor-pointer items-center justify-center gap-2 border bg-transparent px-2 text-sm font-medium"
                 >
-                  <Icon d={I.calendar} size={14} />
+                  <Icon d={services ? I.mail : I.calendar} size={14} />
                   <span className="truncate">{x.bookBtn}</span>
                 </button>
                 <button
