@@ -1,5 +1,6 @@
 // Copy for the Multimodal Chat lab (src/components/lab/ChatApp.tsx).
 // `{p}` is replaced with the active provider's name, `{m}` with the model's.
+import type { SiteMode } from '../lab/site';
 const EN = {
   back: 'Lab',
   backLabel: 'Back to the Lab',
@@ -154,8 +155,6 @@ const EN = {
   },
   meetingHint:
     'In the booking form, tell me briefly what it’s about (a freelance project, a job offer, technical consulting…). Optional, but it makes it more likely I accept.',
-  meetingHintServices:
-    'In the booking form, tell me briefly what it’s about (your project, an idea, technical consulting…). Optional, but it makes it more likely I accept.',
   noKeyBanner: 'Add your {p} API key to run the chat. Nothing is stored.',
   addKeys: 'Add keys',
   conversation: 'Conversation',
@@ -292,6 +291,24 @@ const EN = {
   switchOk: 'Clear and switch',
   toLight: 'Switch to light mode',
   toDark: 'Switch to dark mode',
+  // Services mode (src/lab/site.ts, chatCopy): no open call invitations, so
+  // visitors write instead. Overrides the keys of the same name.
+  sv: {
+    introBodySite:
+      'A real agent grounded in my CV, case studies and portfolio, that cites its sources. It runs on my key, with a daily limit of 60 messages per visitor: plenty to try it. Have a project or want advice on an AI idea? Write to me.',
+    bookBtn: 'Contact me',
+    bookTitle: 'Contact me',
+    bookBody:
+      'The lab runs on my API key with a daily limit, enough to try every case. Have a project, or want advice on an AI idea or a system you’re building? Write to me and tell me about it.',
+    bookEmail: 'Email:',
+    errors: {
+      chatLimitIp:
+        'That’s today’s 60 messages on my key. Want to keep going? Write to Juan Diego, or talk to Sophie in the Voice Lab.',
+      chatLimitDay:
+        'A lot of people have tried this demo today, and it has used up its budget for the day. Please come back tomorrow, or write to Juan Diego.',
+    },
+    fixes: { book: 'Contact me' },
+  },
 };
 
 const ES: typeof EN = {
@@ -444,8 +461,6 @@ const ES: typeof EN = {
   },
   meetingHint:
     'En el formulario de reserva cuéntame brevemente de qué se trata (un proyecto freelance, una oferta laboral, una asesoría técnica…). Es opcional, pero aumenta la probabilidad de que acepte.',
-  meetingHintServices:
-    'En el formulario de reserva cuéntame brevemente de qué se trata (tu proyecto, una idea, una asesoría técnica…). Es opcional, pero aumenta la probabilidad de que acepte.',
   noKeyBanner: 'Agrega tu API key de {p} para usar el chat. No se guarda nada.',
   addKeys: 'Agregar llaves',
   conversation: 'Conversación',
@@ -584,7 +599,34 @@ const ES: typeof EN = {
   switchOk: 'Borrar y cambiar',
   toLight: 'Cambiar a modo claro',
   toDark: 'Cambiar a modo oscuro',
+  sv: {
+    introBodySite:
+      'Un agente real que responde desde mi CV, mis casos de estudio y mi portafolio, citando sus fuentes. Corre con mi llave, con un límite diario de 60 mensajes por visitante: suficiente para probarlo. ¿Tienes un proyecto o quieres asesoría sobre una idea de IA? Escríbeme.',
+    bookBtn: 'Contáctame',
+    bookTitle: 'Contáctame',
+    bookBody:
+      'El lab corre con mi API key y un límite diario, suficiente para probar cada caso. ¿Tienes un proyecto, o quieres asesoría sobre una idea de IA o un sistema que estás construyendo? Escríbeme y cuéntame.',
+    bookEmail: 'Correo:',
+    errors: {
+      chatLimitIp:
+        'Ya usaste los 60 mensajes de hoy con mi llave. ¿Quieres seguir? Escríbele a Juan Diego o habla con Sophie en el Voice Lab.',
+      chatLimitDay:
+        'Hoy muchas personas han probado esta demo y ya se agotó su presupuesto del día. Vuelve mañana, o escríbele a Juan Diego.',
+    },
+    fixes: { book: 'Contáctame' },
+  },
 };
 
 export const CHAT = { en: EN, es: ES };
 export type ChatCopy = typeof EN;
+/** The chat's copy for the site's mode: services mode applies `sv`. */
+export const chatCopy = (lang: 'en' | 'es', mode: SiteMode): ChatCopy => {
+  const c = CHAT[lang];
+  if (mode !== 'services') return c;
+  return {
+    ...c,
+    ...c.sv,
+    errors: { ...c.errors, ...c.sv.errors },
+    fixes: { ...c.fixes, ...c.sv.fixes },
+  };
+};

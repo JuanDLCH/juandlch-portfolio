@@ -1,6 +1,6 @@
 ---
 // Services mode only (src/lab/site.ts): what he builds for a business, each
-// card with its live demo in the lab (or the booking page, for consulting;
+// card with its live demo in the lab (or an email, for consulting;
 // the CV chat, for full stack),
 // then how he works with a client (Leading, in the slot).
 import type { Content } from '../i18n';
@@ -26,7 +26,8 @@ const icons = [
 // Full stack (the last card) links to the CV chat, which knows how this site
 // is built, instead of a demo.
 const FULL_STACK = '/lab/chat?case=meet';
-const booking = CONTACT.booking ?? '#contact';
+// No open call invitations in services mode: visitors write instead.
+const email = `mailto:${CONTACT.email}`;
 ---
 
 <section id="services" class="border-line border-t py-section">
@@ -82,10 +83,8 @@ const booking = CONTACT.booking ?? '#contact';
             <T v={s.body} />
           </p>
           <a
-            href={demo ? (s.href as string) : booking}
-            {...(demo
-              ? { 'data-astro-prefetch': 'hover' }
-              : { target: '_blank', rel: 'noopener noreferrer' })}
+            href={demo ? (s.href as string) : email}
+            {...(demo && { 'data-astro-prefetch': 'hover' })}
             class="mono text-accent mt-4 inline-flex items-center gap-2 self-start text-xs tracking-[0.06em] uppercase no-underline"
           >
             <T
@@ -107,12 +106,7 @@ const booking = CONTACT.booking ?? '#contact';
   </ul>
   <p class="text-muted mt-stack mb-0 text-sm leading-[1.55]">
     <T v={x.servicesNote} />{' '}
-    <a
-      href={booking}
-      target="_blank"
-      rel="noopener noreferrer"
-      class="text-accent"
-    >
+    <a href={email} class="text-accent">
       <T v={x.serviceTalk} /> →
     </a>
   </p>
