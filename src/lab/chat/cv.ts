@@ -151,17 +151,12 @@ export const CV: CvSection[] = [
             id: 'lead-llmops',
             cite: 'Lead AI Engineer: LLMOps',
             label: 'LLMOps',
-            text: 'Built evaluation agents that tested every change in a loop and logged and costed every LLM call (LangSmith, CloudWatch, Aurora), so model and prompt decisions were driven by latency, cost and quality data.',
+            text: 'Built evaluation agents that tested every change and logged and costed every LLM call (LangSmith, CloudWatch, Aurora), so model and prompt decisions followed latency, cost and quality data. Used AI-assisted development (Claude Code, Cursor) under strict human review of every PR.',
           },
           {
             id: 'lead-arch',
             cite: 'Lead AI Engineer: architecture',
             text: "Owned client discovery, architecture and cost estimation as the team's technical reference; contributed architecture, documentation and estimates to the company's AWS Generative AI Competency process.",
-          },
-          {
-            id: 'lead-ai-dev',
-            cite: 'Lead AI Engineer: AI-assisted development',
-            text: 'Used AI-assisted development (Claude Code, Cursor) under strict human review: every PR was reviewed and nothing reached production unchecked.',
           },
         ],
       },
