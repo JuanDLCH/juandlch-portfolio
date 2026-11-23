@@ -168,7 +168,6 @@ const EN = {
     shareTitle: 'Juan Diego Londoño — AI for your business',
     shareDesc:
       'Chatbots, voice agents and AI that automates your processes, built by an AI engineer in Medellín, Colombia, who ships to production. Try the live demos and book a call.',
-    role: 'AI Engineer · Freelance projects',
     talkCv: 'Talk to my voice agent',
     heroA: 'AI for your business that ',
     heroB: 'answers, schedules and gets work done',
@@ -353,7 +352,6 @@ const ES: typeof EN = {
     shareTitle: 'Juan Diego Londoño — IA para tu negocio',
     shareDesc:
       'Chatbots, agentes de voz e IA que automatiza tus procesos, hechos por un ingeniero de IA en Medellín, Colombia, que lleva sistemas a producción. Prueba las demos en vivo y agenda una llamada.',
-    role: 'AI Engineer · Proyectos freelance',
     talkCv: 'Habla con mi agente de voz',
     heroA: 'IA para tu negocio que ',
     heroB: 'responde, agenda y resuelve',
