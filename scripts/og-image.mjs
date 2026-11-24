@@ -57,36 +57,43 @@ const bars = Array.from({ length: 34 }, (_, i) => {
   return `<i style="height:${h}px"></i>`;
 }).join('');
 
-// The copy of each card, from src/i18n/content.ts (hero and role; `sv` for
-// services). Keep the headlines short: the photo slot must not move.
+// The copy of each card. The role and the services call to action are read
+// from src/i18n/content.ts (`sv` over the base copy in services mode), so they
+// can't drift; the headlines are shortened from the hero by hand (keep them
+// short: the photo slot must not move) and the chips are the card's own.
+const { content } = await import('../src/i18n/content.ts');
+const copy = (lang, mode) => {
+  const x = content[lang].x;
+  return mode === 'services' ? { ...x, ...x.sv } : x;
+};
 const VARIANTS = {
   'hire-en': {
     lang: 'en',
     h1: 'I build AI that <em>listens, reasons and acts</em> — inside real software.',
-    role: 'AI Engineer · Solutions Architect',
+    role: copy('en', 'hire').role,
     chips: ['Agents', 'Realtime voice', 'Document AI', 'AWS'],
     live: 'Talk to my AI · live demos',
   },
   'hire-es': {
     lang: 'es',
     h1: 'Construyo IA que <em>escucha, razona y actúa</em> — dentro de software real.',
-    role: 'Ingeniero de IA · Arquitecto de Soluciones',
+    role: copy('es', 'hire').role,
     chips: ['Agentes', 'Voz en tiempo real', 'IA documental'],
     live: 'Habla con mi IA · demos en vivo',
   },
   'services-en': {
     lang: 'en',
     h1: 'AI for your business that <em>answers, schedules and gets work done.</em>',
-    role: 'AI Engineer · Freelance projects',
+    role: copy('en', 'services').role,
     chips: ['Chatbots', 'Voice agents', 'Automation', 'Document AI'],
-    live: 'Book a call · live demos',
+    live: `${copy('en', 'services').bookCallShort} · live demos`,
   },
   'services-es': {
     lang: 'es',
     h1: 'IA para tu negocio que <em>responde, agenda y resuelve.</em>',
-    role: 'AI Engineer · Proyectos freelance',
+    role: copy('es', 'services').role,
     chips: ['Chatbots', 'Agentes de voz', 'Automatización'],
-    live: 'Agenda una llamada · demos en vivo',
+    live: `${copy('es', 'services').bookCallShort} · demos en vivo`,
   },
 };
 const PLACE = 'Medellín, Antioquia · Colombia';
