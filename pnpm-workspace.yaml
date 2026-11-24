@@ -1,3 +1,10 @@
 allowBuilds:
   esbuild: true
   workerd: true
+# Keep @emnapi/runtime on 1.x: astro2tsx resolves it as a peer, and a 2.0
+# beta paired with @emnapi/core 1.x breaks astro check ("this.bridge.
+# setLastError is not a function"). shortcut: also pins rolldown's optional
+# wasm32 binding (unused on native platforms); drop once astro2tsx and
+# @emnapi/core move to 2.x.
+overrides:
+  '@emnapi/runtime': ^1.11.3
